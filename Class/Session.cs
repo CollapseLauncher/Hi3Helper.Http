@@ -37,7 +37,7 @@ namespace Hi3Helper.Http
             return true;
         }
 
-        private async Task<bool> GetSessionMultithread(SessionAttribute Session)
+        private async Task<bool> GetSessionMultisession(SessionAttribute Session)
         {
             Session.RemoteRequest = new HttpRequestMessage()
             {
@@ -45,8 +45,8 @@ namespace Hi3Helper.Http
                 Method = HttpMethod.Get,
             };
 
-            if ((Session.IsLastThread ? Session.EndOffset - 1 : Session.EndOffset) - Session.StartOffset < 0
-                && (Session.IsLastThread ? Session.EndOffset - 1 : Session.EndOffset) - Session.StartOffset == -1)
+            if ((Session.IsLastSession ? Session.EndOffset - 1 : Session.EndOffset) - Session.StartOffset < 0
+                && (Session.IsLastSession ? Session.EndOffset - 1 : Session.EndOffset) - Session.StartOffset == -1)
             {
                 UpdateProgress(new DownloadEvent(0, this.SizeDownloaded, this.SizeToBeDownloaded, Session.OutSize, SessionStopwatch.Elapsed.TotalSeconds));
                 return false;

@@ -9,7 +9,7 @@ namespace Hi3Helper.Http
     public class MetadataProp
     {
         public long RemoteFileSize;
-        public byte Threads;
+        public byte Sessions;
         public bool CanOverwrite;
     }
 
@@ -26,11 +26,11 @@ namespace Hi3Helper.Http
         private long SizeToBeDownloaded;
         private Stopwatch SessionStopwatch;
 
-        // Multithread Attributes
-        private byte MaxAllowedThreads = 8; // Default: 8 Max threads
-        private byte Threads;
+        // Multisession Attributes
+        private byte MaxAllowedSessions = 8; // Default: 8 Max sessions
+        private byte Sessions;
         private ICollection<SessionAttribute> SessionAttributes;
-        public MultithreadState ThreadState;
+        public MultisessionState SessionState;
 
         private void ResetAttributes()
         {
@@ -39,7 +39,7 @@ namespace Hi3Helper.Http
             SizeDownloaded = 0;
             SizeLastDownloaded = 0;
             SizeToBeDownloaded = 0;
-            ThreadState = MultithreadState.Idle;
+            SessionState = MultisessionState.Idle;
             SessionAttributes = null;
         }
 
@@ -101,9 +101,9 @@ namespace Hi3Helper.Http
             public long? StartOffset { get; set; }
             public long? EndOffset { get; set; }
 
-            // For Multithread mode only
-            public bool IsLastThread { get; set; }
-            public MultithreadState ThreadState { get; set; } = MultithreadState.Idle;
+            // For Multisession mode only
+            public bool IsLastSession { get; set; }
+            public MultisessionState SessionState { get; set; } = MultisessionState.Idle;
         }
     }
 }

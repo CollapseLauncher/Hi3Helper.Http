@@ -9,16 +9,16 @@ namespace Hi3Helper.Http
         public HttpHelperSessionNotReady(string message) : base(message) { }
     }
 
-    public class HttpHelperAllowedThreadsMaxed : Exception
+    public class HttpHelperAllowedSessionsMaxed : Exception
     {
-        public HttpHelperAllowedThreadsMaxed() { }
-        public HttpHelperAllowedThreadsMaxed(string message) : base(message) { }
+        public HttpHelperAllowedSessionsMaxed() { }
+        public HttpHelperAllowedSessionsMaxed(string message) : base(message) { }
     }
 
-    public class HttpHelperThreadChunkOversize : Exception
+    public class HttpHelperSessionChunkOversize : Exception
     {
-        public HttpHelperThreadChunkOversize() { }
-        public HttpHelperThreadChunkOversize(string message) : base(message) { }
+        public HttpHelperSessionChunkOversize() { }
+        public HttpHelperSessionChunkOversize(string message) : base(message) { }
     }
 
     public class HttpHelperResponseNoSatisfiable : Exception
@@ -27,21 +27,21 @@ namespace Hi3Helper.Http
         public HttpHelperResponseNoSatisfiable(string message) : base(message) { }
     }
 
-    public class HttpHelperThreadMetadataNotExist : Exception
+    public class HttpHelperSessionMetadataNotExist : Exception
     {
-        public HttpHelperThreadMetadataNotExist() { }
-        public HttpHelperThreadMetadataNotExist(string message) : base(message) { }
+        public HttpHelperSessionMetadataNotExist() { }
+        public HttpHelperSessionMetadataNotExist(string message) : base(message) { }
     }
 
-    public class HttpHelperThreadMetadataInvalid : Exception
+    public class HttpHelperSessionMetadataInvalid : Exception
     {
-        public HttpHelperThreadMetadataInvalid() { }
-        public HttpHelperThreadMetadataInvalid(string message) : base(message) { }
+        public HttpHelperSessionMetadataInvalid() { }
+        public HttpHelperSessionMetadataInvalid(string message) : base(message) { }
     }
 
-    public class HttpHelperThreadFileExist : Exception
+    public class HttpHelperSessionFileExist : Exception
     {
-        public HttpHelperThreadFileExist() { }
-        public HttpHelperThreadFileExist(string message) : base(message) { }
+        public HttpHelperSessionFileExist() { }
+        public HttpHelperSessionFileExist(string message) : base(message) { }
     }
 }

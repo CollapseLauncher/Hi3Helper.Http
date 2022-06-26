@@ -7,7 +7,7 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-        public async Task MergeMultithread(string OutPath, int Threads, CancellationToken Token)
+        public async Task MergeMultisession(string OutPath, int Sessions, CancellationToken Token)
         {
             int Read;
             byte[] Buffer = new byte[4 << 17];
@@ -17,17 +17,17 @@ namespace Hi3Helper.Http
 
             if (!meta.CanOverwrite && File.Exists(OutPath))
             {
-                this.ThreadState = MultithreadState.FailedMerging;
-                throw new HttpHelperThreadFileExist(
+                this.SessionState = MultisessionState.FailedMerging;
+                throw new HttpHelperSessionFileExist(
                     $"File is already exist and doesn't have attribute to be overwrite-able.");
             }
 
-            if (meta.Threads != Threads)
+            if (meta.Sessions != Sessions)
             {
-                this.ThreadState = MultithreadState.CancelledMerging;
-                throw new HttpHelperThreadMetadataInvalid(
+                this.SessionState = MultisessionState.CancelledMerging;
+                throw new HttpHelperSessionMetadataInvalid(
                     "Existing metadata for merging doesn't match"
-                    + $"(Using {Threads} instead of {meta.Threads} from metadata)!");
+                    + $"(Using {Sessions} instead of {meta.Sessions} from metadata)!");
             }
 
             this.SizeLastDownloaded = 0;
@@ -37,14 +37,14 @@ namespace Hi3Helper.Http
             {
                 using (Stream OutStream = new FileStream(OutPath, FileMode.Create, FileAccess.Write))
                 {
-                    for (int i = 0; i < Threads; i++)
+                    for (int i = 0; i < Sessions; i++)
                     {
                         string InPath = string.Format(OutPath + ".{0:000}", i + 1);
                         using (Stream InStream = new FileStream(InPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 15, FileOptions.DeleteOnClose))
                         {
                             while ((Read = InStream.Read(Buffer)) > 0)
                             {
-                                ThreadState = MultithreadState.Merging;
+                                SessionState = MultisessionState.Merging;
                                 Token.ThrowIfCancellationRequested();
                                 await OutStream.WriteAsync(Buffer, 0, Read, Token);
                                 this.SizeLastDownloaded += Read;
@@ -62,20 +62,20 @@ namespace Hi3Helper.Http
             catch (TaskCanceledException)
             {
                 Console.WriteLine($"Merging has been cancelled!");
-                this.ThreadState = MultithreadState.CancelledMerging;
+                this.SessionState = MultisessionState.CancelledMerging;
             }
             catch (OperationCanceledException)
             {
                 Console.WriteLine($"Merging has been cancelled!");
-                this.ThreadState = MultithreadState.CancelledMerging;
+                this.SessionState = MultisessionState.CancelledMerging;
             }
             catch (Exception ex)
             {
-                this.ThreadState = MultithreadState.FailedMerging;
+                this.SessionState = MultisessionState.FailedMerging;
                 throw new Exception($"Unhandled exception while merging!\r\n{ex}", ex);
             }
         }
 
-        public async void MergeMultithreadNoTask(string OutPath, int Threads, CancellationToken Token = new CancellationToken()) => await MergeMultithread(OutPath, Threads, Token);
+        public async void MergeMultisessionNoTask(string OutPath, int Sessions, CancellationToken Token = new CancellationToken()) => await MergeMultisession(OutPath, Sessions, Token);
     }
 }

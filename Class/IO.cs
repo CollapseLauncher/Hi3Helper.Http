@@ -30,7 +30,7 @@ namespace Hi3Helper.Http
             while ((Read = Session.InStream.Read(Buffer)) > 0)
             {
                 // Set downloading state to Downloading
-                Session.ThreadState = MultithreadState.Downloading;
+                Session.SessionState = MultisessionState.Downloading;
                 // Throw if the cancel has been sent from Token
                 Session.SessionToken.ThrowIfCancellationRequested();
                 // Write the buffer into OutStream

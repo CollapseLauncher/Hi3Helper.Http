@@ -10,26 +10,26 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-        public async Task<ICollection<SessionAttribute>> GetSessionAttributeCollection(string URL, string OutputPath, bool Overwrite, byte Threads, CancellationToken Token)
+        public async Task<ICollection<SessionAttribute>> GetSessionAttributeCollection(string URL, string OutputPath, bool Overwrite, byte Sessions, CancellationToken Token)
         {
             ICollection<SessionAttribute> SessionAttributes = new List<SessionAttribute>();
 
-            ThreadState = MultithreadState.WaitingOnThread;
+            SessionState = MultisessionState.WaitingOnSession;
 
             this.SizeToBeDownloaded = await TryGetContentLength(URL, Token);
             WriteMetadataFile(OutputPath, new MetadataProp()
             {
-                Threads = Threads,
+                Sessions = Sessions,
                 RemoteFileSize = this.SizeToBeDownloaded,
                 CanOverwrite = Overwrite
             });
 
-            long SliceSize = (long)Math.Ceiling((double)this.SizeToBeDownloaded / Threads);
+            long SliceSize = (long)Math.Ceiling((double)this.SizeToBeDownloaded / Sessions);
 
-            for (long i = 0, t = 0; t < Threads; t++)
+            for (long i = 0, t = 0; t < Sessions; t++)
             {
-                SessionAttributes.Add(new SessionAttribute(URL, OutputPath + string.Format(".{0:000}", t + 1), null, Token, i, t + 1 == Threads ? this.SizeToBeDownloaded : (i + SliceSize - 1))
-                { IsLastThread = t + 1 == Threads });
+                SessionAttributes.Add(new SessionAttribute(URL, OutputPath + string.Format(".{0:000}", t + 1), null, Token, i, t + 1 == Sessions ? this.SizeToBeDownloaded : (i + SliceSize - 1))
+                { IsLastSession = t + 1 == Sessions });
                 i += SliceSize;
             }
 
@@ -74,11 +74,11 @@ namespace Hi3Helper.Http
                 }
                 catch (TaskCanceledException ex)
                 {
-                    throw new TaskCanceledException(string.Format("Task with ThreadID: {0} has been cancelled!", InnerTask.Id), ex);
+                    throw new TaskCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", InnerTask.Id), ex);
                 }
                 catch (OperationCanceledException ex)
                 {
-                    throw new OperationCanceledException(string.Format("Task with ThreadID: {0} has been cancelled!", InnerTask.Id), ex);
+                    throw new OperationCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", InnerTask.Id), ex);
                 }
                 catch (HttpHelperSessionNotReady ex)
                 {
@@ -88,10 +88,10 @@ namespace Hi3Helper.Http
                 catch (Exception ex)
                 {
                     if (CanThrow)
-                        throw new Exception(string.Format("Unhandled exception has been thrown on ThreadID: {0}\r\n{1}", InnerTask.Id, ex), ex);
+                        throw new Exception(string.Format("Unhandled exception has been thrown on SessionID: {0}\r\n{1}", InnerTask.Id, ex), ex);
                 }
 
-                Console.WriteLine(string.Format("Retrying task on ThreadID: {0} (Retry: {1}/{2})...", InnerTask.Id, this.CurrentRetry, this.MaxRetry));
+                Console.WriteLine(string.Format("Retrying task on SessionID: {0} (Retry: {1}/{2})...", InnerTask.Id, this.CurrentRetry, this.MaxRetry));
                 await Task.Delay((int)this.RetryInterval);
                 this.CurrentRetry++;
             }
@@ -108,7 +108,7 @@ namespace Hi3Helper.Http
 
             using (BinaryWriter Writer = new BinaryWriter(new FileStream(PathOut + ".h3mtd", FileMode.Create, FileAccess.Write)))
             {
-                Writer.Write(Metadata.Threads);
+                Writer.Write(Metadata.Sessions);
                 Writer.Write(Metadata.RemoteFileSize);
                 Writer.Write(Metadata.CanOverwrite);
             }
@@ -120,11 +120,11 @@ namespace Hi3Helper.Http
             FileInfo file = new FileInfo(PathOut + ".h3mtd");
 
             if (!file.Exists)
-                throw new HttpHelperThreadMetadataNotExist(string.Format("Metadata for \"{0}\" doesn't exist", PathOut));
+                throw new HttpHelperSessionMetadataNotExist(string.Format("Metadata for \"{0}\" doesn't exist", PathOut));
 
             using (BinaryReader Reader = new BinaryReader(file.OpenRead()))
             {
-                ret.Threads = Reader.ReadByte();
+                ret.Sessions = Reader.ReadByte();
                 ret.RemoteFileSize = Reader.ReadInt64();
                 ret.CanOverwrite = Reader.ReadBoolean();
             }
