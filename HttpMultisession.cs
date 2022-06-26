@@ -44,9 +44,7 @@ namespace Hi3Helper.Http
         public void FinalizeProgress()
         {
             long i = this.SizeToBeDownloaded - this.SizeDownloaded;
-            UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, this.SizeToBeDownloaded, this.SizeToBeDownloaded, i, this.SessionStopwatch.Elapsed.TotalSeconds));
-            Console.WriteLine("\r\nFile has been downloaded. Please use MergeMultisession() or MergeMultisessionNoTask() to merge it.");
-
+            UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, this.SizeToBeDownloaded, this.SizeToBeDownloaded, i < 0 ? 0 : i, this.SessionStopwatch.Elapsed.TotalSeconds));
             this.SessionState = MultisessionState.FinishedNeedMerge;
         }
 

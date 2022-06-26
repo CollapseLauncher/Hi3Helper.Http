@@ -57,7 +57,6 @@ namespace Hi3Helper.Http
                 }
 
                 File.Delete(OutPath + ".h3mtd");
-                Console.WriteLine();
             }
             catch (TaskCanceledException)
             {
