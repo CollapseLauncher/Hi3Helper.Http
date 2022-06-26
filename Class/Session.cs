@@ -52,10 +52,10 @@ namespace Hi3Helper.Http
                 return false;
             }
 
-            Session.RemoteRequest.Headers.Range = new RangeHeaderValue(Session.StartOffset, Session.EndOffset);
+            Session.RemoteRequest.Headers.Range = new RangeHeaderValue(Session.StartOffset, Session.IsLastSession ? Session.EndOffset - 1 : Session.EndOffset);
 
             HttpResponseMessage Response = await SendAsync(Session.RemoteRequest, HttpCompletionOption.ResponseHeadersRead, Session.SessionToken);
-
+            
             if ((int)Response.StatusCode == 416)
             {
                 UpdateProgress(new DownloadEvent(0, Session.OutSize, this.SizeToBeDownloaded, Session.OutSize, SessionStopwatch.Elapsed.TotalSeconds));
