@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
+    <Platforms>x64</Platforms>
+    <Configurations>Debug;Release;Publish</Configurations>
   </PropertyGroup>
 
 </Project>
