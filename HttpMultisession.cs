@@ -20,6 +20,7 @@ namespace Hi3Helper.Http
             SessionAttributes = await GetSessionAttributeCollection(URL, OutPath, Overwrite, Sessions, Token);
             GetLastExistedDownloadSize(this.SessionAttributes);
 
+            WaitForMultisessionReadyNoTask(Token);
             foreach (SessionAttribute Attr in this.SessionAttributes)
             {
                 SessionTasks.Add(StartRetryableTask(Task.Run(async () =>
@@ -67,5 +68,8 @@ namespace Hi3Helper.Http
 #endif
             SessionState = MultisessionState.Downloading;
         }
+
+        public async void WaitForMultisessionReadyNoTask(CancellationToken Token = new CancellationToken(), uint DelayInterval = 33)
+            => await WaitForMultisessionReady(Token, DelayInterval);
     }
 }
