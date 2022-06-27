@@ -39,7 +39,8 @@ namespace Hi3Helper.Http
                 this.SizeLastDownloaded += Read;
                 this.SizeDownloaded += Read;
 
-                UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, this.SizeDownloaded, this.SizeToBeDownloaded, Read, this.SessionStopwatch.Elapsed.TotalSeconds));
+                UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, this.SizeDownloaded, this.SizeToBeDownloaded,
+                    Read, this.SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
             }
         }
 

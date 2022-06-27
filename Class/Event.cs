@@ -22,12 +22,14 @@ namespace Hi3Helper.Http
 
     public class DownloadEvent
     {
-        public DownloadEvent(long SizeLastDownloaded, long SizeDownloaded, long SizeToBeDownloaded, long Read, double TotalSecond)
+        public DownloadEvent(long SizeLastDownloaded, long SizeDownloaded, long SizeToBeDownloaded,
+            long Read, double TotalSecond, MultisessionState state)
         {
             this.Speed = (long)(SizeLastDownloaded / TotalSecond);
             this.SizeDownloaded = SizeDownloaded;
             this.SizeToBeDownloaded = SizeToBeDownloaded;
             this.Read = Read;
+            this.State = state;
         }
 
         public long SizeDownloaded { get; private set; }
@@ -37,5 +39,6 @@ namespace Hi3Helper.Http
         public long Speed { get; private set; }
         public TimeSpan TimeLeft => checked(TimeSpan.FromSeconds((SizeToBeDownloaded - SizeDownloaded) / UnZeroed(Speed)));
         private long UnZeroed(long Input) => Math.Max(Input, 1);
+        public MultisessionState State { get; set; }
     }
 }

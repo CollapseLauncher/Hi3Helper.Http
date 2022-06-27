@@ -25,7 +25,8 @@ namespace Hi3Helper.Http
             {
                 this.SizeDownloaded += Session.OutSize;
                 this.SizeToBeDownloaded += Session.OutSize;
-                UpdateProgress(new DownloadEvent(0, this.SizeDownloaded, this.SizeToBeDownloaded, this.SizeDownloaded, this.SessionStopwatch.Elapsed.TotalSeconds));
+                UpdateProgress(new DownloadEvent(0, this.SizeDownloaded, this.SizeToBeDownloaded, this.SizeDownloaded,
+                    this.SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
                 return false;
             }
 
@@ -48,7 +49,8 @@ namespace Hi3Helper.Http
             if ((Session.IsLastSession ? Session.EndOffset - 1 : Session.EndOffset) - Session.StartOffset < 0
                 && (Session.IsLastSession ? Session.EndOffset - 1 : Session.EndOffset) - Session.StartOffset == -1)
             {
-                UpdateProgress(new DownloadEvent(0, this.SizeDownloaded, this.SizeToBeDownloaded, Session.OutSize, SessionStopwatch.Elapsed.TotalSeconds));
+                UpdateProgress(new DownloadEvent(0, this.SizeDownloaded, this.SizeToBeDownloaded,
+                    Session.OutSize, SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
                 return false;
             }
 
@@ -58,7 +60,8 @@ namespace Hi3Helper.Http
             
             if ((int)Response.StatusCode == 416)
             {
-                UpdateProgress(new DownloadEvent(0, Session.OutSize, this.SizeToBeDownloaded, Session.OutSize, SessionStopwatch.Elapsed.TotalSeconds));
+                UpdateProgress(new DownloadEvent(0, Session.OutSize, this.SizeToBeDownloaded,
+                    Session.OutSize, SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
                 return false;
             }
 

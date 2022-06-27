@@ -44,7 +44,8 @@ namespace Hi3Helper.Http
         public void FinalizeProgress()
         {
             long i = this.SizeToBeDownloaded - this.SizeDownloaded;
-            UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, this.SizeToBeDownloaded, this.SizeToBeDownloaded, i < 0 ? 0 : i, this.SessionStopwatch.Elapsed.TotalSeconds));
+            UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, this.SizeToBeDownloaded, this.SizeToBeDownloaded,
+                i < 0 ? 0 : i, this.SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
             this.SessionState = MultisessionState.FinishedNeedMerge;
         }
 
