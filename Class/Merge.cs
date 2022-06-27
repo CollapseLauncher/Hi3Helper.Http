@@ -7,7 +7,7 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-        public async Task MergeMultisession(string OutPath, int Sessions, CancellationToken Token)
+        public async Task MergeMultisession(string OutPath, byte Sessions, CancellationToken Token)
         {
             int Read;
             byte[] Buffer = new byte[4 << 17];
@@ -75,6 +75,6 @@ namespace Hi3Helper.Http
             }
         }
 
-        public async void MergeMultisessionNoTask(string OutPath, int Sessions, CancellationToken Token = new CancellationToken()) => await MergeMultisession(OutPath, Sessions, Token);
+        public async void MergeMultisessionNoTask(string OutPath, byte Sessions, CancellationToken Token = new CancellationToken()) => await MergeMultisession(OutPath, Sessions, Token);
     }
 }
