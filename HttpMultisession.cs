@@ -87,19 +87,26 @@ namespace Hi3Helper.Http
 
         public async Task DeleteMultisessionChunks(string FileOut)
         {
-            while (SessionState == MultisessionState.Downloading)
-                await Task.Delay(500);
-            
-            MetadataProp Metadata = ReadMetadataFile(FileOut);
-            FileInfo FileChunk;
-            for (byte i = 0; i < Metadata.Sessions; i++)
+            try
             {
-                FileChunk = new FileInfo(string.Format("{0}.{1:000}", FileOut, i + 1));
+                while (SessionState == MultisessionState.Downloading)
+                    await Task.Delay(500);
+
+                MetadataProp Metadata = ReadMetadataFile(FileOut);
+                FileInfo FileChunk;
+                for (byte i = 0; i < Metadata.Sessions; i++)
+                {
+                    FileChunk = new FileInfo(string.Format("{0}.{1:000}", FileOut, i + 1));
+                    if (FileChunk.Exists) FileChunk.Delete();
+                }
+
+                FileChunk = new FileInfo(string.Format("{0}.h3mtd", FileOut));
                 if (FileChunk.Exists) FileChunk.Delete();
             }
-
-            FileChunk = new FileInfo(string.Format("{0}.h3mtd", FileOut));
-            if (FileChunk.Exists) FileChunk.Delete();
+            catch (Exception ex)
+            {
+                Console.WriteLine("Something went wrong while trying to clean up chunks!\r\n{0}", ex);
+            }
         }
     }
 }
