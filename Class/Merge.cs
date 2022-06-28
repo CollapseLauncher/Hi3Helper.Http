@@ -42,7 +42,7 @@ namespace Hi3Helper.Http
                         string InPath = string.Format(OutPath + ".{0:000}", i + 1);
                         using (Stream InStream = new FileStream(InPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 15, FileOptions.DeleteOnClose))
                         {
-                            while ((Read = InStream.Read(Buffer)) > 0)
+                            while ((Read = InStream.Read(Buffer, 0, Buffer.Length)) > 0)
                             {
                                 SessionState = MultisessionState.Merging;
                                 Token.ThrowIfCancellationRequested();

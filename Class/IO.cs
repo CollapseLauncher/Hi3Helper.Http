@@ -27,7 +27,7 @@ namespace Hi3Helper.Http
             SeekStreamToEnd(Session.OutStream);
 
             // Read and send it to buffer
-            while ((Read = Session.InStream.Read(Buffer)) > 0)
+            while ((Read = Session.InStream.Read(Buffer, 0, Buffer.Length)) > 0)
             {
                 // Set downloading state to Downloading
                 Session.SessionState = MultisessionState.Downloading;
