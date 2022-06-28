@@ -27,13 +27,7 @@ namespace Hi3Helper.Http
             {
                 foreach (SessionAttribute Attr in this.SessionAttributes)
                 {
-                    SessionTasks.Add(StartRetryableTask(Task.Run(async () =>
-                    {
-                        if (await GetSessionMultisession(Attr))
-                            await StartSession(Attr);
-
-                        Attr.DisposeOutStream();
-                    }), Attr));
+                    SessionTasks.Add(StartRetryableTask(Attr));
                 }
 
                 await Task.WhenAll(SessionTasks);
