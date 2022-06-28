@@ -12,6 +12,7 @@ namespace Hi3Helper.Http
         {
             AllowAutoRedirect = true,
             UseCookies = true,
+            MaxConnectionsPerServer = 8,
             AutomaticDecompression = IgnoreCompress ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
         })
         {
@@ -23,6 +24,7 @@ namespace Hi3Helper.Http
         {
             AllowAutoRedirect = true,
             UseCookies = true,
+            MaxConnectionsPerServer = 8,
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
         })
         { }
