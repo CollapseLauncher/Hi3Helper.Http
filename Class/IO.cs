@@ -8,7 +8,7 @@ namespace Hi3Helper.Http
         private void ReadWriteStreamDisposable(SessionAttribute Session)
         {
             using (Session.InStream)
-            using (Session.OutStream)
+            // using (Session.OutStream)
                 ReadWriteStream(Session);
         }
 
