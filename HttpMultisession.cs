@@ -90,5 +90,22 @@ namespace Hi3Helper.Http
 
         public async void WaitForMultisessionReadyNoTask(CancellationToken Token = new CancellationToken(), uint DelayInterval = 33)
             => await WaitForMultisessionReady(Token, DelayInterval);
+
+        public async Task DeleteMultisessionChunks(string FileOut)
+        {
+            while (SessionState == MultisessionState.Downloading)
+                await Task.Delay(500);
+            
+            MetadataProp Metadata = ReadMetadataFile(FileOut);
+            FileInfo FileChunk;
+            for (byte i = 0; i < Metadata.Sessions; i++)
+            {
+                FileChunk = new FileInfo(string.Format("{0}.{1:000}", FileOut, i + 1));
+                if (FileChunk.Exists) FileChunk.Delete();
+            }
+
+            FileChunk = new FileInfo(string.Format("{0}.h3mtd", FileOut));
+            if (FileChunk.Exists) FileChunk.Delete();
+        }
     }
 }
