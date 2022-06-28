@@ -34,11 +34,7 @@ namespace Hi3Helper.Http
         {
             ResetAttributes();
             SessionAttribute Session = new SessionAttribute(URL, OutPath, null, Token, Start, End);
-            Task SessionTask = StartRetryableTask(Task.Run(async () =>
-            {
-                if (await GetSession(Session))
-                    await StartSession(Session);
-            }), Session);
+            Task SessionTask = StartRetryableTask(Session);
 
             await SessionTask;
         }
@@ -52,11 +48,7 @@ namespace Hi3Helper.Http
         {
             ResetAttributes();
             SessionAttribute Session = new SessionAttribute(URL, null, OutStream, Token, Start, End);
-            Task SessionTask = StartRetryableTask(Task.Run(async () =>
-            {
-                if (await GetSession(Session))
-                    await StartSession(Session);
-            }), Session);
+            Task SessionTask = StartRetryableTask(Session);
 
             await SessionTask;
         }
