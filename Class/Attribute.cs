@@ -45,7 +45,9 @@ namespace Hi3Helper.Http
 
         public partial class SessionAttribute
         {
-            public SessionAttribute(string InURL, string OutPath, Stream OutStream = null, CancellationToken SessionToken = new CancellationToken(), long? Start = null, long? End = null)
+            public SessionAttribute(string InURL, string OutPath, Stream OutStream = null,
+                CancellationToken SessionToken = new CancellationToken(),
+                long? Start = null, long? End = null, bool Overwrite = false)
             {
                 this.InURL = InURL;
                 this.SessionToken = SessionToken;
@@ -60,7 +62,10 @@ namespace Hi3Helper.Http
                 }
 
                 this.OutFile = new FileInfo(OutPath);
-                this.OutStream = this.OutFile.OpenWrite();
+                if (Overwrite)
+                    this.OutStream = this.OutFile.Create();
+                else
+                    this.OutStream = this.OutFile.OpenWrite();
                 this.IsOutDisposable = true;
                 AdjustOffsets(Start, End);
             }

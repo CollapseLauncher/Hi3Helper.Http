@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -21,19 +22,33 @@ namespace Hi3Helper.Http
             GetLastExistedDownloadSize(this.SessionAttributes);
 
             WaitForMultisessionReadyNoTask(Token);
-            foreach (SessionAttribute Attr in this.SessionAttributes)
+
+            try
             {
-                SessionTasks.Add(StartRetryableTask(Task.Run(async () =>
+                foreach (SessionAttribute Attr in this.SessionAttributes)
                 {
-                    if (await GetSessionMultisession(Attr))
-                        await StartSession(Attr);
+                    SessionTasks.Add(StartRetryableTask(Task.Run(async () =>
+                    {
+                        if (await GetSessionMultisession(Attr))
+                            await StartSession(Attr);
 
-                    Attr.DisposeOutStream();
-                })));
+                        Attr.DisposeOutStream();
+                    }), Attr));
+                }
+
+                await Task.WhenAll(SessionTasks);
+                SessionTasks.Clear();
             }
-
-            await Task.WhenAll(SessionTasks);
-            SessionTasks.Clear();
+            catch (TaskCanceledException)
+            {
+                SessionState = MultisessionState.CancelledDownloading;
+                throw new OperationCanceledException();
+            }
+            catch (OperationCanceledException)
+            {
+                SessionState = MultisessionState.CancelledDownloading;
+                throw new OperationCanceledException();
+            }
 
             FinalizeProgress();
         }
@@ -52,21 +67,25 @@ namespace Hi3Helper.Http
 
         public async Task WaitForMultisessionReady(CancellationToken Token = new CancellationToken(), uint DelayInterval = 33)
         {
-#if DEBUG
-            Console.WriteLine("Waiting for all Sessions to be ready...");
-#endif
-            SessionState = MultisessionState.WaitingOnSession;
-            while (SessionAttributes == null || SessionAttributes.All(x => x.SessionState != MultisessionState.Downloading))
+            try
             {
-                // Throw if cancel was requested
-                Token.ThrowIfCancellationRequested();
-                // Delay for 33 ms for each loop
-                await Task.Delay((int)DelayInterval);
-            }
 #if DEBUG
-            Console.WriteLine("All Sessions are ready!");
+                Console.WriteLine("Waiting for all Sessions to be ready...");
 #endif
-            SessionState = MultisessionState.Downloading;
+                SessionState = MultisessionState.WaitingOnSession;
+                while (SessionAttributes == null || SessionAttributes.All(x => x.SessionState != MultisessionState.Downloading))
+                {
+                    // Throw if cancel was requested
+                    Token.ThrowIfCancellationRequested();
+                    // Delay for 33 ms for each loop
+                    await Task.Delay((int)DelayInterval);
+                }
+#if DEBUG
+                Console.WriteLine("All Sessions are ready!");
+#endif
+                SessionState = MultisessionState.Downloading;
+            }
+            catch (OperationCanceledException) { }
         }
 
         public async void WaitForMultisessionReadyNoTask(CancellationToken Token = new CancellationToken(), uint DelayInterval = 33)

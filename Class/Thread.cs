@@ -28,7 +28,9 @@ namespace Hi3Helper.Http
 
             for (long i = 0, t = 0; t < Sessions; t++)
             {
-                SessionAttributes.Add(new SessionAttribute(URL, OutputPath + string.Format(".{0:000}", t + 1), null, Token, i, t + 1 == Sessions ? this.SizeToBeDownloaded : (i + SliceSize - 1))
+                SessionAttributes.Add(
+                    new SessionAttribute(URL,OutputPath + string.Format(".{0:000}", t + 1), null,
+                    Token, i, t + 1 == Sessions ? this.SizeToBeDownloaded : (i + SliceSize - 1), Overwrite)
                 { IsLastSession = t + 1 == Sessions });
                 i += SliceSize;
             }
@@ -58,7 +60,7 @@ namespace Hi3Helper.Http
             }
         }
 
-        private async Task StartRetryableTask(Task InnerTask)
+        private async Task StartRetryableTask(Task InnerTask, SessionAttribute Session)
         {
             while (true)
             {
@@ -74,21 +76,29 @@ namespace Hi3Helper.Http
                 }
                 catch (TaskCanceledException ex)
                 {
+                    Session.DisposeOutStream();
                     throw new TaskCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", InnerTask.Id), ex);
                 }
                 catch (OperationCanceledException ex)
                 {
+                    Session.DisposeOutStream();
                     throw new OperationCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", InnerTask.Id), ex);
                 }
                 catch (HttpHelperSessionNotReady ex)
                 {
                     if (CanThrow)
+                    {
+                        Session.DisposeOutStream();
                         throw new HttpHelperSessionNotReady(ex.Message);
+                    }
                 }
                 catch (Exception ex)
                 {
                     if (CanThrow)
+                    {
+                        Session.DisposeOutStream();
                         throw new Exception(string.Format("Unhandled exception has been thrown on SessionID: {0}\r\n{1}", InnerTask.Id, ex), ex);
+                    }
                 }
 
                 Console.WriteLine(string.Format("Retrying task on SessionID: {0} (Retry: {1}/{2})...", InnerTask.Id, this.CurrentRetry, this.MaxRetry));

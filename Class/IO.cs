@@ -56,7 +56,12 @@ namespace Hi3Helper.Http
         {
             public void DisposeOutStream()
             {
-                if (OutStream != null) OutStream?.Dispose();
+                if (this.IsOutDisposable) OutStream?.Dispose();
+            }
+
+            public void DeleteOutStream()
+            {
+                if (this.IsOutDisposable) OutFile.Delete();
             }
         }
     }

@@ -31,12 +31,12 @@ namespace Hi3Helper.Http
             CancellationToken Token = new CancellationToken(), long Start = 0, long? End = null)
         {
             ResetAttributes();
+            SessionAttribute Session = new SessionAttribute(URL, OutPath, null, Token, Start, End);
             Task SessionTask = StartRetryableTask(Task.Run(async () =>
             {
-                SessionAttribute Session = new SessionAttribute(URL, OutPath, null, Token, Start, End);
                 if (await GetSession(Session))
                     await StartSession(Session);
-            }));
+            }), Session);
 
             await SessionTask;
         }
@@ -49,12 +49,12 @@ namespace Hi3Helper.Http
             long Start = 0, long? End = null)
         {
             ResetAttributes();
+            SessionAttribute Session = new SessionAttribute(URL, null, OutStream, Token, Start, End);
             Task SessionTask = StartRetryableTask(Task.Run(async () =>
             {
-                SessionAttribute Session = new SessionAttribute(URL, null, OutStream, Token, Start, End);
                 if (await GetSession(Session))
                     await StartSession(Session);
-            }));
+            }), Session);
 
             await SessionTask;
         }
