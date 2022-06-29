@@ -12,10 +12,12 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebugType>embedded</DebugType>
+	<Optimize>True</Optimize>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Publish|x64'">
     <DebugType>embedded</DebugType>
+	<Optimize>True</Optimize>
   </PropertyGroup>
 
 </Project>
