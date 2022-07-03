@@ -60,15 +60,20 @@ namespace Hi3Helper.Http
             }
         }
 
-        private async Task StartRetryableTask(SessionAttribute Session)
+        private async Task StartRetryableTask(SessionAttribute Session, bool IsMultisession = false)
         {
             while (true)
             {
                 bool CanThrow = this.CurrentRetry > this.MaxRetry;
+                bool CanDownload;
                 Task RetryTask = Task.Run(async () =>
                 {
-                    if (await GetSessionMultisession(Session))
-                        await StartSession(Session);
+                    if (IsMultisession)
+                        CanDownload = await GetSessionMultisession(Session);
+                    else
+                        CanDownload = await GetSession(Session);
+                        
+                    if (CanDownload) await StartSession(Session);
                 });
 
                 try
