@@ -19,8 +19,8 @@ namespace Hi3Helper.Http
             int Read;
             byte[] Buffer = new byte[4 << 20];
 
-            // Reset CurrentRetry counter while successfully get the Input Stream.
-            CurrentRetry = 1;
+            // Reset SessionRetry counter while successfully get the Input Stream.
+            Session.SessionRetry = 1;
 
             // Seek to the end of the OutStream
             SeekStreamToEnd(Session.OutStream);
@@ -40,12 +40,22 @@ namespace Hi3Helper.Http
                 // Increment the StartOffset
                 Session.StartOffset += Read;
 
+                this.L += Read;
+                if (this.L >= 0x3200000)
+                {
+                    this.L = 0;
+                    PushLog(string.Format("{0} reached -> Continuous: {1}", 0x3200000, Session.OutStream.Length), LogSeverity.Warning);
+                    throw new IOException("test");
+                }
+
                 // Use UpdateProgress in ReadWrite() for SingleSession download only
                 if (!Session.IsMultisession)
                     UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, Session.OutSize, this.SizeToBeDownloaded,
                         Read, this.SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
             }
         }
+
+        private long L;
 
         // Seek the Stream to the end of it.
         private Stream SeekStreamToEnd(Stream S)

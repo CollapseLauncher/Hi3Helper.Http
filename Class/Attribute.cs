@@ -16,7 +16,6 @@ namespace Hi3Helper.Http
     public partial class Http
     {
         // Retry Attributes
-        private uint CurrentRetry;
         private uint MaxRetry = 5; // Default: 5 times
         private uint RetryInterval = 3500; // Default: 1000 ms
 
@@ -35,7 +34,6 @@ namespace Hi3Helper.Http
         private void ResetAttributes()
         {
             ResetSessionStopwatch();
-            CurrentRetry = 1;
             SizeDownloaded = 0;
             SizeLastDownloaded = 0;
             SizeToBeDownloaded = 0;
@@ -108,6 +106,7 @@ namespace Hi3Helper.Http
             public long OutSize { get => this.OutStream.Length; }
             public long? StartOffset { get; set; }
             public long? EndOffset { get; set; }
+            public byte SessionRetry = 1;
 
             // For Multisession mode only
             public bool IsLastSession { get; set; }

@@ -42,6 +42,7 @@ namespace Hi3Helper.Http
 
         private async Task<long> TryGetContentLength(string URL, CancellationToken Token)
         {
+            byte CurrentRetry = 1;
             while (true)
             {
                 try
@@ -50,12 +51,12 @@ namespace Hi3Helper.Http
                 }
                 catch (HttpRequestException ex)
                 {
-                    if (this.CurrentRetry > this.MaxRetry)
+                    if (CurrentRetry > this.MaxRetry)
                         throw new HttpRequestException(ex.ToString(), ex);
 
-                    PushLog($"Error while fetching File Size (Retry Attempt: {this.CurrentRetry})...", LogSeverity.Warning);
+                    PushLog($"Error while fetching File Size (Retry Attempt: {CurrentRetry})...", LogSeverity.Warning);
                     await Task.Delay((int)(this.RetryInterval), Token);
-                    this.CurrentRetry++;
+                    CurrentRetry++;
                 }
             }
         }
@@ -75,7 +76,7 @@ namespace Hi3Helper.Http
         {
             while (true)
             {
-                bool CanThrow = this.CurrentRetry > this.MaxRetry;
+                bool CanThrow = Session.SessionRetry > this.MaxRetry;
                 Task RetryTask = RetryableTaskContainer(Session, IsMultisession);
                 try
                 {
@@ -114,9 +115,9 @@ namespace Hi3Helper.Http
                         throw new Exception(string.Format("Unhandled exception has been thrown on SessionID: {0}\r\n{1}", RetryTask.Id, ex), ex);
                 }
 
-                PushLog(string.Format("Retrying task on SessionID: {0} (Retry: {1}/{2})...", RetryTask.Id, this.CurrentRetry, this.MaxRetry), LogSeverity.Warning);
+                PushLog(string.Format("Retrying task on SessionID: {0} (Retry: {1}/{2})...", RetryTask.Id, Session.SessionRetry, this.MaxRetry), LogSeverity.Warning);
                 await Task.Delay((int)this.RetryInterval);
-                this.CurrentRetry++;
+                Session.SessionRetry++;
             }
         }
 
