@@ -37,7 +37,7 @@ namespace Hi3Helper.Http
         // Update Progress of the Multisession Download
         private async void WatchMultisessionEventProgress(CancellationToken Token)
         {
-            long MultisessionRead;
+            int MultisessionRead;
             long SizeLastMultisessionDownloaded = 0;
             long SizeMultisessionDownloaded;
 
@@ -47,7 +47,7 @@ namespace Hi3Helper.Http
             {
                 // Use .Sum() to summarize the OutSize on each session
                 SizeMultisessionDownloaded = SessionAttributes.Sum(x => x.OutSize);
-                MultisessionRead = SizeMultisessionDownloaded - SizeLastMultisessionDownloaded;
+                MultisessionRead = SessionAttributes.Sum(x => x.StreamRead);
                 SizeLastMultisessionDownloaded += MultisessionRead;
 
                 // Update progress to event
@@ -71,8 +71,6 @@ namespace Hi3Helper.Http
         {
             this.Message = message;
             this.Severity = severity;
-
-            Console.WriteLine("[{0}]\t{1}", severity, message);
         }
 
         public string Message { get; private set; }

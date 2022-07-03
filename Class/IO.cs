@@ -39,6 +39,8 @@ namespace Hi3Helper.Http
                 this.SizeLastDownloaded += Read;
                 // Increment the StartOffset
                 Session.StartOffset += Read;
+                // Assign Stream Read to Session.StreamRead
+                Session.StreamRead = Read;
 
                 // Use UpdateProgress in ReadWrite() for SingleSession download only
                 if (!Session.IsMultisession)
