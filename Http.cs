@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -34,9 +35,7 @@ namespace Hi3Helper.Http
         {
             ResetAttributes();
             SessionAttribute Session = new SessionAttribute(URL, OutPath, null, Token, Start, End);
-            Task SessionTask = StartRetryableTask(Session);
-
-            await SessionTask;
+            await TryAwaitOrDisposeStreamWhileFail(StartRetryableTask(Session), Session);
         }
 
         public async void DownloadNoTask(string URL, string OutPath,
@@ -48,9 +47,7 @@ namespace Hi3Helper.Http
         {
             ResetAttributes();
             SessionAttribute Session = new SessionAttribute(URL, null, OutStream, Token, Start, End);
-            Task SessionTask = StartRetryableTask(Session);
-
-            await SessionTask;
+            await TryAwaitOrDisposeStreamWhileFail(StartRetryableTask(Session), Session);
         }
 
         public async void DownloadStreamNoTask(string URL, Stream OutStream, CancellationToken Token = new CancellationToken(),

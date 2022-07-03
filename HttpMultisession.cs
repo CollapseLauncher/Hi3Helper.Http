@@ -23,41 +23,20 @@ namespace Hi3Helper.Http
 
             WaitForMultisessionReadyNoTask(Token);
 
-            try
+            foreach (SessionAttribute Attr in this.SessionAttributes)
             {
-                foreach (SessionAttribute Attr in this.SessionAttributes)
-                {
-                    SessionTasks.Add(StartRetryableTask(Attr, true));
-                }
-
-                await Task.WhenAll(SessionTasks);
-                SessionTasks.Clear();
-            }
-            catch (TaskCanceledException)
-            {
-                SessionState = MultisessionState.CancelledDownloading;
-                throw new OperationCanceledException();
-            }
-            catch (OperationCanceledException)
-            {
-                SessionState = MultisessionState.CancelledDownloading;
-                throw new OperationCanceledException();
+                SessionTasks.Add(StartRetryableTask(Attr, true));
             }
 
-            FinalizeProgress();
+            await TryAwaitOrDisposeStreamWhileFail(Task.WhenAll(SessionTasks));
+
+            SessionState = MultisessionState.FinishedNeedMerge;
+            SessionTasks.Clear();
         }
 
         public async void DownloadMultisessionNoTask(string URL, string OutPath, bool Overwrite = false,
             byte Sessions = 4, CancellationToken Token = new CancellationToken())
             => await DownloadMultisession(URL, OutPath, Overwrite, Sessions, Token);
-
-        public void FinalizeProgress()
-        {
-            long i = this.SizeToBeDownloaded - this.SizeDownloaded;
-            UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, this.SizeToBeDownloaded, this.SizeToBeDownloaded,
-                i < 0 ? 0 : i, this.SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
-            this.SessionState = MultisessionState.FinishedNeedMerge;
-        }
 
         public async Task WaitForMultisessionReady(CancellationToken Token = new CancellationToken(), uint DelayInterval = 33)
         {
@@ -78,6 +57,7 @@ namespace Hi3Helper.Http
                 Console.WriteLine("All Sessions are ready!");
 #endif
                 SessionState = MultisessionState.Downloading;
+                WatchMultisessionEventProgress(Token);
             }
             catch (OperationCanceledException) { }
         }

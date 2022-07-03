@@ -96,6 +96,9 @@ namespace Hi3Helper.Http
                     .GetResult();
 
             }
+
+            public bool IsNeedRecalculateSize = true;
+            public bool IsMultisession = false;
             public Stream OutStream { get; private set; }
             public HttpResponseMessage RemoteResponse { get; set; }
             public HttpRequestMessage RemoteRequest { get; set; }

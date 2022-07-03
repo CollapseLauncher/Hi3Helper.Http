@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace Hi3Helper.Http
 {
@@ -16,8 +19,38 @@ namespace Hi3Helper.Http
         // Download Progress Event Handler
         public event EventHandler<DownloadEvent> DownloadProgress;
 
-        // Updadte Progress of the Download internally
+        // Update Progress of the Download
         private void UpdateProgress(DownloadEvent Event) => DownloadProgress?.Invoke(this, Event);
+
+        // Update Progress of the Multisession Download
+        private async void WatchMultisessionEventProgress(CancellationToken Token)
+        {
+            long MultisessionRead;
+            long SizeLastMultisessionDownloaded = 0;
+            long SizeMultisessionDownloaded;
+
+            // Do loop if SessionState is Downloading or at least Token isn't cancelled
+            while (SessionState == MultisessionState.Downloading
+                && !Token.IsCancellationRequested)
+            {
+                // Use .Sum() to summarize the OutSize on each session
+                SizeMultisessionDownloaded = SessionAttributes.Sum(x => x.OutSize);
+                MultisessionRead = SizeMultisessionDownloaded - SizeLastMultisessionDownloaded;
+                SizeLastMultisessionDownloaded += MultisessionRead;
+
+                // Update progress to event
+                UpdateProgress(new DownloadEvent(SizeLastMultisessionDownloaded, SizeMultisessionDownloaded,
+                    this.SizeToBeDownloaded, MultisessionRead, this.SessionStopwatch.Elapsed.TotalSeconds,
+                    this.SessionState));
+
+                // Delay 33ms before back to loop
+                try
+                {
+                    await Task.Delay(33, Token);
+                }
+                catch (TaskCanceledException) { return; }
+            }
+        }
     }
 
     public class DownloadEvent

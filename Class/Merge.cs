@@ -7,7 +7,7 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-        public async Task MergeMultisession(string OutPath, byte Sessions, CancellationToken Token)
+        public async Task MergeMultisession(string OutPath, byte Sessions = 4, CancellationToken Token = new CancellationToken())
         {
             int Read;
             byte[] Buffer = new byte[4 << 17];
@@ -61,18 +61,18 @@ namespace Hi3Helper.Http
             }
             catch (TaskCanceledException)
             {
-                Console.WriteLine($"Merging has been cancelled!");
                 this.SessionState = MultisessionState.CancelledMerging;
+                Console.WriteLine($"Merging has been cancelled!");
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine($"Merging has been cancelled!");
                 this.SessionState = MultisessionState.CancelledMerging;
+                Console.WriteLine($"Merging has been cancelled!");
             }
             catch (Exception ex)
             {
                 this.SessionState = MultisessionState.FailedMerging;
-                throw new Exception($"Unhandled exception while merging!\r\n{ex}", ex);
+                throw new HttpHelperUnhandledError($"Unhandled exception while merging has occured!\r\n{ex}", ex);
             }
         }
 
