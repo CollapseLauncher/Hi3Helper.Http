@@ -43,7 +43,7 @@ namespace Hi3Helper.Http
             try
             {
 #if DEBUG
-                Console.WriteLine("Waiting for all Sessions to be ready...");
+                PushLog("Waiting for all Sessions to be ready...", LogSeverity.Info);
 #endif
                 SessionState = MultisessionState.WaitingOnSession;
                 while (SessionAttributes == null || SessionAttributes.All(x => x.SessionState != MultisessionState.Downloading))
@@ -54,7 +54,7 @@ namespace Hi3Helper.Http
                     await Task.Delay((int)DelayInterval);
                 }
 #if DEBUG
-                Console.WriteLine("All Sessions are ready!");
+                PushLog("All Sessions are ready!", LogSeverity.Info);
 #endif
                 SessionState = MultisessionState.Downloading;
                 WatchMultisessionEventProgress(Token);
@@ -85,7 +85,7 @@ namespace Hi3Helper.Http
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Something went wrong while trying to clean up chunks!\r\n{0}", ex);
+                PushLog(string.Format("Something went wrong while trying to clean up chunks!\r\n{0}", ex), LogSeverity.Warning);
             }
         }
     }

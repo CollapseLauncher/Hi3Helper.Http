@@ -62,16 +62,17 @@ namespace Hi3Helper.Http
             catch (TaskCanceledException)
             {
                 this.SessionState = MultisessionState.CancelledMerging;
-                Console.WriteLine($"Merging has been cancelled!");
+                PushLog("Merging has been cancelled!", LogSeverity.Info);
             }
             catch (OperationCanceledException)
             {
                 this.SessionState = MultisessionState.CancelledMerging;
-                Console.WriteLine($"Merging has been cancelled!");
+                PushLog("Merging has been cancelled!", LogSeverity.Info);
             }
             catch (Exception ex)
             {
                 this.SessionState = MultisessionState.FailedMerging;
+                PushLog("Unhandled exception while merging has occured!\r\n{ex}", LogSeverity.Error);
                 throw new HttpHelperUnhandledError($"Unhandled exception while merging has occured!\r\n{ex}", ex);
             }
         }

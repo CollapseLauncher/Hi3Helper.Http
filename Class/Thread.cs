@@ -30,9 +30,9 @@ namespace Hi3Helper.Http
             for (long i = 0, t = 0; t < Sessions; t++)
             {
                 SessionAttributes.Add(
-                    new SessionAttribute(URL,OutputPath + string.Format(".{0:000}", t + 1), null,
+                    new SessionAttribute(URL, OutputPath + string.Format(".{0:000}", t + 1), null,
                     Token, i, t + 1 == Sessions ? this.SizeToBeDownloaded : (i + SliceSize - 1), Overwrite)
-                { IsLastSession = t + 1 == Sessions });
+                    { IsLastSession = t + 1 == Sessions });
                 i += SliceSize;
             }
 
@@ -54,7 +54,7 @@ namespace Hi3Helper.Http
                     if (this.CurrentRetry > this.MaxRetry)
                         throw new HttpRequestException(ex.ToString(), ex);
 
-                    Console.WriteLine($"Error while fetching File Size (Retry Attempt: {this.CurrentRetry})...");
+                    PushLog($"Error while fetching File Size (Retry Attempt: {this.CurrentRetry})...", LogSeverity.Warning);
                     await Task.Delay((int)(this.RetryInterval), Token);
                     this.CurrentRetry++;
                 }
@@ -115,7 +115,7 @@ namespace Hi3Helper.Http
                         throw new Exception(string.Format("Unhandled exception has been thrown on SessionID: {0}\r\n{1}", RetryTask.Id, ex), ex);
                 }
 
-                Console.WriteLine(string.Format("Retrying task on SessionID: {0} (Retry: {1}/{2})...", RetryTask.Id, this.CurrentRetry, this.MaxRetry));
+                PushLog(string.Format("Retrying task on SessionID: {0} (Retry: {1}/{2})...", RetryTask.Id, this.CurrentRetry, this.MaxRetry), LogSeverity.Warning);
                 await Task.Delay((int)this.RetryInterval);
                 this.CurrentRetry++;
             }
@@ -144,6 +144,7 @@ namespace Hi3Helper.Http
             {
                 SessionState = MultisessionState.FailedDownloading;
                 TryDisposeSessionStream(Session);
+                PushLog($"Unhandled exception while downloading has occured!\r\n{ex}", LogSeverity.Error);
                 throw new HttpHelperUnhandledError($"Unhandled exception while downloading has occured!\r\n{ex}", ex);
             }
         }
@@ -154,7 +155,7 @@ namespace Hi3Helper.Http
                 DisposeAllMultisessionStream();
             else
                 if (Session.IsOutDisposable)
-                    Session.DisposeOutStream();
+                Session.DisposeOutStream();
         }
 
         private void WriteMetadataFile(string PathOut, MetadataProp Metadata)
