@@ -1,11 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using static System.Collections.Specialized.BitVector32;
 
 namespace Hi3Helper.Http
 {

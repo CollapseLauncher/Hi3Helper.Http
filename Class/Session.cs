@@ -22,7 +22,7 @@ namespace Hi3Helper.Http
             HttpResponseMessage Response = await SendAsync(Session.RemoteRequest, HttpCompletionOption.ResponseHeadersRead, Session.SessionToken);
 
             if ((int)Response.StatusCode == 416)
-                throw new HttpHelperSessionHTTPError416("File has been already exist or the size is larger than the current offset. " + 
+                throw new HttpHelperSessionHTTPError416("File has been already exist or the size is larger than the current offset. " +
                     "Please consider to delete the file first before downloading!");
 
             Session.RemoteResponse = Session.CheckHttpResponseCode(Response);
@@ -53,7 +53,7 @@ namespace Hi3Helper.Http
             Session.RemoteRequest.Headers.Range = new RangeHeaderValue(Session.StartOffset, Session.IsLastSession ? Session.EndOffset - 1 : Session.EndOffset);
 
             HttpResponseMessage Response = await SendAsync(Session.RemoteRequest, HttpCompletionOption.ResponseHeadersRead, Session.SessionToken);
-            
+
             if ((int)Response.StatusCode == 416)
             {
                 UpdateProgress(new DownloadEvent(0, Session.OutSize, this.SizeToBeDownloaded,
