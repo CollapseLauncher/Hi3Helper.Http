@@ -58,8 +58,8 @@ namespace Hi3Helper.Http
             // Dispose InHttp Response and Request to prevent request flooding.
             public void DisposeInHttp()
             {
-                RemoteRequest.Dispose();
-                RemoteResponse.Dispose();
+                RemoteRequest?.Dispose();
+                RemoteResponse?.Dispose();
             }
 
             // Dispose OutStream
