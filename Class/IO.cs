@@ -55,6 +55,14 @@ namespace Hi3Helper.Http
 
         public partial class SessionAttribute
         {
+            // Dispose InHttp Response and Request to prevent request flooding.
+            public void DisposeInHttp()
+            {
+                RemoteRequest.Dispose();
+                RemoteResponse.Dispose();
+            }
+
+            // Dispose OutStream
             public void DisposeOutStream()
             {
                 if (this.IsOutDisposable) OutStream?.Dispose();
