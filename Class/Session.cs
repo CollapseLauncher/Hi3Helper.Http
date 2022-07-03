@@ -72,7 +72,11 @@ namespace Hi3Helper.Http
         {
             HttpResponseMessage response = await SendAsync(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
 
-            return response.Content.Headers.ContentLength;
+            long? Length = response.Content.Headers.ContentLength;
+
+            response.Dispose();
+
+            return Length;
         }
     }
 }
