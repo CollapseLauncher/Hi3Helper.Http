@@ -108,7 +108,6 @@ namespace Hi3Helper.Http
             public long OutSize { get => this.OutStream.Length; }
             public long? StartOffset { get; set; }
             public long? EndOffset { get; set; }
-            public int StreamRead { get; set; }
 
             // For Multisession mode only
             public bool IsLastSession { get; set; }
