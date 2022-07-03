@@ -1,19 +1,19 @@
 ﻿using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
     public partial class Http
     {
         // Use ReadWriteStreamDisposable if OutStream from session is Disposable
-        private void ReadWriteStreamDisposable(SessionAttribute Session)
+        private async Task ReadWriteStreamDisposable(SessionAttribute Session)
         {
-            using (Session.InStream)
-            // using (Session.OutStream)
-                ReadWriteStream(Session);
+            await ReadWriteStream(Session);
         }
 
         // Use ReadWriteStreamDisposable if OutStream from session is not disposable
-        private void ReadWriteStream(SessionAttribute Session) => ReadWrite(Session);
+        private async Task ReadWriteStream(SessionAttribute Session) => await Task.Run(() => ReadWrite(Session));
 
         private void ReadWrite(SessionAttribute Session)
         {
@@ -27,20 +27,24 @@ namespace Hi3Helper.Http
             SeekStreamToEnd(Session.OutStream);
 
             // Read and send it to buffer
+            // Throw if the cancel has been sent from Token
             while ((Read = Session.InStream.Read(Buffer, 0, Buffer.Length)) > 0)
             {
+                // Throw if Token has been called
+                Session.SessionToken.ThrowIfCancellationRequested();
                 // Set downloading state to Downloading
                 Session.SessionState = MultisessionState.Downloading;
-                // Throw if the cancel has been sent from Token
-                Session.SessionToken.ThrowIfCancellationRequested();
                 // Write the buffer into OutStream
                 Session.OutStream.Write(Buffer, 0, Read);
                 // Update DownloadProgress
                 this.SizeLastDownloaded += Read;
-                this.SizeDownloaded += Read;
+                // Increment the StartOffset
+                Session.StartOffset += Read;
 
-                UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, this.SizeDownloaded, this.SizeToBeDownloaded,
-                    Read, this.SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
+                // Use UpdateProgress in ReadWrite() for SingleSession download only
+                if (!Session.IsMultisession)
+                    UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, Session.OutSize, this.SizeToBeDownloaded,
+                        Read, this.SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
             }
         }
 
@@ -52,16 +56,18 @@ namespace Hi3Helper.Http
             return S;
         }
 
+        // Dispose all session streams for Multisession download.
+        // This will be called if the session has finished or even failed
+        public void DisposeAllMultisessionStream()
+        {
+            foreach (SessionAttribute Session in SessionAttributes) Session.DisposeOutStream();
+        }
+
         public partial class SessionAttribute
         {
             public void DisposeOutStream()
             {
                 if (this.IsOutDisposable) OutStream?.Dispose();
-            }
-
-            public void DeleteOutStream()
-            {
-                if (this.IsOutDisposable) OutFile.Delete();
             }
         }
     }

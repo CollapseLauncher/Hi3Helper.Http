@@ -17,23 +17,18 @@ namespace Hi3Helper.Http
                 Method = HttpMethod.Get,
             };
 
-            Session.RemoteRequest.Headers.Range = new RangeHeaderValue(Session.StartOffset, Session.EndOffset);
+            Session.RemoteRequest.Headers.Range = new RangeHeaderValue(Session.StartOffset, Session.EndOffset - 1);
 
             HttpResponseMessage Response = await SendAsync(Session.RemoteRequest, HttpCompletionOption.ResponseHeadersRead, Session.SessionToken);
 
             if ((int)Response.StatusCode == 416)
-            {
-                this.SizeDownloaded += Session.OutSize;
-                this.SizeToBeDownloaded += Session.OutSize;
-                UpdateProgress(new DownloadEvent(0, this.SizeDownloaded, this.SizeToBeDownloaded, this.SizeDownloaded,
-                    this.SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
-                return false;
-            }
+                throw new HttpHelperSessionHTTPError416("File has been already exist or the size is larger than the current offset. " + 
+                    "Please consider to delete the file first before downloading!");
 
             Session.RemoteResponse = Session.CheckHttpResponseCode(Response);
 
-            this.SizeDownloaded += Session.OutSize;
-            this.SizeToBeDownloaded += (Session.RemoteResponse.Content.Headers.ContentLength ?? 0) + Session.OutSize;
+            this.SizeDownloaded = Session.OutSize;
+            this.SizeToBeDownloaded = (Session.RemoteResponse.Content.Headers.ContentLength ?? 0) + Session.OutSize;
 
             return true;
         }
@@ -45,6 +40,7 @@ namespace Hi3Helper.Http
                 RequestUri = new Uri(Session.InURL),
                 Method = HttpMethod.Get,
             };
+            Session.IsMultisession = true;
 
             if ((Session.IsLastSession ? Session.EndOffset - 1 : Session.EndOffset) - Session.StartOffset < 0
                 && (Session.IsLastSession ? Session.EndOffset - 1 : Session.EndOffset) - Session.StartOffset == -1)
@@ -72,14 +68,10 @@ namespace Hi3Helper.Http
 
         private async Task StartSession(SessionAttribute Session)
         {
-            // Run Synchronous code as Asynchronous
-            await Task.Run(() =>
-            {
-                if (Session.IsOutDisposable)
-                    ReadWriteStreamDisposable(Session);
-                else
-                    ReadWriteStream(Session);
-            }).ConfigureAwait(false);
+            if (Session.IsOutDisposable)
+                await ReadWriteStreamDisposable(Session);
+            else
+                await ReadWriteStream(Session);
         }
 
         private void ResetSessionStopwatch() => this.SessionStopwatch = Stopwatch.StartNew();

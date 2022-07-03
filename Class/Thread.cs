@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using static System.Collections.Specialized.BitVector32;
 
 namespace Hi3Helper.Http
 {
@@ -60,62 +61,100 @@ namespace Hi3Helper.Http
             }
         }
 
+        private async Task RetryableTaskContainer(SessionAttribute Session, bool IsMultisession = false)
+        {
+            bool CanDownload;
+            if (IsMultisession)
+                CanDownload = await GetSessionMultisession(Session);
+            else
+                CanDownload = await GetSession(Session);
+
+            if (CanDownload) await StartSession(Session);
+        }
+
         private async Task StartRetryableTask(SessionAttribute Session, bool IsMultisession = false)
         {
             while (true)
             {
                 bool CanThrow = this.CurrentRetry > this.MaxRetry;
-                bool CanDownload;
-                Task RetryTask = Task.Run(async () =>
-                {
-                    if (IsMultisession)
-                        CanDownload = await GetSessionMultisession(Session);
-                    else
-                        CanDownload = await GetSession(Session);
-                        
-                    if (CanDownload) await StartSession(Session);
-                });
-
+                Task RetryTask = RetryableTaskContainer(Session, IsMultisession);
                 try
                 {
                     // Await InnerTask and watch for the throw
                     await RetryTask;
 
                     // Return if the task is completed
-                    Session.DisposeOutStream();
                     return;
                 }
                 catch (TaskCanceledException ex)
                 {
-                    Session.DisposeOutStream();
                     throw new TaskCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", RetryTask.Id), ex);
                 }
                 catch (OperationCanceledException ex)
                 {
-                    Session.DisposeOutStream();
                     throw new OperationCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", RetryTask.Id), ex);
                 }
                 catch (HttpHelperSessionNotReady ex)
                 {
                     if (CanThrow)
                     {
-                        Session.DisposeOutStream();
                         throw new HttpHelperSessionNotReady(ex.Message);
                     }
+                }
+                catch (ArgumentOutOfRangeException ex)
+                {
+                    throw new ArgumentOutOfRangeException(ex.Message, ex);
+                }
+                catch (HttpHelperSessionHTTPError416 ex)
+                {
+                    throw new HttpHelperSessionHTTPError416(ex.Message);
                 }
                 catch (Exception ex)
                 {
                     if (CanThrow)
-                    {
-                        Session.DisposeOutStream();
                         throw new Exception(string.Format("Unhandled exception has been thrown on SessionID: {0}\r\n{1}", RetryTask.Id, ex), ex);
-                    }
                 }
 
                 Console.WriteLine(string.Format("Retrying task on SessionID: {0} (Retry: {1}/{2})...", RetryTask.Id, this.CurrentRetry, this.MaxRetry));
                 await Task.Delay((int)this.RetryInterval);
                 this.CurrentRetry++;
             }
+        }
+
+        private async Task TryAwaitOrDisposeStreamWhileFail(Task InnerTask, SessionAttribute Session = null)
+        {
+            try
+            {
+                await InnerTask;
+                TryDisposeSessionStream(Session);
+            }
+            catch (TaskCanceledException)
+            {
+                SessionState = MultisessionState.CancelledDownloading;
+                TryDisposeSessionStream(Session);
+                throw new OperationCanceledException();
+            }
+            catch (OperationCanceledException)
+            {
+                SessionState = MultisessionState.CancelledDownloading;
+                TryDisposeSessionStream(Session);
+                throw new OperationCanceledException();
+            }
+            catch (Exception ex)
+            {
+                SessionState = MultisessionState.FailedDownloading;
+                TryDisposeSessionStream(Session);
+                throw new HttpHelperUnhandledError($"Unhandled exception while downloading has occured!\r\n{ex}", ex);
+            }
+        }
+
+        private void TryDisposeSessionStream(SessionAttribute Session)
+        {
+            if (Session == null)
+                DisposeAllMultisessionStream();
+            else
+                if (Session.IsOutDisposable)
+                    Session.DisposeOutStream();
         }
 
         private void WriteMetadataFile(string PathOut, MetadataProp Metadata)
