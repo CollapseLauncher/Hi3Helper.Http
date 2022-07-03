@@ -125,6 +125,8 @@ namespace Hi3Helper.Http
             try
             {
                 await InnerTask;
+                if (Session != null)
+                    FinalizeMultisessionEventProgress();
                 TryDisposeSessionStream(Session);
             }
             catch (TaskCanceledException)

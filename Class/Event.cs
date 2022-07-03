@@ -38,7 +38,8 @@ namespace Hi3Helper.Http
         private async void WatchMultisessionEventProgress(CancellationToken Token)
         {
             long MultisessionRead = 0;
-            long SizeMultisessionDownloaded = SessionAttributes.Sum(x => x.OutSize);
+            long SizeSum = SessionAttributes.Sum(x => x.OutSize);
+            long SizeMultisessionDownloaded = SizeSum;
             long SizeLastMultisessionDownloaded = 0;
 
             // Do loop if SessionState is Downloading or at least Token isn't cancelled
@@ -46,9 +47,10 @@ namespace Hi3Helper.Http
                 && !Token.IsCancellationRequested)
             {
                 // Use .Sum() to summarize the OutSize on each session
-                MultisessionRead = SessionAttributes.Sum(x => x.OutSize) - SizeMultisessionDownloaded;
+                SizeSum = SessionAttributes.Sum(x => x.OutSize);
+                MultisessionRead = SizeSum - SizeMultisessionDownloaded;
                 SizeLastMultisessionDownloaded += MultisessionRead;
-                SizeMultisessionDownloaded += MultisessionRead;
+                SizeMultisessionDownloaded = SizeSum;
 
                 // Update progress to event
                 UpdateProgress(new DownloadEvent(SizeLastMultisessionDownloaded, SizeMultisessionDownloaded,
@@ -62,6 +64,15 @@ namespace Hi3Helper.Http
                 }
                 catch (TaskCanceledException) { return; }
             }
+        }
+
+        private void FinalizeMultisessionEventProgress()
+        {
+            long Sum = this.SizeToBeDownloaded - SessionAttributes.Sum(x => x.OutSize);
+            // Update progress to event
+            UpdateProgress(new DownloadEvent(0, this.SizeToBeDownloaded,
+                this.SizeToBeDownloaded, Sum, this.SessionStopwatch.Elapsed.TotalSeconds,
+                this.SessionState));
         }
     }
 
