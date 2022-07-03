@@ -66,14 +66,6 @@ namespace Hi3Helper.Http
             return true;
         }
 
-        private async Task StartSession(SessionAttribute Session)
-        {
-            if (Session.IsOutDisposable)
-                await ReadWriteStreamDisposable(Session);
-            else
-                await ReadWriteStream(Session);
-        }
-
         private void ResetSessionStopwatch() => this.SessionStopwatch = Stopwatch.StartNew();
 
         public async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())

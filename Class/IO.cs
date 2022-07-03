@@ -5,16 +5,7 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-        // Use ReadWriteStreamDisposable if OutStream from session is Disposable
-        private async Task ReadWriteStreamDisposable(SessionAttribute Session)
-        {
-            await ReadWriteStream(Session);
-        }
-
-        // Use ReadWriteStreamDisposable if OutStream from session is not disposable
-        private async Task ReadWriteStream(SessionAttribute Session) => await Task.Run(() => ReadWrite(Session));
-
-        private void ReadWrite(SessionAttribute Session)
+        private async Task StartWriteSession(SessionAttribute Session)
         {
             int Read;
             byte[] Buffer = new byte[4 << 20];
@@ -27,10 +18,8 @@ namespace Hi3Helper.Http
 
             // Read and send it to buffer
             // Throw if the cancel has been sent from Token
-            while ((Read = Session.InStream.Read(Buffer, 0, Buffer.Length)) > 0)
+            while ((Read = await Session.InStream.ReadAsync(Buffer, 0, Buffer.Length, Session.SessionToken)) > 0)
             {
-                // Throw if Token has been called
-                Session.SessionToken.ThrowIfCancellationRequested();
                 // Set downloading state to Downloading
                 Session.SessionState = MultisessionState.Downloading;
                 // Write the buffer into OutStream
