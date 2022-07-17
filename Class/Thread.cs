@@ -69,7 +69,7 @@ namespace Hi3Helper.Http
             else
                 CanDownload = await GetSession(Session);
 
-            if (CanDownload) await StartWriteSessionAsync(Session);
+            if (CanDownload) await StartWriteSession(Session);
         }
 
         private async Task StartRetryableTask(SessionAttribute Session, bool IsMultisession = false)
