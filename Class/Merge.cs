@@ -13,6 +13,8 @@ namespace Hi3Helper.Http
             byte[] Buffer = new byte[4 << 17];
             ResetSessionStopwatch();
 
+            EnsureDisposeAllSessions();
+            
             MetadataProp meta = ReadMetadataFile(OutPath);
 
             if (!meta.CanOverwrite && File.Exists(OutPath))

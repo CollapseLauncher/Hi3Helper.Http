@@ -66,6 +66,15 @@ namespace Hi3Helper.Http
             return true;
         }
 
+        private void EnsureDisposeAllSessions()
+        {
+            foreach (SessionAttribute Session in SessionAttributes)
+            {
+                Session.DisposeInHttp();
+                Session.DisposeOutStream();
+            }
+        }
+
         private void ResetSessionStopwatch() => this.SessionStopwatch = Stopwatch.StartNew();
 
         public async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
