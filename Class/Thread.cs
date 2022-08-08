@@ -42,21 +42,21 @@ namespace Hi3Helper.Http
 
         private async Task<long> TryGetContentLength(string URL, CancellationToken Token)
         {
-            byte CurrentRetry = 1;
+            byte CurrentRetry = 0;
             while (true)
             {
                 try
                 {
                     return await GetContentLength(URL, Token) ?? 0;
                 }
-                catch (HttpRequestException ex)
+                catch (HttpRequestException)
                 {
+                    CurrentRetry++;
                     if (CurrentRetry > this.MaxRetry)
-                        throw new HttpRequestException(ex.ToString(), ex);
+                        throw;
 
                     PushLog($"Error while fetching File Size (Retry Attempt: {CurrentRetry})...", LogSeverity.Warning);
                     await Task.Delay((int)(this.RetryInterval), Token);
-                    CurrentRetry++;
                 }
             }
         }
