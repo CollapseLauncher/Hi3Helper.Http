@@ -90,36 +90,33 @@ namespace Hi3Helper.Http
                 catch (TaskCanceledException ex)
                 {
                     Session.DisposeInHttp();
-                    throw new TaskCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", RetryTask.Id), ex);
+                    throw new OperationCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", RetryTask.Id), ex);
                 }
                 catch (OperationCanceledException ex)
                 {
                     Session.DisposeInHttp();
                     throw new OperationCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", RetryTask.Id), ex);
                 }
-                catch (HttpHelperSessionNotReady ex)
+                catch (HttpHelperSessionNotReady)
+                {
+                    Session.DisposeInHttp();
+                    if (CanThrow) throw;
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    Session.DisposeInHttp();
+                    throw;
+                }
+                catch (HttpHelperSessionHTTPError416)
+                {
+                    Session.DisposeInHttp();
+                    throw;
+                }
+                catch (Exception)
                 {
                     Session.DisposeInHttp();
                     if (CanThrow)
-                    {
-                        throw new HttpHelperSessionNotReady(ex.Message);
-                    }
-                }
-                catch (ArgumentOutOfRangeException ex)
-                {
-                    Session.DisposeInHttp();
-                    throw new ArgumentOutOfRangeException(ex.Message, ex);
-                }
-                catch (HttpHelperSessionHTTPError416 ex)
-                {
-                    Session.DisposeInHttp();
-                    throw new HttpHelperSessionHTTPError416(ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    Session.DisposeInHttp();
-                    if (CanThrow)
-                        throw new Exception(string.Format("Unhandled exception has been thrown on SessionID: {0}\r\n{1}", RetryTask.Id, ex), ex);
+                        throw;
                 }
 
                 PushLog(string.Format("Retrying task on SessionID: {0} (Retry: {1}/{2})...", RetryTask.Id, Session.SessionRetry, this.MaxRetry), LogSeverity.Warning);
@@ -137,17 +134,11 @@ namespace Hi3Helper.Http
                     FinalizeMultisessionEventProgress();
                 TryDisposeSessionStream(Session);
             }
-            catch (TaskCanceledException)
-            {
-                SessionState = MultisessionState.CancelledDownloading;
-                TryDisposeSessionStream(Session);
-                throw new OperationCanceledException();
-            }
             catch (OperationCanceledException)
             {
                 SessionState = MultisessionState.CancelledDownloading;
                 TryDisposeSessionStream(Session);
-                throw new OperationCanceledException();
+                throw;
             }
             catch (Exception ex)
             {
