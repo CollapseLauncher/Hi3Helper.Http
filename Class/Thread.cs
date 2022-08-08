@@ -55,7 +55,7 @@ namespace Hi3Helper.Http
                     if (CurrentRetry > this.MaxRetry)
                         throw;
 
-                    PushLog($"Error while fetching File Size (Retry Attempt: {CurrentRetry + 1})...", LogSeverity.Warning);
+                    PushLog($"Error while fetching File Size (Retry Attempt: {CurrentRetry})...", LogSeverity.Warning);
                     await Task.Delay((int)(this.RetryInterval), Token);
                 }
             }
