@@ -82,41 +82,24 @@ namespace Hi3Helper.Http
                 {
                     // Await InnerTask and watch for the throw
                     await RetryTask;
-
-                    // Return if the task is completed
-                    Session.DisposeInHttp();
                     return;
                 }
                 catch (TaskCanceledException ex)
                 {
-                    Session.DisposeInHttp();
                     throw new OperationCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", RetryTask.Id), ex);
                 }
                 catch (OperationCanceledException ex)
                 {
-                    Session.DisposeInHttp();
                     throw new OperationCanceledException(string.Format("Task with SessionID: {0} has been cancelled!", RetryTask.Id), ex);
                 }
-                catch (HttpHelperSessionNotReady)
+                catch (HttpHelperSessionNotReady) { if (CanThrow) throw; }
+                catch (ArgumentOutOfRangeException) { throw; }
+                catch (HttpHelperSessionHTTPError416) { throw; }
+                catch (Exception) { if (CanThrow) throw; }
+                finally
                 {
+                    // Return if the task is completed or throw
                     Session.DisposeInHttp();
-                    if (CanThrow) throw;
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    Session.DisposeInHttp();
-                    throw;
-                }
-                catch (HttpHelperSessionHTTPError416)
-                {
-                    Session.DisposeInHttp();
-                    throw;
-                }
-                catch (Exception)
-                {
-                    Session.DisposeInHttp();
-                    if (CanThrow)
-                        throw;
                 }
 
                 PushLog(string.Format("Retrying task on SessionID: {0} (Retry: {1}/{2})...", RetryTask.Id, Session.SessionRetry, this.MaxRetry), LogSeverity.Warning);
@@ -132,20 +115,21 @@ namespace Hi3Helper.Http
                 await InnerTask;
                 if (Session == null)
                     FinalizeMultisessionEventProgress();
-                TryDisposeSessionStream(Session);
             }
             catch (OperationCanceledException)
             {
                 SessionState = MultisessionState.CancelledDownloading;
-                TryDisposeSessionStream(Session);
                 throw;
             }
             catch (Exception ex)
             {
                 SessionState = MultisessionState.FailedDownloading;
-                TryDisposeSessionStream(Session);
                 PushLog($"Unhandled exception while downloading has occured!\r\n{ex}", LogSeverity.Error);
                 throw new HttpHelperUnhandledError($"Unhandled exception while downloading has occured!\r\n{ex}", ex);
+            }
+            finally
+            {
+                TryDisposeSessionStream(Session);
             }
         }
 
