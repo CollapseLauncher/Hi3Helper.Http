@@ -11,17 +11,21 @@ namespace Hi3Helper.Http
         {
             int Read;
             byte[] Buffer = new byte[4 << 17];
+            FileInfo OutFile = new FileInfo(OutPath);
             ResetSessionStopwatch();
 
             EnsureDisposeAllSessions();
             
             MetadataProp meta = ReadMetadataFile(OutPath);
 
-            if (!meta.CanOverwrite && File.Exists(OutPath))
+            if (!meta.CanOverwrite && OutFile.Exists)
             {
-                this.SessionState = MultisessionState.FailedMerging;
-                throw new HttpHelperSessionFileExist(
-                    $"File is already exist and doesn't have attribute to be overwrite-able.");
+                if (OutFile.Length == this.SizeToBeDownloaded)
+                {
+                    this.SessionState = MultisessionState.FailedMerging;
+                    throw new HttpHelperSessionFileExist(
+                        $"File is already exist and doesn't have attribute to be overwrite-able.");
+                }
             }
 
             if (meta.Sessions != Sessions)
@@ -37,12 +41,12 @@ namespace Hi3Helper.Http
 
             try
             {
-                using (Stream OutStream = new FileStream(OutPath, FileMode.Create, FileAccess.Write))
+                using (Stream OutStream = OutFile.Create())
                 {
                     for (int i = 0; i < Sessions; i++)
                     {
                         string InPath = string.Format(OutPath + ".{0:000}", i + 1);
-                        using (Stream InStream = new FileStream(InPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 15, FileOptions.DeleteOnClose))
+                        using (Stream InStream = new FileStream(InPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                         {
                             while ((Read = InStream.Read(Buffer, 0, Buffer.Length)) > 0)
                             {
