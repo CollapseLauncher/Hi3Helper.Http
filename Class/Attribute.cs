@@ -101,9 +101,9 @@ namespace Hi3Helper.Http
             public HttpResponseMessage RemoteResponse { get; set; }
             public HttpRequestMessage RemoteRequest { get; set; }
             // Get InSize directly from InStream
-            public long InSize { get => this.InStream.Length; }
+            public long InSize => this.InStream.Length;
             // Get OutSize directly from OutStream
-            public long OutSize { get => this.OutStream.Length; }
+            public long OutSize => this.OutStream.CanWrite || this.OutStream.CanRead ? this.OutStream.Length : 0;
             public long? StartOffset { get; set; }
             public long? EndOffset { get; set; }
             public byte SessionRetry = 1;
