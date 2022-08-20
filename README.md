@@ -1,4 +1,4 @@
-# Hi3HelperCore.Http
+# Hi3Helper.Http
  Http downloader wrapper with Multi-Session support
 
 ## Usage
