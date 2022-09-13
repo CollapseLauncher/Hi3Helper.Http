@@ -11,7 +11,9 @@ namespace Hi3Helper.Http
         Downloading, Merging,
         Finished, FinishedNeedMerge,
         FailedMerging, FailedDownloading,
-        CancelledMerging, CancelledDownloading
+        CancelledMerging, CancelledDownloading,
+        CheckingLastSessionIntegrity,
+        CompleteLastSessionIntegrity
     }
 
     public enum LogSeverity : int
@@ -35,7 +37,7 @@ namespace Hi3Helper.Http
         private void PushLog(string message, LogSeverity severity) => DownloadLog?.Invoke(this, new DownloadLogEvent(message, severity));
 
         // Update Progress of the Multisession Download
-        private async void WatchMultisessionEventProgress(CancellationToken Token)
+        private async void WatchMultisessionEventProgress(string OutputPath, CancellationToken Token)
         {
             long MultisessionRead = 0;
             long SizeSum = SessionAttributes.Sum(x => x.OutSize);
@@ -60,7 +62,13 @@ namespace Hi3Helper.Http
                 // Delay 33ms before back to loop
                 try
                 {
-                    await Task.Delay(33, Token);
+                    UpdateMetadataFile(OutputPath, new MetadataProp
+                    {
+                        RemoteFileSize = this.SizeToBeDownloaded,
+                        ChunkSize = this.Sessions,
+                        CanOverwrite = this.IsOverwrite
+                    }, SessionAttributes);
+                    await Task.Delay(250, Token);
                 }
                 catch (TaskCanceledException) { return; }
             }

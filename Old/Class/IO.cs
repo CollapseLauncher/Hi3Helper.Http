@@ -1,14 +1,15 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
     public partial class Http
     {
-        private async Task StartWriteSession(SessionAttribute Session)
+        private void StartWriteSession(SessionAttribute Session)
         {
             int Read;
-            byte[] Buffer = new byte[4 << 20];
+            byte[] Buffer = new byte[4096];
 
             // Reset SessionRetry counter while successfully get the Input Stream.
             Session.SessionRetry = 1;
@@ -18,8 +19,9 @@ namespace Hi3Helper.Http
 
             // Read and send it to buffer
             // Throw if the cancel has been sent from Token
-            while ((Read = await Session.InStream.ReadAsync(Buffer, 0, Buffer.Length, Session.SessionToken)) > 0)
+            while ((Read = Session.InStream.Read(Buffer, 0, Buffer.Length)) > 0)
             {
+                Session.SessionToken.ThrowIfCancellationRequested();
                 // Set downloading state to Downloading
                 Session.SessionState = MultisessionState.Downloading;
                 // Write the buffer into OutStream
@@ -37,12 +39,7 @@ namespace Hi3Helper.Http
         }
 
         // Seek the Stream to the end of it.
-        private Stream SeekStreamToEnd(Stream S)
-        {
-            S.Seek(0, SeekOrigin.End);
-
-            return S;
-        }
+        private void SeekStreamToEnd(in Stream S) => S.Seek(0, SeekOrigin.End);
 
         // Dispose all session streams for Multisession download.
         // This will be called if the session has finished or even failed

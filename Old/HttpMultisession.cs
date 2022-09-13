@@ -12,6 +12,7 @@ namespace Hi3Helper.Http
         public async Task DownloadMultisession(string URL, string OutPath, bool Overwrite = false,
             byte Sessions = 4, CancellationToken Token = new CancellationToken())
         {
+            this.IsOverwrite = Overwrite;
             this.Sessions = Sessions;
             if (this.Sessions > this.MaxAllowedSessions)
                 throw new HttpHelperAllowedSessionsMaxed(string.Format("You've maxed allowed Sessions ({1} has set and only <= {0} Sessions are allowed)", this.MaxAllowedSessions, this.Sessions));
@@ -21,7 +22,7 @@ namespace Hi3Helper.Http
             SessionAttributes = await GetSessionAttributeCollection(URL, OutPath, Overwrite, Sessions, Token);
             GetLastExistedDownloadSize(this.SessionAttributes);
 
-            WaitForMultisessionReadyNoTask(Token);
+            WaitForMultisessionReadyNoTask(OutPath, Token);
 
             foreach (SessionAttribute Attr in this.SessionAttributes)
             {
@@ -38,7 +39,7 @@ namespace Hi3Helper.Http
             byte Sessions = 4, CancellationToken Token = new CancellationToken())
             => await DownloadMultisession(URL, OutPath, Overwrite, Sessions, Token);
 
-        public async Task WaitForMultisessionReady(CancellationToken Token = new CancellationToken(), uint DelayInterval = 33)
+        public async Task WaitForMultisessionReady(string OutputPath, CancellationToken Token = new CancellationToken(), uint DelayInterval = 33)
         {
             try
             {
@@ -57,13 +58,13 @@ namespace Hi3Helper.Http
                 PushLog("All Sessions are ready!", LogSeverity.Info);
 #endif
                 SessionState = MultisessionState.Downloading;
-                WatchMultisessionEventProgress(Token);
+                WatchMultisessionEventProgress(OutputPath, Token);
             }
             catch (OperationCanceledException) { }
         }
 
-        public async void WaitForMultisessionReadyNoTask(CancellationToken Token = new CancellationToken(), uint DelayInterval = 33)
-            => await WaitForMultisessionReady(Token, DelayInterval);
+        public async void WaitForMultisessionReadyNoTask(string OutputPath, CancellationToken Token = new CancellationToken(), uint DelayInterval = 33)
+            => await WaitForMultisessionReady(OutputPath, Token, DelayInterval);
 
         public async Task DeleteMultisessionChunks(string FileOut)
         {
@@ -74,7 +75,7 @@ namespace Hi3Helper.Http
 
                 MetadataProp Metadata = ReadMetadataFile(FileOut);
                 FileInfo FileChunk;
-                for (byte i = 0; i < Metadata.Sessions; i++)
+                for (byte i = 0; i < Metadata.ChunkSize; i++)
                 {
                     FileChunk = new FileInfo(string.Format("{0}.{1:000}", FileOut, i + 1));
                     if (FileChunk.Exists) FileChunk.Delete();

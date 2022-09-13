@@ -10,19 +10,13 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-        public async Task<ICollection<SessionAttribute>> GetSessionAttributeCollection(string URL, string OutputPath, bool Overwrite, byte Sessions, CancellationToken Token)
+        public async Task<List<SessionAttribute>> GetSessionAttributeCollection(string URL, string OutputPath, bool Overwrite, byte Sessions, CancellationToken Token)
         {
-            ICollection<SessionAttribute> SessionAttributes = new List<SessionAttribute>();
+            List<SessionAttribute> SessionAttributes = new List<SessionAttribute>();
 
             SessionState = MultisessionState.WaitingOnSession;
 
             this.SizeToBeDownloaded = await TryGetContentLength(URL, Token);
-            WriteMetadataFile(OutputPath, new MetadataProp()
-            {
-                Sessions = Sessions,
-                RemoteFileSize = this.SizeToBeDownloaded,
-                CanOverwrite = Overwrite
-            });
 
             long SliceSize = (long)Math.Ceiling((double)this.SizeToBeDownloaded / Sessions);
 
@@ -34,6 +28,13 @@ namespace Hi3Helper.Http
                     { IsLastSession = t + 1 == Sessions });
                 i += SliceSize;
             }
+
+            CreateMetadataFile(OutputPath, new MetadataProp()
+            {
+                ChunkSize = Sessions,
+                RemoteFileSize = this.SizeToBeDownloaded,
+                CanOverwrite = Overwrite
+            });
 
             return SessionAttributes;
         }
@@ -69,7 +70,7 @@ namespace Hi3Helper.Http
             else
                 CanDownload = await GetSession(Session);
 
-            if (CanDownload) await StartWriteSession(Session);
+            if (CanDownload) await Task.Run(() => StartWriteSession(Session));
         }
 
         private async Task StartRetryableTask(SessionAttribute Session, bool IsMultisession = false)
@@ -108,6 +109,17 @@ namespace Hi3Helper.Http
             }
         }
 
+        public async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
+        {
+            HttpResponseMessage response = await SendAsync(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
+
+            long? Length = response.Content.Headers.ContentLength;
+
+            response.Dispose();
+
+            return Length;
+        }
+
         private async Task TryAwaitOrDisposeStreamWhileFail(Task InnerTask, SessionAttribute Session = null)
         {
             try
@@ -139,41 +151,6 @@ namespace Hi3Helper.Http
                 DisposeAllMultisessionStream();
             else if (Session.IsOutDisposable)
                 Session.DisposeOutStream();
-        }
-
-        private void WriteMetadataFile(string PathOut, MetadataProp Metadata)
-        {
-            FileInfo file = new FileInfo(PathOut);
-            if (file.Exists && Metadata.CanOverwrite)
-                File.Delete(file.FullName);
-
-            if (file.Exists && !Metadata.CanOverwrite && file.Length == Metadata.RemoteFileSize)
-                throw new FileLoadException("File is already downloaded! Please consider to delete or move the existing file first.");
-
-            using (BinaryWriter Writer = new BinaryWriter(new FileStream(PathOut + ".h3mtd", FileMode.Create, FileAccess.Write)))
-            {
-                Writer.Write(Metadata.Sessions);
-                Writer.Write(Metadata.RemoteFileSize);
-                Writer.Write(Metadata.CanOverwrite);
-            }
-        }
-
-        private MetadataProp ReadMetadataFile(string PathOut)
-        {
-            MetadataProp ret = new MetadataProp();
-            FileInfo file = new FileInfo(PathOut + ".h3mtd");
-
-            if (!file.Exists)
-                throw new HttpHelperSessionMetadataNotExist(string.Format("Metadata for \"{0}\" doesn't exist", PathOut));
-
-            using (BinaryReader Reader = new BinaryReader(file.OpenRead()))
-            {
-                ret.Sessions = Reader.ReadByte();
-                ret.RemoteFileSize = Reader.ReadInt64();
-                ret.CanOverwrite = Reader.ReadBoolean();
-            }
-
-            return ret;
         }
     }
 }

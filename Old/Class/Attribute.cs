@@ -1,23 +1,18 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
+using Force.Crc32;
 
 namespace Hi3Helper.Http
 {
-    public class MetadataProp
-    {
-        public long RemoteFileSize;
-        public byte Sessions;
-        public bool CanOverwrite;
-    }
-
     public partial class Http
     {
         // Retry Attributes
-        private uint MaxRetry = 5; // Default: 5 times
-        private uint RetryInterval = 3500; // Default: 1000 ms
+        private readonly uint MaxRetry = 5; // Default: 5 times
+        private readonly uint RetryInterval = 3500; // Default: 1000 ms
 
         // Session Attributes
         private long SizeDownloaded;
@@ -26,9 +21,10 @@ namespace Hi3Helper.Http
         private Stopwatch SessionStopwatch;
 
         // Multisession Attributes
-        private byte MaxAllowedSessions = 8; // Default: 8 Max sessions
+        private readonly byte MaxAllowedSessions = 8; // Default: 8 Max sessions
         private byte Sessions;
-        private ICollection<SessionAttribute> SessionAttributes;
+        private bool IsOverwrite;
+        private IList<SessionAttribute> SessionAttributes;
         public MultisessionState SessionState;
 
         private void ResetAttributes()
@@ -49,6 +45,7 @@ namespace Hi3Helper.Http
             {
                 this.InURL = InURL;
                 this.SessionToken = SessionToken;
+                this.Crc = new Crc32Algorithm();
 
                 // If the OutStream is explicitly defined, use OutStream instead and set to IsOutDisposable == true.
                 if (OutStream != null)
@@ -75,7 +72,6 @@ namespace Hi3Helper.Http
             }
 
             public HttpResponseMessage CheckHttpResponseCode(HttpResponseMessage Input)
-
             {
                 if (Input.IsSuccessStatusCode)
                     return Input;
@@ -95,13 +91,10 @@ namespace Hi3Helper.Http
 
             }
 
-            public bool IsNeedRecalculateSize = true;
             public bool IsMultisession = false;
             public Stream OutStream { get; private set; }
             public HttpResponseMessage RemoteResponse { get; set; }
             public HttpRequestMessage RemoteRequest { get; set; }
-            // Get InSize directly from InStream
-            public long InSize => this.InStream.Length;
             // Get OutSize directly from OutStream
             public long OutSize => this.OutStream.CanWrite || this.OutStream.CanRead ? this.OutStream.Length : 0;
             public long? StartOffset { get; set; }
@@ -110,6 +103,9 @@ namespace Hi3Helper.Http
 
             // For Multisession mode only
             public bool IsLastSession { get; set; }
+            // For Last CRC Integrity
+            public byte[] LastCRC { get; set; }
+            public Crc32Algorithm Crc { get; private set; }
             public MultisessionState SessionState { get; set; } = MultisessionState.Idle;
         }
     }

@@ -76,16 +76,5 @@ namespace Hi3Helper.Http
         }
 
         private void ResetSessionStopwatch() => this.SessionStopwatch = Stopwatch.StartNew();
-
-        public async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
-        {
-            HttpResponseMessage response = await SendAsync(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
-
-            long? Length = response.Content.Headers.ContentLength;
-
-            response.Dispose();
-
-            return Length;
-        }
     }
 }

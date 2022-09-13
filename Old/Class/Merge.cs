@@ -12,6 +12,7 @@ namespace Hi3Helper.Http
             int Read;
             byte[] Buffer = new byte[4 << 17];
             FileInfo OutFile = new FileInfo(OutPath);
+            SessionState = MultisessionState.Merging;
             ResetSessionStopwatch();
 
             EnsureDisposeAllSessions();
@@ -28,12 +29,12 @@ namespace Hi3Helper.Http
                 }
             }
 
-            if (meta.Sessions != Sessions)
+            if (meta.ChunkSize != Sessions)
             {
                 this.SessionState = MultisessionState.CancelledMerging;
                 throw new HttpHelperSessionMetadataInvalid(
                     "Existing metadata for merging doesn't match"
-                    + $"(Using {Sessions} instead of {meta.Sessions} from metadata)!");
+                    + $"(Using {Sessions} instead of {meta.ChunkSize} from metadata)!");
             }
 
             this.SizeLastDownloaded = 0;
@@ -48,10 +49,8 @@ namespace Hi3Helper.Http
                         string InPath = string.Format(OutPath + ".{0:000}", i + 1);
                         using (Stream InStream = new FileStream(InPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                         {
-                            while ((Read = InStream.Read(Buffer, 0, Buffer.Length)) > 0)
+                            while ((Read = await InStream.ReadAsync(Buffer, 0, Buffer.Length, Token)) > 0)
                             {
-                                SessionState = MultisessionState.Merging;
-                                Token.ThrowIfCancellationRequested();
                                 await OutStream.WriteAsync(Buffer, 0, Read, Token);
                                 this.SizeLastDownloaded += Read;
                                 this.SizeDownloaded += Read;
