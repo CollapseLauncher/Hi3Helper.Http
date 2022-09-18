@@ -5,7 +5,7 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-        private async Task StartWriteSession(SessionAttribute Session)
+        private void StartWriteSession(SessionAttribute Session)
         {
             int Read;
             byte[] Buffer = new byte[4 << 20];
@@ -18,8 +18,10 @@ namespace Hi3Helper.Http
 
             // Read and send it to buffer
             // Throw if the cancel has been sent from Token
-            while ((Read = await Session.InStream.ReadAsync(Buffer, 0, Buffer.Length, Session.SessionToken)) > 0)
+            while ((Read = Session.InStream.Read(Buffer, 0, Buffer.Length)) > 0)
             {
+                // Use throw if cancel requested
+                Session.SessionToken.ThrowIfCancellationRequested();
                 // Set downloading state to Downloading
                 Session.SessionState = MultisessionState.Downloading;
                 // Write the buffer into OutStream
