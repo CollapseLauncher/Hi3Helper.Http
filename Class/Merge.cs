@@ -39,48 +39,51 @@ namespace Hi3Helper.Http
             this.SizeLastDownloaded = 0;
             this.SizeDownloaded = 0;
 
-            try
+            await Task.Run(() =>
             {
-                using (Stream OutStream = OutFile.Create())
+                try
                 {
-                    for (int i = 0; i < Sessions; i++)
+                    using (Stream OutStream = OutFile.Create())
                     {
-                        string InPath = string.Format(OutPath + ".{0:000}", i + 1);
-                        using (Stream InStream = new FileStream(InPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
+                        for (int i = 0; i < Sessions; i++)
                         {
-                            while ((Read = InStream.Read(Buffer, 0, Buffer.Length)) > 0)
+                            string InPath = string.Format(OutPath + ".{0:000}", i + 1);
+                            using (Stream InStream = new FileStream(InPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                             {
-                                SessionState = MultisessionState.Merging;
-                                Token.ThrowIfCancellationRequested();
-                                await OutStream.WriteAsync(Buffer, 0, Read, Token);
-                                this.SizeLastDownloaded += Read;
-                                this.SizeDownloaded += Read;
+                                while ((Read = InStream.Read(Buffer, 0, Buffer.Length)) > 0)
+                                {
+                                    SessionState = MultisessionState.Merging;
+                                    Token.ThrowIfCancellationRequested();
+                                    OutStream.Write(Buffer, 0, Read);
+                                    this.SizeLastDownloaded += Read;
+                                    this.SizeDownloaded += Read;
 
-                                UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, this.SizeDownloaded, this.SizeToBeDownloaded,
-                                    Read, this.SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
+                                    UpdateProgress(new DownloadEvent(this.SizeLastDownloaded, this.SizeDownloaded, this.SizeToBeDownloaded,
+                                        Read, this.SessionStopwatch.Elapsed.TotalSeconds, this.SessionState));
+                                }
                             }
                         }
                     }
-                }
 
-                File.Delete(OutPath + ".h3mtd");
-            }
-            catch (TaskCanceledException)
-            {
-                this.SessionState = MultisessionState.CancelledMerging;
-                PushLog("Merging has been cancelled!", LogSeverity.Info);
-            }
-            catch (OperationCanceledException)
-            {
-                this.SessionState = MultisessionState.CancelledMerging;
-                PushLog("Merging has been cancelled!", LogSeverity.Info);
-            }
-            catch (Exception ex)
-            {
-                this.SessionState = MultisessionState.FailedMerging;
-                PushLog("Unhandled exception while merging has occured!\r\n{ex}", LogSeverity.Error);
-                throw new HttpHelperUnhandledError($"Unhandled exception while merging has occured!\r\n{ex}", ex);
-            }
+                    File.Delete(OutPath + ".h3mtd");
+                }
+                catch (TaskCanceledException)
+                {
+                    this.SessionState = MultisessionState.CancelledMerging;
+                    PushLog("Merging has been cancelled!", LogSeverity.Info);
+                }
+                catch (OperationCanceledException)
+                {
+                    this.SessionState = MultisessionState.CancelledMerging;
+                    PushLog("Merging has been cancelled!", LogSeverity.Info);
+                }
+                catch (Exception ex)
+                {
+                    this.SessionState = MultisessionState.FailedMerging;
+                    PushLog("Unhandled exception while merging has occured!\r\n{ex}", LogSeverity.Error);
+                    throw new HttpHelperUnhandledError($"Unhandled exception while merging has occured!\r\n{ex}", ex);
+                }
+            });
         }
 
         public async void MergeMultisessionNoTask(string OutPath, byte Sessions, CancellationToken Token = new CancellationToken()) => await MergeMultisession(OutPath, Sessions, Token);
