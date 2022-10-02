@@ -59,7 +59,7 @@ namespace Hi3Helper.Http
                         this.SizeAttribute.SizeDownloaded,
                         this.SizeAttribute.SizeTotalToDownload,
                         Read,
-                        this.SessionsStopwatch.Elapsed.Milliseconds,
+                        this.SessionsStopwatch.Elapsed.TotalSeconds,
                         this.DownloadState
                         );
                 this.UpdateProgress(Event);
@@ -101,7 +101,7 @@ namespace Hi3Helper.Http
                             this.SizeAttribute.SizeDownloaded,
                             this.SizeAttribute.SizeTotalToDownload,
                             Read,
-                            this.SessionsStopwatch.Elapsed.Milliseconds,
+                            this.SessionsStopwatch.Elapsed.TotalSeconds,
                             this.DownloadState
                             );
                     this.UpdateProgress(Event);
