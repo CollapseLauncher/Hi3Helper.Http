@@ -42,9 +42,6 @@ namespace Hi3Helper.Http
             AdjustOffsets(OffsetStart, OffsetEnd);
         }
 
-        // Deconstructor
-        ~Session() => Dispose();
-
         // Seek the StreamOutput to the end of file
         public void SeekStreamOutputToEnd() => this.StreamOutput.Seek(0, SeekOrigin.End);
 
@@ -153,7 +150,7 @@ namespace Hi3Helper.Http
 #if !NETSTANDARD
         public Stream StreamInput { get => this.SessionResponse?.Content.ReadAsStream(); }
 #else
-        public Stream StreamInput { get => this.SessionResponse.Content.ReadAsStreamAsync()
+        public Stream StreamInput { get => this.SessionResponse?.Content.ReadAsStreamAsync()
                     .GetAwaiter()
                     .GetResult(); }
 #endif
