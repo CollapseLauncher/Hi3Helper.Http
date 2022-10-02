@@ -9,6 +9,8 @@ namespace Hi3Helper.Http
         public async Task Download(string URL, string Output, bool Overwrite = false,
             byte ConnectionSessions = 4, CancellationToken ThreadToken = new CancellationToken())
         {
+            ResetState(false);
+
             this.PathURL = URL;
             this.PathOutput = Output;
             this.PathOverwrite = Overwrite;
@@ -22,20 +24,11 @@ namespace Hi3Helper.Http
             // await TryRunSessionVerification();
             await RunSessionTasks();
 
-            ResetState();
+            ResetState(true);
         }
 
         public async void DownloadAsync(string URL, string Output, bool Overwrite = false,
             byte ConnectionSessions = 4, CancellationToken ThreadToken = new CancellationToken()) =>
             await Download(URL, Output, Overwrite, ConnectionSessions, ThreadToken);
-
-        public async Task WaitUntilAllSessionReady()
-        {
-            if (this.Sessions.Count == 0) return;
-            if (this.ConnectionToken.IsCancellationRequested) return;
-
-            while (this.Sessions.All(x => x.SessionState != MultisessionState.Downloading))
-                await Task.Delay(33, this.ConnectionToken);
-        }
     }
 }
