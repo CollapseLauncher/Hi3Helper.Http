@@ -10,12 +10,12 @@ namespace Test
 {
     internal class Program
     {
-        static string URL = "https://github.com/neon-nyan/CollapseLauncher/releases/download/CL-v1.0.36.1-stable/CL-1.0.36.1_Portable.7z";
-        static string Output = @".\Testing.7z";
+        static string URL = "https://prophost.ironmaid.xyz/_shared/_diffrepo/Cookbook_Hi3SEA_Hi3Global_6.0.0_lzma2_crc32.diff";
+        static string Output = @".\Testing.diff";
         static string Output2 = @"C:\Users\neon-nyan\AppData\LocalLow\CollapseLauncher\GameFolder\Hi3TW\Games\BH3_v5.9.0_cba771e4ca76.7z.001";
         static string Output3 = @"C:\Users\neon-nyan\AppData\LocalLow\CollapseLauncher\GameFolder\Hi3TW\Games\BH3_v5.9.0_cba771e4ca76.7z.dummy";
         static string Output4 = @"C:\Users\neon-nyan\Downloads\bin\YuanShen_2.8.54_beta.zip";
-        static Http Client = new();
+        static HttpNew Client = new(true);
         static Crc32Algorithm crc = new();
         static SimpleChecksum sh64 = new();
         static async Task Main()
@@ -79,6 +79,7 @@ namespace Test
             Console.WriteLine("Hash: {0}", BytesToHex(crc.Hash));
             */
             #endregion
+            /*
             long limit = 1200000000;
             byte[] buffer = new byte[4096];
             SimpleChecksum partialHash = new();
@@ -93,6 +94,15 @@ namespace Test
                     partialHash.ComputeHash32(buffer, Read);
                 }
             }
+            */
+
+            Client.DownloadProgress += Client_DownloadProgress;
+            await Client.Download(URL, Output, false, 4, default);
+        }
+
+        private static void Client_DownloadProgress(object? sender, DownloadEvent e)
+        {
+            Console.Write($"\r{e.ProgressPercentage}%");
         }
 
         public static string BytesToHex(byte[] bytes) => BitConverter.ToString(bytes).Replace("-", string.Empty);

@@ -1,11 +1,7 @@
-﻿using System;
-using System.Net;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
-using System.Diagnostics;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Hi3Helper.Http
 {
@@ -16,7 +12,7 @@ namespace Hi3Helper.Http
         // Inner HttpClient handler
         private HttpClientHandler _handler;
         // Inner Buffer size
-        private readonly int _bufferSize = 4096;
+        private readonly int _bufferSize = 4 << 20;
 
         // Max allowed Connections for HttpClient instance
         private readonly byte ConnectionMax = 16;
@@ -35,7 +31,7 @@ namespace Hi3Helper.Http
         // Sessions list
         private List<Session> Sessions = new List<Session>();
         private Stopwatch SessionsStopwatch;
-        private bool IsSessionContinue = false;
+        public bool IsDownloadContinue = false;
 
         // Path of the Download
         private string PathURL;
@@ -43,8 +39,8 @@ namespace Hi3Helper.Http
         private bool PathOverwrite;
 
         // Download Statistics
-        private long SizeDownloaded;
-        private long SizeTotal;
+        private AttributesSize SizeAttribute;
+
         // This is for Multisession mode only
         public MultisessionState DownloadState;
 

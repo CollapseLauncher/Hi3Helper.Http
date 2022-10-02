@@ -7,6 +7,7 @@ namespace Hi3Helper.Http
 {
     public partial class HttpNew
     {
+        /* Unused for now
         private void CreateOrUpdateMetadata()
         {
             FileInfo Metadata = new FileInfo(this.PathOutput + ".mdat");
@@ -96,5 +97,6 @@ namespace Hi3Helper.Http
 
             return true;
         }
+        */
     }
 }

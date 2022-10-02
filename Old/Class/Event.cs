@@ -8,7 +8,7 @@ namespace Hi3Helper.Http
     public enum MultisessionState
     {
         Idle, WaitingOnSession,
-        Downloading, Merging,
+        PartialDownloading, Downloading, Merging,
         Finished, FinishedNeedMerge,
         FailedMerging, FailedDownloading,
         CancelledMerging, CancelledDownloading,
@@ -77,6 +77,7 @@ namespace Hi3Helper.Http
         private void FinalizeMultisessionEventProgress()
         {
             long Sum = this.SizeToBeDownloaded - SessionAttributes.Sum(x => x.OutSize);
+
             // Update progress to event
             UpdateProgress(new DownloadEvent(0, this.SizeToBeDownloaded,
                 this.SizeToBeDownloaded, Sum, this.SessionStopwatch.Elapsed.TotalSeconds,
@@ -99,6 +100,25 @@ namespace Hi3Helper.Http
     public class DownloadEvent
     {
         public DownloadEvent(long SizeLastDownloaded, long SizeDownloaded, long SizeToBeDownloaded,
+            long Read, double TotalSecond, MultisessionState state)
+        {
+            this.Speed = 0;
+            this.SizeDownloaded = 0;
+            this.SizeToBeDownloaded = 0;
+            this.Read = 0;
+            this.State = MultisessionState.Idle;
+        }
+
+        public DownloadEvent()
+        {
+            this.Speed = 0;
+            this.SizeDownloaded = 0;
+            this.SizeToBeDownloaded = 0;
+            this.Read = 0;
+            this.State = MultisessionState.Idle;
+        }
+
+        public void UpdateDownloadEvent(long SizeLastDownloaded, long SizeDownloaded, long SizeToBeDownloaded,
             long Read, double TotalSecond, MultisessionState state)
         {
             this.Speed = (long)(SizeLastDownloaded / TotalSecond);

@@ -6,7 +6,7 @@ namespace Hi3Helper.Http
 {
     public partial class HttpNew
     {
-        public bool IOMultiVerify(Session Input)
+        public bool IOReadVerifyMulti(Session Input)
         {
             // Initialize local checksum
             SimpleChecksum Checksum = new SimpleChecksum();
@@ -35,13 +35,11 @@ namespace Hi3Helper.Http
             return Checksum.Hash32 == Input.LastChecksumHash;
         }
 
-        public void IOMulti(Session Input)
+        public void IOReadWriteMulti(Session Input)
         {
+            DownloadEvent Event = new DownloadEvent();
             byte[] Buffer = new byte[_bufferSize];
             int Read;
-
-            // Reset session retry attempt
-            Input.SessionRetryAttempt = 1;
             // Read Stream into Buffer
             while ((Read = Input.StreamInput.Read(Buffer, 0, Buffer.Length)) > 0)
             {
@@ -53,9 +51,29 @@ namespace Hi3Helper.Http
                 Input.SessionState = MultisessionState.Downloading;
                 // Throw if Token Cancellation is requested
                 Input.SessionToken.ThrowIfCancellationRequested();
-            }
 
-            Input.IsCompleted = true;
+                // Lock SizeAttribute to avoid race condition while updating status
+                lock (this.SizeAttribute)
+                {
+                    // Reset session retry attempt
+                    Input.SessionRetryAttempt = 1;
+
+                    // Increment SizeDownloaded attribute
+                    this.SizeAttribute.SizeDownloaded += Read;
+                    this.SizeAttribute.SizeDownloadedLast += Read;
+
+                    // Update download state
+                    Event.UpdateDownloadEvent(
+                            this.SizeAttribute.SizeDownloadedLast,
+                            this.SizeAttribute.SizeDownloaded,
+                            this.SizeAttribute.SizeTotalToDownload,
+                            Read,
+                            this.SessionsStopwatch.Elapsed.Milliseconds,
+                            this.DownloadState
+                            );
+                    this.UpdateProgress(Event);
+                }
+            }
         }
     }
 }

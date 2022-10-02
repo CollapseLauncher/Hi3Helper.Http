@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -48,6 +49,9 @@ namespace Hi3Helper.Http
         // Deconstructor
         ~Session() => Dispose();
 
+        // Seek the StreamOutput to the end of file
+        public void SeekStreamOutputToEnd() => this.StreamOutput.Seek(0, SeekOrigin.End);
+
         private void AdjustOffsets(long? Start, long? End)
         {
             this.OffsetStart = (Start ?? 0) + this.StreamOutputSize;
@@ -66,21 +70,41 @@ namespace Hi3Helper.Http
                   && (this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart == -1);
         }
 
-        public bool TrySetHttpResponse(HttpResponseMessage Input)
+        public bool TrySetHttpRequestOffset()
         {
-            if (Input.IsSuccessStatusCode)
+            try
             {
-                this.SessionResponse = Input;
+                this.SessionRequest.Headers.Range = new RangeHeaderValue(this.OffsetStart, this.OffsetEnd);
                 return true;
             }
-
-            if ((int)Input.StatusCode == 416) return false;
-
-            throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
+            catch (Exception) { throw; }
         }
 
-        public void LoadLastHash(int Hash) => this.Checksum.InjectHash(Hash);
-        public void LoadLastHashPos(long Pos) => this.Checksum.InjectPos(Pos);
+        public async Task<bool> TrySetHttpResponse(HttpClient client)
+        {
+            try
+            {
+                HttpResponseMessage Input = await client.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+                if (Input.IsSuccessStatusCode)
+                {
+                    this.SessionResponse = Input;
+                    return true;
+                }
+
+                if ((int)Input.StatusCode == 416) return false;
+
+                throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
+            }
+            catch (HttpRequestException) { throw; }
+            catch (Exception) { return false; }
+        }
+
+        public void InjectLastHash(int Hash) => this.Checksum.InjectHash(Hash);
+        public void InjectLastHashPos(long Pos) => this.Checksum.InjectPos(Pos);
 
         // Implement Disposable for IDisposable
         public void Dispose()
@@ -111,7 +135,7 @@ namespace Hi3Helper.Http
         public bool IsLastSession { get; set; }
         public bool IsMultiSession { get; set; }
         public bool IsFileMode { get; private set; }
-        public bool IsCompleted { get; set; }
+        public bool IsCompleted { get { return StreamOutputSize >= SessionSize; } }
 
         // Session Properties
         public CancellationToken SessionToken { get; private set; }
@@ -123,7 +147,7 @@ namespace Hi3Helper.Http
 
         // Stream Properties
 #if !NETSTANDARD
-        public Stream StreamInput { get => this.SessionResponse.Content.ReadAsStream(); }
+        public Stream StreamInput { get => this.SessionResponse?.Content.ReadAsStream(); }
 #else
         public Stream StreamInput { get => this.SessionResponse.Content.ReadAsStreamAsync()
                     .GetAwaiter()

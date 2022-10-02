@@ -18,6 +18,7 @@ namespace Hi3Helper.Http
         // Push log to listener
         private void PushLog(string message, LogSeverity severity) => DownloadLog?.Invoke(this, new DownloadLogEvent(message, severity));
 
+
         // Update Progress of the Multisession Download
         private async void WatchMultisessionEventProgress(string OutputPath, CancellationToken Token)
         {
@@ -25,6 +26,7 @@ namespace Hi3Helper.Http
             long SizeSum = this.Sessions.Sum(x => x.StreamOutputSize);
             long SizeMultisessionDownloaded = SizeSum;
             long SizeLastMultisessionDownloaded = 0;
+            DownloadEvent Event = new DownloadEvent();
 
             // Do loop if SessionState is Downloading or at least Token isn't cancelled
             while (this.DownloadState == MultisessionState.Downloading
@@ -37,9 +39,10 @@ namespace Hi3Helper.Http
                 SizeMultisessionDownloaded = SizeSum;
 
                 // Update progress to event
-                UpdateProgress(new DownloadEvent(SizeLastMultisessionDownloaded, SizeMultisessionDownloaded,
-                    this.SizeTotal, MultisessionRead, this.SessionsStopwatch.Elapsed.TotalSeconds,
-                    this.DownloadState));
+                Event.UpdateDownloadEvent(SizeLastMultisessionDownloaded, SizeMultisessionDownloaded,
+                    this.SizeAttribute.SizeTotalToDownload, MultisessionRead, this.SessionsStopwatch.Elapsed.TotalSeconds,
+                    this.DownloadState);
+                UpdateProgress(Event);
 
                 // Delay 33ms before back to loop
                 try
@@ -60,11 +63,14 @@ namespace Hi3Helper.Http
 
         private void FinalizeMultisessionEventProgress()
         {
-            long Sum = this.SizeTotal - this.Sessions.Sum(x => x.StreamOutputSize);
+            DownloadEvent Event = new DownloadEvent();
+            long Sum = this.SizeAttribute.SizeTotalToDownload - this.Sessions.Sum(x => x.StreamOutputSize);
+
             // Update progress to event
-            UpdateProgress(new DownloadEvent(0, this.SizeTotal,
-                this.SizeTotal, Sum, this.SessionsStopwatch.Elapsed.TotalSeconds,
-                this.DownloadState));
+            Event.UpdateDownloadEvent(0, this.SizeAttribute.SizeTotalToDownload,
+                this.SizeAttribute.SizeTotalToDownload, Sum, this.SessionsStopwatch.Elapsed.TotalSeconds,
+                this.DownloadState);
+            UpdateProgress(Event);
         }
     }
 }

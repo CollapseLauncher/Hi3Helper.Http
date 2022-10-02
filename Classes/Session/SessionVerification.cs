@@ -8,6 +8,7 @@ namespace Hi3Helper.Http
 {
     public partial class HttpNew
     {
+        /*
         public async Task TryRunSessionVerification()
         {
             List<Task> VerifyTask = new List<Task>();
@@ -38,5 +39,6 @@ namespace Hi3Helper.Http
         {
             
         }
+        */
     }
 }

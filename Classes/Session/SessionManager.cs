@@ -1,10 +1,7 @@
 ﻿using System;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Text;
-using System.Net.Http;
-using static Hi3Helper.Http.Http;
 
 namespace Hi3Helper.Http
 {
@@ -12,34 +9,67 @@ namespace Hi3Helper.Http
     {
         private async Task InitializeMultiSession()
         {
+            this.SizeAttribute = new AttributesSize();
             this.DownloadState = MultisessionState.WaitingOnSession;
+            string PathOut;
 
-            if (this.IsSessionContinue = LoadMetadata()) return;
+            // if (this.IsSessionContinue = LoadMetadata()) return;
 
-            this.SizeTotal = await TryGetContentLength(this.PathURL, this.ConnectionToken);
-            long SliceSize = (long)Math.Ceiling((double)this.SizeTotal / this.ConnectionSessions);
+            long? RemoteLength = await TryGetContentLength(this.PathURL, this.ConnectionToken);
+
+            if (RemoteLength is null)
+                throw new NullReferenceException($"File can't be downloaded because the content-length is undefined!");
+
+            this.SizeAttribute.SizeTotalToDownload = (long)RemoteLength;
+
+            long SliceSize = (long)Math.Ceiling((double)this.SizeAttribute.SizeTotalToDownload / this.ConnectionSessions);
             long EndOffset;
-            
+
             for (long StartOffset = 0, t = 0; t < this.ConnectionSessions; t++)
             {
-                EndOffset = t + 1 == this.ConnectionSessions ? this.SizeTotal : (StartOffset + SliceSize - 1);
-                this.Sessions.Add(new Session(
-                    this.PathURL, this.PathOutput + string.Format(".{0:000}", t + 1), null,
+                EndOffset = t + 1 == this.ConnectionSessions ? this.SizeAttribute.SizeTotalToDownload : (StartOffset + SliceSize - 1);
+                PathOut = this.PathOutput + string.Format(".{0:000}", t + 1);
+                Session session = new Session(
+                    this.PathURL, PathOut, null,
                     this.ConnectionToken, true, true,
                     StartOffset, EndOffset, this.PathOverwrite)
                 {
                     IsLastSession = t + 1 == this.ConnectionSessions,
-                    IsCompleted = false,
                     SessionSize = EndOffset - StartOffset
-                });
+                };
+
+                bool IsSetRequestSuccess = session.TrySetHttpRequest(),
+                     IsSetRequestOffsetSuccess = false,
+                     IsSetResponseSuccess = false;
+
+                if (IsSetRequestSuccess)
+                {
+                    IsSetRequestOffsetSuccess = session.TrySetHttpRequestOffset();
+                }
+
+                if (IsSetRequestOffsetSuccess)
+                {
+                    IsSetResponseSuccess = await session.TrySetHttpResponse(this._client);
+                }
+
+                if (IsSetResponseSuccess)
+                {
+                    this.Sessions.Add(session);
+                }
+
+                IncrementDownloadedSize(session);
 
                 StartOffset += SliceSize;
             }
 
-            CreateOrUpdateMetadata();
+            this.IsDownloadContinue = this.SizeAttribute.SizeDownloaded > 0;
+
+            // CreateOrUpdateMetadata();
         }
 
-        public void ReinitializeSession(Session Input) => 
+        private void IncrementDownloadedSize(Session session) => this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
+
+        public void ReinitializeSession(Session Input) =>
             Input = new Session(
                 this.PathURL, this.PathOutput, null,
                 this.ConnectionToken, true, true,
@@ -47,18 +77,17 @@ namespace Hi3Helper.Http
                 )
             {
                 IsLastSession = Input.IsLastSession,
-                IsCompleted = false,
                 SessionSize = (Input.OffsetEnd - Input.OffsetStart) ?? 0
             };
 
-        private async Task<long> TryGetContentLength(string URL, CancellationToken Token)
+        private async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
         {
             byte CurrentRetry = 0;
             while (true)
             {
                 try
                 {
-                    return await GetContentLength(URL, Token) ?? 0;
+                    return await GetContentLength(URL, Token);
                 }
                 catch (HttpRequestException)
                 {

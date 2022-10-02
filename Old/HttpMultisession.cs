@@ -38,7 +38,7 @@ namespace Hi3Helper.Http
         public async void DownloadMultisessionNoTask(string URL, string OutPath, bool Overwrite = false,
             byte Sessions = 4, CancellationToken Token = new CancellationToken())
             => await DownloadMultisession(URL, OutPath, Overwrite, Sessions, Token);
-
+         
         public async Task WaitForMultisessionReady(string OutputPath, CancellationToken Token = new CancellationToken(), uint DelayInterval = 33)
         {
             try
