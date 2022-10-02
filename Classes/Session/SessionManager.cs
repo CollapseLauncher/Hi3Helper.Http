@@ -60,6 +60,7 @@ namespace Hi3Helper.Http
 
                 if (IsSetResponseSuccess)
                 {
+                    session.SeekStreamOutputToEnd();
                     this.Sessions.Add(session);
                 }
                 else session.Dispose();
