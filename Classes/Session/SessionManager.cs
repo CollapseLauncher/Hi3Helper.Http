@@ -55,12 +55,13 @@ namespace Hi3Helper.Http
                     IsSetResponseSuccess = await session.TrySetHttpResponse(this._client);
                 }
 
+                IncrementDownloadedSize(session);
+
                 if (IsSetResponseSuccess)
                 {
                     this.Sessions.Add(session);
                 }
-
-                IncrementDownloadedSize(session);
+                else session.Dispose();
 
                 StartOffset += SliceSize;
             }
