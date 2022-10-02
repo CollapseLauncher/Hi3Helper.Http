@@ -184,12 +184,16 @@ namespace Hi3Helper.Http
                 {
                     FileInfo fileInfo = new FileInfo(SessionFilePath);
                     FileInfo fileInfoLegacy = new FileInfo(SessionFilePathLegacy);
-                    fileInfo.IsReadOnly = false;
-                    fileInfoLegacy.IsReadOnly = false;
                     if (fileInfo.Exists)
+                    {
+                        fileInfo.IsReadOnly = false;
                         fileInfo.Delete();
+                    }
                     if (fileInfoLegacy.Exists)
+                    {
+                        fileInfoLegacy.IsReadOnly = false;
                         fileInfoLegacy.Delete();
+                    }
                 }
                 catch { }
             }
