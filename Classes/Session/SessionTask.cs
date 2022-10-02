@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
@@ -22,19 +23,23 @@ namespace Hi3Helper.Http
         {
             using (session)
             {
+                CancellationToken InnerToken = this.InnerConnectionTokenSource.Token;
                 bool StillRetry = true;
                 while (StillRetry)
                 {
                     session.SessionRetryAttempt++;
                     try
                     {
-                        await Task.Run(() => IOReadWriteMulti(session));
+                        await Task.Run(() => IOReadWriteMulti(session, InnerToken));
                         StillRetry = false;
                     }
+                    catch (TaskCanceledException) { }
+                    catch (OperationCanceledException) { }
                     catch (Exception)
                     {
                         if (session.SessionRetryAttempt > this.RetryMax)
                         {
+                            this.InnerConnectionTokenSource.Cancel();
                             throw;
                         }
                     }

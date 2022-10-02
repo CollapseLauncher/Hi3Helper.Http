@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace Hi3Helper.Http
 {
@@ -33,7 +34,7 @@ namespace Hi3Helper.Http
             return Checksum.Hash32 == Input.LastChecksumHash;
         }
 
-        public void IOReadWriteMulti(Session Input)
+        public void IOReadWriteMulti(Session Input, CancellationToken InnerToken)
         {
             DownloadEvent Event = new DownloadEvent();
             byte[] Buffer = new byte[_bufferSize];
@@ -49,6 +50,8 @@ namespace Hi3Helper.Http
                 Input.SessionState = MultisessionState.Downloading;
                 // Throw if Token Cancellation is requested
                 Input.SessionToken.ThrowIfCancellationRequested();
+                // Throw if Inner Token Cancellation is requested
+                InnerToken.ThrowIfCancellationRequested();
 
                 // Lock SizeAttribute to avoid race condition while updating status
                 lock (this.SizeAttribute)

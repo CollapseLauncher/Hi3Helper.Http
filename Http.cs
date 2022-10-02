@@ -10,19 +10,21 @@ namespace Hi3Helper.Http
         {
             this.RetryMax = RetryMax;
             this.RetryInterval = RetryInterval;
+            this._ignoreHttpCompression = IgnoreCompress;
             this._handler = new HttpClientHandler
             {
                 AllowAutoRedirect = true,
                 UseCookies = true,
                 MaxConnectionsPerServer = this.ConnectionMax,
-                AutomaticDecompression = IgnoreCompress ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
+                AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
             };
 
-            ResetState();
+            ResetState(false);
         }
 
         public HttpNew()
         {
+            this._ignoreHttpCompression = false;
             this._handler = new HttpClientHandler()
             {
                 AllowAutoRedirect = true,
@@ -30,7 +32,7 @@ namespace Hi3Helper.Http
                 MaxConnectionsPerServer = this.ConnectionMax
             };
 
-            ResetState();
+            ResetState(false);
         }
 
         public void Dispose()

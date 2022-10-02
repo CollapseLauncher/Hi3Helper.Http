@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
+using System.Linq;
+using System.Net;
 
 namespace Hi3Helper.Http
 {
@@ -9,6 +11,8 @@ namespace Hi3Helper.Http
     {
         // Inner HttpClient instance
         private HttpClient _client;
+        // Inner HttpClient instance
+        private bool _ignoreHttpCompression;
         // Inner HttpClient handler
         private HttpClientHandler _handler;
         // Inner Buffer size
@@ -22,6 +26,7 @@ namespace Hi3Helper.Http
         private byte ConnectionSessions;
         // Connection Token for Cancellation
         private CancellationToken ConnectionToken;
+        private CancellationTokenSource InnerConnectionTokenSource;
 
         // Max Retry Count
         private byte RetryMax = 5;
@@ -32,6 +37,7 @@ namespace Hi3Helper.Http
         private List<Session> Sessions = new List<Session>();
         private Stopwatch SessionsStopwatch;
         public bool IsDownloadContinue = false;
+        public bool IsWaitingSessionBuild = false;
 
         // Path of the Download
         private string PathURL;
@@ -44,11 +50,50 @@ namespace Hi3Helper.Http
         // This is for Multisession mode only
         public MultisessionState DownloadState;
 
-        public void ResetState()
+        public bool IsDownloadFailed
         {
-            this.SessionsStopwatch = Stopwatch.StartNew();
+            get
+            {
+                if (this.Sessions.Count == 0) return false;
+                if (this.ConnectionToken.IsCancellationRequested) return false;
+
+                return this.Sessions.Any(x => x.SessionState == MultisessionState.FailedDownloading);
+            }
+        }
+
+        public bool IsMergeFailed
+        {
+            get
+            {
+                if (this.ConnectionToken.IsCancellationRequested) return false;
+
+                return this.Sessions.Any(x => x.SessionState == MultisessionState.FailedMerging);
+            }
+        }
+
+        public void ResetState(bool IsStop)
+        {
+            if (IsStop)
+            {
+                this.InnerConnectionTokenSource.Cancel();
+                this.SessionsStopwatch.Stop();
+                this._client.Dispose();
+            }
+            else
+            {
+                this.InnerConnectionTokenSource = new CancellationTokenSource();
+                this.SessionsStopwatch = Stopwatch.StartNew();
+                this._client = new HttpClient(this._handler = new HttpClientHandler
+                {
+                    AllowAutoRedirect = true,
+                    UseCookies = true,
+                    MaxConnectionsPerServer = this.ConnectionMax,
+                    AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
+                });
+            }
+
+            this.IsWaitingSessionBuild = false;
             this.Sessions.Clear();
-            this._client = new HttpClient(this._handler);
         }
     }
 }
