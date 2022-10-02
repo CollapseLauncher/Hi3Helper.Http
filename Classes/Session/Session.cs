@@ -9,7 +9,7 @@ namespace Hi3Helper.Http
 {
     public class Session : IDisposable
     {
-        public Session(string PathURL, string PathOutput, Stream SOutput, 
+        public Session(string PathURL, string PathOutput, Stream SOutput,
             CancellationToken SToken, bool IsFileMode, bool IsMultiSession,
             long? OffsetStart = null, long? OffsetEnd = null, bool Overwrite = false)
         {
@@ -62,9 +62,18 @@ namespace Hi3Helper.Http
                 Method = HttpMethod.Get
             };
 
-            return !((this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart  <  0
-                  && (this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart == -1);
+            return IsExistingFileSizeValid();
         }
+
+        public bool IsExistingFileOversized()
+        {
+            return this.StreamOutputSize > (this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart
+              && (((this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart) != -1);
+        }
+
+        private bool IsExistingFileSizeValid() =>
+            !((this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart < 0
+           && (this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart == -1);
 
         public bool TrySetHttpRequestOffset()
         {
@@ -120,7 +129,7 @@ namespace Hi3Helper.Http
         public long LastChecksumPos { get => this.Checksum.LastChecksumPos; }
 
         // Session Offset Properties
-        public long? OffsetStart { get; private set; } 
+        public long? OffsetStart { get; private set; }
         public long? OffsetEnd { get; private set; }
 
         // Path Properties

@@ -38,6 +38,9 @@ namespace Hi3Helper.Http
                     SessionSize = EndOffset - StartOffset
                 };
 
+                if (session.IsExistingFileOversized())
+                    session = ReinitializeSession(session, true, true, StartOffset, EndOffset);
+
                 bool IsSetRequestSuccess = session.TrySetHttpRequest(),
                      IsSetRequestOffsetSuccess = false,
                      IsSetResponseSuccess = false;
@@ -69,16 +72,22 @@ namespace Hi3Helper.Http
 
         private void IncrementDownloadedSize(Session session) => this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
 
-        public void ReinitializeSession(Session Input) =>
-            Input = new Session(
-                this.PathURL, this.PathOutput, null,
-                this.ConnectionToken, true, true,
-                Input.OffsetStart, Input.OffsetEnd, this.PathOverwrite
+        public Session ReinitializeSession(Session Input, bool IsMultiSession, bool ForceOverwrite = false,
+            long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
+        {
+            Input.Dispose();
+            return new Session(
+                this.PathURL, Input.PathOutput, null,
+                this.ConnectionToken, true, IsMultiSession,
+                ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
+                ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart,
+                ForceOverwrite || this.PathOverwrite
                 )
             {
                 IsLastSession = Input.IsLastSession,
                 SessionSize = (Input.OffsetEnd - Input.OffsetStart) ?? 0
             };
+        }
 
         private async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
         {
