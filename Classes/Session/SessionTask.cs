@@ -39,6 +39,7 @@ namespace Hi3Helper.Http
                     {
                         if (session.SessionRetryAttempt > this.RetryMax)
                         {
+                            this.DownloadState = MultisessionState.FailedDownloading;
                             this.InnerConnectionTokenSource.Cancel();
                             throw;
                         }

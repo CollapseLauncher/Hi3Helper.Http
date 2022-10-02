@@ -53,10 +53,9 @@ namespace Hi3Helper.Http
         {
             get
             {
-                if (this.Sessions.Count == 0) return false;
                 if (this.ConnectionToken.IsCancellationRequested) return false;
 
-                return this.Sessions.Any(x => x.SessionState == MultisessionState.FailedDownloading);
+                return this.DownloadState == MultisessionState.FailedDownloading;
             }
         }
 
@@ -66,7 +65,7 @@ namespace Hi3Helper.Http
             {
                 if (this.ConnectionToken.IsCancellationRequested) return false;
 
-                return this.Sessions.Any(x => x.SessionState == MultisessionState.FailedMerging);
+                return this.DownloadState == MultisessionState.FailedMerging;
             }
         }
 
