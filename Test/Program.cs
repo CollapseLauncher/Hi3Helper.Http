@@ -95,7 +95,7 @@ namespace Test
             */
             CancellationTokenSource TokenSource = new CancellationTokenSource();
             Client.DownloadProgress += Client_DownloadProgress;
-            await Client.Download(URL, Output, false, 4, TokenSource.Token);
+            await Client.Download(URL, Output, 4, true);
             await Client.WaitUntilAllSessionReady();
             await Client.WaitUntilAllSessionDownloaded();
 
