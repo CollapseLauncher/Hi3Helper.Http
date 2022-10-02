@@ -42,7 +42,8 @@ namespace Hi3Helper.Http
         private string PathURL;
         private string PathOutput;
         private bool PathOverwrite;
-        private const string PathExtSessionPrefix = ".hi3h.{0:000}";
+        private const string PathExtPrefix = "hi3h";
+        private const string PathSessionPrefix = ".{0}.{1:000}";
 
         // Download Statistics
         private AttributesSize SizeAttribute;
