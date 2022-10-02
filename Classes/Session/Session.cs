@@ -65,10 +65,9 @@ namespace Hi3Helper.Http
             return IsExistingFileSizeValid();
         }
 
-        public bool IsExistingFileOversized()
+        public bool IsExistingFileOversized(long OffsetStart, long OffsetEnd)
         {
-            return this.StreamOutputSize > (this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart
-              && (((this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart) != -1);
+            return this.StreamOutputSize > (this.IsLastSession ? OffsetEnd : OffsetEnd + 1) - OffsetStart;
         }
 
         private bool IsExistingFileSizeValid() =>

@@ -39,7 +39,7 @@ namespace Hi3Helper.Http
                     SessionSize = EndOffset - StartOffset
                 };
 
-                if (session.IsExistingFileOversized())
+                if (session.IsExistingFileOversized(StartOffset, EndOffset))
                     session = ReinitializeSession(session, true, true, StartOffset, EndOffset);
 
                 bool IsSetRequestSuccess = session.TrySetHttpRequest(),
