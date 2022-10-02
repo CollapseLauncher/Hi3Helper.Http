@@ -78,7 +78,7 @@ namespace Hi3Helper.Http
                 // Write Buffer to the output Stream
                 Input.StreamOutput.Write(Buffer, 0, Read);
                 // Compute checksum from Buffer
-                Input.Checksum.ComputeHash32(Buffer, Read);
+                // Input.Checksum.ComputeHash32(Buffer, Read);
                 // Set Inner Session Status
                 Input.SessionState = MultisessionState.Downloading;
                 // Throw if Token Cancellation is requested
