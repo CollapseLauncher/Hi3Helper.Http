@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
@@ -22,6 +23,19 @@ namespace Hi3Helper.Http
             await RunSessionTasks();
 
             ResetState();
+        }
+
+        public async void DownloadAsync(string URL, string Output, bool Overwrite = false,
+            byte ConnectionSessions = 4, CancellationToken ThreadToken = new CancellationToken()) =>
+            await Download(URL, Output, Overwrite, ConnectionSessions, ThreadToken);
+
+        public async Task WaitUntilAllSessionReady()
+        {
+            if (this.Sessions.Count == 0) return;
+            if (this.ConnectionToken.IsCancellationRequested) return;
+
+            while (this.Sessions.All(x => x.SessionState != MultisessionState.Downloading))
+                await Task.Delay(33, this.ConnectionToken);
         }
     }
 }
