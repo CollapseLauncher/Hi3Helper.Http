@@ -36,8 +36,8 @@ namespace Hi3Helper.Http
                         await Task.Run(() => IOReadWriteSession(session, InnerToken));
                         StillRetry = false;
                     }
-                    catch (TaskCanceledException) { }
-                    catch (OperationCanceledException) { }
+                    catch (TaskCanceledException) { throw; }
+                    catch (OperationCanceledException) { throw; }
                     catch (Exception)
                     {
                         if (session.SessionRetryAttempt > this.RetryMax)
