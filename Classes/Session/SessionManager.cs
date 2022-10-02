@@ -10,7 +10,6 @@ namespace Hi3Helper.Http
     {
         private async Task InitializeMultiSession()
         {
-            this.IsWaitingSessionBuild = true;
             this.SizeAttribute = new AttributesSize();
             this.DownloadState = MultisessionState.WaitingOnSession;
             string PathOut;
@@ -68,8 +67,15 @@ namespace Hi3Helper.Http
                 StartOffset += SliceSize;
             }
 
+            if (this.Sessions.Count == 0)
+                this.DownloadState = MultisessionState.Idle;
+
+            if (this.SizeAttribute.SizeDownloaded == this.SizeAttribute.SizeTotalToDownload)
+                this.DownloadState = MultisessionState.FinishedNeedMerge;
+            else
+                this.DownloadState = MultisessionState.Downloading;
+
             this.IsDownloadContinue = this.SizeAttribute.SizeDownloaded > 0;
-            this.IsWaitingSessionBuild = false;
             // CreateOrUpdateMetadata();
         }
 
@@ -77,12 +83,11 @@ namespace Hi3Helper.Http
         {
             if (this.ConnectionToken.IsCancellationRequested) return;
 
-            while ((this.IsWaitingSessionBuild
-                || this.Sessions.All(x => x.SessionState != MultisessionState.Downloading))
+            while (this.Sessions.All(x => x.SessionState != MultisessionState.Downloading)
                && !this.ConnectionToken.IsCancellationRequested
                && !this.InnerConnectionTokenSource.Token.IsCancellationRequested)
             {
-                if (!this.IsWaitingSessionBuild && this.Sessions.Count == 0) return;
+                if (this.DownloadState == MultisessionState.Idle) return;
                 await Task.Delay(33, this.ConnectionToken);
             }
         }
@@ -91,7 +96,8 @@ namespace Hi3Helper.Http
         {
             if (this.Sessions.Count == 0) return;
             if (this.ConnectionToken.IsCancellationRequested) return;
-            if (this.IsWaitingSessionBuild)
+            if (this.DownloadState == MultisessionState.Idle
+             || this.DownloadState == MultisessionState.WaitingOnSession)
                 throw new InvalidOperationException("You couldn't be able to use this method before all sessions are ready!");
 
             while (this.Sessions.Any(x => x.SessionState == MultisessionState.Downloading)

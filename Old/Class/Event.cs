@@ -8,7 +8,7 @@ namespace Hi3Helper.Http
     public enum MultisessionState
     {
         Idle, WaitingOnSession,
-        PartialDownloading, Downloading, Merging,
+        Downloading, Merging,
         Finished, FinishedNeedMerge,
         FailedMerging, FailedDownloading,
         CancelledMerging, CancelledDownloading,

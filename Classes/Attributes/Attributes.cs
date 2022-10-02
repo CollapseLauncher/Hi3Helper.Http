@@ -37,7 +37,6 @@ namespace Hi3Helper.Http
         private List<Session> Sessions = new List<Session>();
         private Stopwatch SessionsStopwatch;
         public bool IsDownloadContinue = false;
-        public bool IsWaitingSessionBuild = false;
 
         // Path of the Download
         private string PathURL;
@@ -92,7 +91,6 @@ namespace Hi3Helper.Http
                 });
             }
 
-            this.IsWaitingSessionBuild = false;
             this.Sessions.Clear();
         }
     }
