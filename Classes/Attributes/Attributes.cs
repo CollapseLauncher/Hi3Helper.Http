@@ -11,12 +11,16 @@ namespace Hi3Helper.Http
     {
         // Inner HttpClient instance
         private HttpClient _client;
+        // Inner HttpClient UserAgent string
+        private string _clientUserAgent = null;
         // Inner HttpClient instance
         private bool _ignoreHttpCompression;
         // Inner HttpClient handler
         private HttpClientHandler _handler;
         // Inner Buffer size
         private readonly int _bufferSize = 4 << 20;
+        // Inner Merge Buffer size
+        private readonly int _bufferMergeSize = 8 << 20;
 
         // Max allowed Connections for HttpClient instance
         private readonly byte ConnectionMax = 16;
@@ -89,6 +93,9 @@ namespace Hi3Helper.Http
                     MaxConnectionsPerServer = this.ConnectionMax,
                     AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
                 });
+
+                if (this._clientUserAgent is not null)
+                    this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
             }
 
             this.Sessions.Clear();

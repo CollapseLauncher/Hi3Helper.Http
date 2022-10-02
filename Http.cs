@@ -9,11 +9,12 @@ namespace Hi3Helper.Http
 {
     public partial class HttpNew : IDisposable
     {
-        public HttpNew(bool IgnoreCompress = false, byte RetryMax = 5, short RetryInterval = 1000)
+        public HttpNew(bool IgnoreCompress = false, byte RetryMax = 5, short RetryInterval = 1000, string UserAgent = null)
         {
             this.RetryMax = RetryMax;
             this.RetryInterval = RetryInterval;
             this.DownloadState = MultisessionState.Idle;
+            this._clientUserAgent = UserAgent;
             this._ignoreHttpCompression = IgnoreCompress;
             this._handler = new HttpClientHandler
             {
