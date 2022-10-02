@@ -36,12 +36,21 @@ namespace Hi3Helper.Http
                         await Task.Run(() => IOReadWriteSession(session, InnerToken));
                         StillRetry = false;
                     }
-                    catch (TaskCanceledException) { throw; }
-                    catch (OperationCanceledException) { throw; }
+                    catch (TaskCanceledException)
+                    {
+                        StillRetry = false;
+                        throw;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        StillRetry = false;
+                        throw;
+                    }
                     catch (Exception)
                     {
                         if (session.SessionRetryAttempt > this.RetryMax)
                         {
+                            StillRetry = false;
                             this.DownloadState = MultisessionState.FailedDownloading;
                             this.InnerConnectionTokenSource.Cancel();
                             throw;
