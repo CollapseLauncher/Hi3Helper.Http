@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public partial class HttpNew
+    public partial class Http
     {
         private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
         {
@@ -40,7 +40,7 @@ namespace Hi3Helper.Http
 
         private long TryGetSingleSessionLength(Session session)
         {
-            if (session.SessionResponse.Content.Headers.ContentLength is null)
+            if (session.SessionResponse.Content.Headers.ContentLength == null)
             {
                 return 0;
             }
@@ -63,7 +63,7 @@ namespace Hi3Helper.Http
 
             long? RemoteLength = await TryGetContentLength(this.PathURL, this.ConnectionToken);
 
-            if (RemoteLength is null)
+            if (RemoteLength == null)
                 throw new NullReferenceException($"File can't be downloaded because the content-length is undefined!");
 
             this.SizeAttribute.SizeTotalToDownload = (long)RemoteLength;

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Hi3Helper.Http
 {
-    public partial class HttpNew
+    public partial class Http
     {
         /* Unused for now
         private void CreateOrUpdateMetadata()

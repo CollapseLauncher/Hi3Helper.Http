@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public partial class HttpNew
+    public partial class Http
     {
         // Download Progress Event Handler
         public event EventHandler<DownloadEvent> DownloadProgress;

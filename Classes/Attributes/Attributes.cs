@@ -7,7 +7,7 @@ using System.Net;
 
 namespace Hi3Helper.Http
 {
-    public partial class HttpNew
+    public partial class Http
     {
         // Inner HttpClient instance
         private HttpClient _client;
@@ -94,7 +94,7 @@ namespace Hi3Helper.Http
                     AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
                 });
 
-                if (this._clientUserAgent is not null)
+                if (this._clientUserAgent != null)
                     this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
             }
 

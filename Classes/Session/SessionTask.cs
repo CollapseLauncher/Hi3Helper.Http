@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public partial class HttpNew
+    public partial class Http
     {
         public async Task RunMultiSessionTasks()
         {
@@ -23,7 +23,7 @@ namespace Hi3Helper.Http
 
         private async Task RetryableContainer(Session session)
         {
-            if (session is null) return;
+            if (session == null) return;
             using (session)
             {
                 CancellationToken InnerToken = this.InnerConnectionTokenSource.Token;

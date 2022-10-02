@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public partial class HttpNew
+    public partial class Http
     {
         public async Task Download(string URL, string Output, byte ConnectionSessions = 4,
             bool Overwrite = false, CancellationToken ThreadToken = new CancellationToken())

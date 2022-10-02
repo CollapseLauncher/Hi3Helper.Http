@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public partial class HttpNew : IDisposable
+    public partial class Http : IDisposable
     {
-        public HttpNew(bool IgnoreCompress = false, byte RetryMax = 5, short RetryInterval = 1000, string UserAgent = null)
+        public Http(bool IgnoreCompress = false, byte RetryMax = 5, short RetryInterval = 1000, string UserAgent = null)
         {
             this.RetryMax = RetryMax;
             this.RetryInterval = RetryInterval;
@@ -27,7 +27,7 @@ namespace Hi3Helper.Http
             ResetState(false);
         }
 
-        public HttpNew()
+        public Http()
         {
             this.DownloadState = MultisessionState.Idle;
             this._ignoreHttpCompression = false;
@@ -85,6 +85,6 @@ namespace Hi3Helper.Http
             this.Sessions = null;
         }
 
-        ~HttpNew() => Dispose();
+        ~Http() => Dispose();
     }
 }
