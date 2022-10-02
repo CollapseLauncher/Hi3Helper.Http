@@ -199,6 +199,24 @@ namespace Hi3Helper.Http
             }
         }
 
+        public long CalculateExistingMultisessionFiles(string Path, byte Sessions)
+        {
+            long Ret = 0;
+            string SessionFilePath;
+            for (int t = 0; t < Sessions; t++)
+            {
+                SessionFilePath = Path + string.Format(PathSessionPrefix, (69420 * Sessions) ^ (87654 * t));
+                try
+                {
+                    FileInfo fileInfo = new FileInfo(SessionFilePath);
+                    if (fileInfo.Exists) Ret += fileInfo.Length;
+                }
+                catch { }
+            }
+
+            return Ret;
+        }
+
         public async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
         {
             byte CurrentRetry = 0;
