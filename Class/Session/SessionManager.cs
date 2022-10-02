@@ -172,7 +172,30 @@ namespace Hi3Helper.Http
             };
         }
 
-        private async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
+        public void DeleteMultisessionFiles(string Path, byte Sessions)
+        {
+            string SessionFilePath;
+            string SessionFilePathLegacy;
+            for (int t = 0; t < Sessions; t++)
+            {
+                SessionFilePath = Path + string.Format(PathSessionPrefix, (69420 * Sessions) ^ (87654 * t));
+                SessionFilePathLegacy = Path + string.Format(".{0:000}", t + 1);
+                try
+                {
+                    FileInfo fileInfo = new FileInfo(SessionFilePath);
+                    FileInfo fileInfoLegacy = new FileInfo(SessionFilePathLegacy);
+                    fileInfo.IsReadOnly = false;
+                    fileInfoLegacy.IsReadOnly = false;
+                    if (fileInfo.Exists)
+                        fileInfo.Delete();
+                    if (fileInfoLegacy.Exists)
+                        fileInfoLegacy.Delete();
+                }
+                catch { }
+            }
+        }
+
+        public async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
         {
             byte CurrentRetry = 0;
             while (true)
@@ -193,7 +216,7 @@ namespace Hi3Helper.Http
             }
         }
 
-        public async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
+        private async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
         {
             HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
 
