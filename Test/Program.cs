@@ -1,6 +1,7 @@
 ﻿using Force.Crc32;
 using Hi3Helper.Http;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test
@@ -92,14 +93,24 @@ namespace Test
                 }
             }
             */
-
+            CancellationTokenSource TokenSource = new CancellationTokenSource();
             Client.DownloadProgress += Client_DownloadProgress;
-            await Client.Download(URL, Output, false, 4, default);
+            Client.DownloadAsync(URL, Output, false, 4, TokenSource.Token);
+            await Client.WaitUntilAllSessionReady();
+            await Client.WaitUntilAllSessionDownloaded();
+
+            Client.DownloadAsync(URL, Output, false, 4, TokenSource.Token);
+            await Client.WaitUntilAllSessionReady();
+            await Client.WaitUntilAllSessionDownloaded();
+
+            TokenSource.Cancel();
+            Client.DownloadProgress -= Client_DownloadProgress;
+            Console.WriteLine("Cancelled! Waiting for 10 secs...");
         }
 
         private static void Client_DownloadProgress(object? sender, DownloadEvent e)
         {
-            Console.Write($"\r{e.ProgressPercentage}%");
+            Console.Write($"\r{e.ProgressPercentage}% {e.SizeDownloaded} - {e.SizeToBeDownloaded}");
         }
 
         public static string BytesToHex(byte[] bytes) => BitConverter.ToString(bytes).Replace("-", string.Empty);
