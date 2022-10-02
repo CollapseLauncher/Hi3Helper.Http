@@ -1,10 +1,7 @@
-﻿using System;
-using System.IO;
-using System.Diagnostics;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using Force.Crc32;
 using Hi3Helper.Http;
-using Force.Crc32;
+using System;
+using System.Threading.Tasks;
 
 namespace Test
 {

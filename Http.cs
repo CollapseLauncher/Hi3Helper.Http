@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Net;
 using System.Net.Http;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Hi3Helper.Http
 {

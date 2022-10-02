@@ -22,21 +22,21 @@ namespace Hi3Helper.Http
             Hash64 = 0;
             Hash32 = 0;
             _bufpos = 0;
-             (_inbuf32[0], _inbuf32[1],
-              _inbuf32[2], _inbuf32[3])
-             =
-             (0, 0,
-              0, 0);
+            (_inbuf32[0], _inbuf32[1],
+             _inbuf32[2], _inbuf32[3])
+            =
+            (0, 0,
+             0, 0);
 
-             (_inbuf64[0], _inbuf64[1],
-              _inbuf64[2], _inbuf64[3],
-              _inbuf64[4], _inbuf64[5],
-              _inbuf64[6], _inbuf64[7])
-             =
-             (0, 0,
-              0, 0,
-              0, 0,
-              0, 0);
+            (_inbuf64[0], _inbuf64[1],
+             _inbuf64[2], _inbuf64[3],
+             _inbuf64[4], _inbuf64[5],
+             _inbuf64[6], _inbuf64[7])
+            =
+            (0, 0,
+             0, 0,
+             0, 0,
+             0, 0);
             _cancompute = false;
         }
 
