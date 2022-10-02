@@ -13,7 +13,7 @@ namespace Test
         static string Output2 = @"C:\Users\neon-nyan\AppData\LocalLow\CollapseLauncher\GameFolder\Hi3TW\Games\BH3_v5.9.0_cba771e4ca76.7z.001";
         static string Output3 = @"C:\Users\neon-nyan\AppData\LocalLow\CollapseLauncher\GameFolder\Hi3TW\Games\BH3_v5.9.0_cba771e4ca76.7z.dummy";
         static string Output4 = @"C:\Users\neon-nyan\Downloads\bin\YuanShen_2.8.54_beta.zip";
-        static HttpNew Client = new(true);
+        static Http Client = new(true);
         static Crc32Algorithm crc = new();
         static SimpleChecksum sh64 = new();
         static async Task Main()
