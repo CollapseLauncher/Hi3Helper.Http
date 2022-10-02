@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
 
 namespace Hi3Helper.Http
@@ -34,11 +35,43 @@ namespace Hi3Helper.Http
             return Checksum.Hash32 == Input.LastChecksumHash;
         }
 
-        public void IOReadWriteMulti(Session Input, CancellationToken InnerToken)
+        public void IOReadWrite(Stream Input, Stream Output, int BufferSize, CancellationToken Token)
+        {
+            DownloadEvent Event = new DownloadEvent();
+            byte[] Buffer = new byte[BufferSize];
+            int Read;
+
+            // Read Stream into Buffer
+            while ((Read = Input.Read(Buffer, 0, Buffer.Length)) > 0)
+            {
+                // Write Buffer to the output Stream
+                Output.Write(Buffer, 0, Read);
+                // Throw if Token Cancellation is requested
+                Token.ThrowIfCancellationRequested();
+
+                // Increment SizeDownloaded attribute
+                this.SizeAttribute.SizeDownloaded += Read;
+                this.SizeAttribute.SizeDownloadedLast += Read;
+
+                // Update state
+                Event.UpdateDownloadEvent(
+                        this.SizeAttribute.SizeDownloadedLast,
+                        this.SizeAttribute.SizeDownloaded,
+                        this.SizeAttribute.SizeTotalToDownload,
+                        Read,
+                        this.SessionsStopwatch.Elapsed.Milliseconds,
+                        this.DownloadState
+                        );
+                this.UpdateProgress(Event);
+            }
+        }
+
+        public void IOReadWriteSession(Session Input, CancellationToken InnerToken)
         {
             DownloadEvent Event = new DownloadEvent();
             byte[] Buffer = new byte[_bufferSize];
             int Read;
+
             // Read Stream into Buffer
             while ((Read = Input.StreamInput.Read(Buffer, 0, Buffer.Length)) > 0)
             {

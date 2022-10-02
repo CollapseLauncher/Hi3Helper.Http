@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -8,6 +9,50 @@ namespace Hi3Helper.Http
 {
     public partial class HttpNew
     {
+        private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
+        {
+            this.SizeAttribute = new AttributesSize();
+            this.DownloadState = MultisessionState.WaitingOnSession;
+
+            Session session = new Session(this.PathURL, this.PathOutput, _Stream,
+                this.ConnectionToken, IsFileMode, false,
+                OffsetStart, OffsetEnd, this.PathOverwrite);
+
+            session.SessionRequest = new HttpRequestMessage()
+            {
+                RequestUri = new Uri(this.PathURL),
+                Method = HttpMethod.Get
+            };
+
+            if (!session.TrySetHttpRequestOffset()) return null;
+            if (await session.TrySetHttpResponse(this._client))
+            {
+                if (session.IsFileMode)
+                    session.SeekStreamOutputToEnd();
+
+                this.SizeAttribute.SizeDownloaded = session.StreamOutputSize;
+                this.SizeAttribute.SizeTotalToDownload = TryGetSingleSessionLength(session);
+                return session;
+            }
+
+            return null;
+        }
+
+        private long TryGetSingleSessionLength(Session session)
+        {
+            if (session.SessionResponse.Content.Headers.ContentLength is null)
+            {
+                return 0;
+            }
+
+            if (session.IsFileMode)
+            {
+                return (session.SessionResponse.Content.Headers.ContentLength ?? 0) + session.StreamOutputSize;
+            }
+
+            return session.SessionResponse.Content.Headers.ContentLength ?? 0;
+        }
+
         private async Task InitializeMultiSession()
         {
             this.SizeAttribute = new AttributesSize();
@@ -29,7 +74,7 @@ namespace Hi3Helper.Http
             for (long StartOffset = 0, t = 0; t < this.ConnectionSessions; t++)
             {
                 EndOffset = t + 1 == this.ConnectionSessions ? this.SizeAttribute.SizeTotalToDownload : (StartOffset + SliceSize - 1);
-                PathOut = this.PathOutput + string.Format(PathSessionPrefix, PathExtPrefix, t + 1);
+                PathOut = this.PathOutput + string.Format(PathSessionPrefix, (69420 * this.ConnectionSessions) ^ (87654 * t));
                 Session session = new Session(
                     this.PathURL, PathOut, null,
                     this.ConnectionToken, true, true,

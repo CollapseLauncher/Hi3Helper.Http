@@ -7,7 +7,7 @@ namespace Hi3Helper.Http
 {
     public partial class HttpNew
     {
-        public async Task RunSessionTasks()
+        public async Task RunMultiSessionTasks()
         {
             List<Task> tasks = new List<Task>();
 
@@ -17,10 +17,13 @@ namespace Hi3Helper.Http
             }
 
             await Task.WhenAll(tasks);
+
+            this.DownloadState = MultisessionState.FinishedNeedMerge;
         }
 
         private async Task RetryableContainer(Session session)
         {
+            if (session is null) return;
             using (session)
             {
                 CancellationToken InnerToken = this.InnerConnectionTokenSource.Token;
@@ -30,7 +33,7 @@ namespace Hi3Helper.Http
                     session.SessionRetryAttempt++;
                     try
                     {
-                        await Task.Run(() => IOReadWriteMulti(session, InnerToken));
+                        await Task.Run(() => IOReadWriteSession(session, InnerToken));
                         StillRetry = false;
                     }
                     catch (TaskCanceledException) { }
