@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ namespace Hi3Helper.Http
     {
         private async Task InitializeMultiSession()
         {
+            this.IsWaitingSessionBuild = true;
             this.SizeAttribute = new AttributesSize();
             this.DownloadState = MultisessionState.WaitingOnSession;
             string PathOut;
@@ -67,8 +69,36 @@ namespace Hi3Helper.Http
             }
 
             this.IsDownloadContinue = this.SizeAttribute.SizeDownloaded > 0;
-
+            this.IsWaitingSessionBuild = false;
             // CreateOrUpdateMetadata();
+        }
+
+        public async Task WaitUntilAllSessionReady()
+        {
+            if (this.ConnectionToken.IsCancellationRequested) return;
+
+            while ((this.IsWaitingSessionBuild
+                || this.Sessions.All(x => x.SessionState != MultisessionState.Downloading))
+               && !this.ConnectionToken.IsCancellationRequested
+               && !this.InnerConnectionTokenSource.Token.IsCancellationRequested)
+            {
+                if (!this.IsWaitingSessionBuild && this.Sessions.Count == 0) return;
+                await Task.Delay(33, this.ConnectionToken);
+            }
+        }
+
+        public async Task WaitUntilAllSessionDownloaded()
+        {
+            if (this.Sessions.Count == 0) return;
+            if (this.ConnectionToken.IsCancellationRequested) return;
+            if (this.IsWaitingSessionBuild)
+                throw new InvalidOperationException("You couldn't be able to use this method before all sessions are ready!");
+
+            while (this.Sessions.Any(x => x.SessionState == MultisessionState.Downloading)
+               && !this.ConnectionToken.IsCancellationRequested
+               && !this.InnerConnectionTokenSource.Token.IsCancellationRequested
+               && this.Sessions.Count != 0)
+                await Task.Delay(33, this.ConnectionToken);
         }
 
         private void IncrementDownloadedSize(Session session) => this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
