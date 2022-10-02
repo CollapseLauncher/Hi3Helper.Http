@@ -52,13 +52,12 @@ namespace Hi3Helper.Http
                 Input.SessionToken.ThrowIfCancellationRequested();
                 // Throw if Inner Token Cancellation is requested
                 InnerToken.ThrowIfCancellationRequested();
+                // Reset session retry attempt
+                Input.SessionRetryAttempt = 1;
 
                 // Lock SizeAttribute to avoid race condition while updating status
                 lock (this.SizeAttribute)
                 {
-                    // Reset session retry attempt
-                    Input.SessionRetryAttempt = 1;
-
                     // Increment SizeDownloaded attribute
                     this.SizeAttribute.SizeDownloaded += Read;
                     this.SizeAttribute.SizeDownloadedLast += Read;
