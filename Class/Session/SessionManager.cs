@@ -73,7 +73,7 @@ namespace Hi3Helper.Http
 
             for (long StartOffset = 0, t = 0; t < this.ConnectionSessions; t++)
             {
-                EndOffset = t + 1 == this.ConnectionSessions ? this.SizeAttribute.SizeTotalToDownload : (StartOffset + SliceSize - 1);
+                EndOffset = t + 1 == this.ConnectionSessions ? this.SizeAttribute.SizeTotalToDownload - 1 : (StartOffset + SliceSize - 1);
                 PathOut = this.PathOutput + string.Format(PathSessionPrefix, (69420 * this.ConnectionSessions) ^ (87654 * t));
                 Session session = new Session(
                     this.PathURL, PathOut, null,
