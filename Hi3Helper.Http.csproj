@@ -4,18 +4,14 @@
 		<TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net7.0</TargetFrameworks>
 		<Platforms>x64</Platforms>
 		<Configurations>Debug;Release;Publish</Configurations>
-		<DebugType>embedded</DebugType>
-		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
 		<Optimize>False</Optimize>
 	</PropertyGroup>
-
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
 		<Optimize>True</Optimize>
 	</PropertyGroup>
-
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Publish|x64'">
 		<Optimize>True</Optimize>
 	</PropertyGroup>
@@ -24,10 +20,6 @@
 		<Compile Remove="Test\**" />
 		<EmbeddedResource Remove="Test\**" />
 		<None Remove="Test\**" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <PackageReference Include="Crc32.NET" Version="1.2.0" />
 	</ItemGroup>
 
 </Project>
