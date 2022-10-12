@@ -18,12 +18,7 @@ namespace Hi3Helper.Http
                 this.ConnectionToken, IsFileMode, false,
                 OffsetStart, OffsetEnd, this.PathOverwrite);
 
-            session.SessionRequest = new HttpRequestMessage()
-            {
-                RequestUri = new Uri(this.PathURL),
-                Method = HttpMethod.Get
-            };
-
+            if (!session.TrySetHttpRequest()) return null;
             if (!session.TrySetHttpRequestOffset()) return null;
             if (await session.TrySetHttpResponse(this._client))
             {

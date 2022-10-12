@@ -42,13 +42,28 @@ namespace Hi3Helper.Http
             AdjustOffsets(OffsetStart, OffsetEnd);
         }
 
+        private long? _offsetStart { get; set; }
+        private long? _offsetEnd { get; set; }
+
         // Seek the StreamOutput to the end of file
         public void SeekStreamOutputToEnd() => this.StreamOutput.Seek(0, SeekOrigin.End);
 
         private void AdjustOffsets(long? Start, long? End)
         {
-            this.OffsetStart = (Start ?? 0) + this.StreamOutputSize;
-            this.OffsetEnd = End;
+            this.OffsetStart = this._offsetStart = (Start ?? 0) + this.StreamOutputSize;
+            this.OffsetEnd = this._offsetEnd = End;
+        }
+
+        public async Task TryReinitializeRequest(HttpClient _client)
+        {
+            this.OffsetStart = this._offsetStart + this.StreamOutputSize;
+            try
+            {
+                TrySetHttpRequest();
+                TrySetHttpRequestOffset();
+                await TrySetHttpResponse(_client);
+            }
+            catch (Exception) { throw; }
         }
 
         public bool TrySetHttpRequest()
@@ -150,9 +165,12 @@ namespace Hi3Helper.Http
 #if !NETSTANDARD
         public Stream StreamInput { get => this.SessionResponse?.Content.ReadAsStream(); }
 #else
-        public Stream StreamInput { get => this.SessionResponse?.Content.ReadAsStreamAsync()
+        public Stream StreamInput
+        {
+            get => this.SessionResponse?.Content.ReadAsStreamAsync()
                     .GetAwaiter()
-                    .GetResult(); }
+                    .GetResult();
+        }
 #endif
         public FileInfo FileOutput { get; private set; }
         public Stream StreamOutput { get; private set; }

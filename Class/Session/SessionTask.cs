@@ -48,6 +48,7 @@ namespace Hi3Helper.Http
                     }
                     catch (Exception)
                     {
+                        await session.TryReinitializeRequest(this._client);
                         if (session.SessionRetryAttempt > this.RetryMax)
                         {
                             StillRetry = false;
