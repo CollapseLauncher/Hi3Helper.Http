@@ -1,5 +1,4 @@
-﻿using Force.Crc32;
-using Hi3Helper.Http;
+﻿using Hi3Helper.Http;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,7 +13,6 @@ namespace Test
         static string Output3 = @"C:\Users\neon-nyan\AppData\LocalLow\CollapseLauncher\GameFolder\Hi3TW\Games\BH3_v5.9.0_cba771e4ca76.7z.dummy";
         static string Output4 = @"C:\Users\neon-nyan\Downloads\bin\YuanShen_2.8.54_beta.zip";
         static Http Client = new(true);
-        static Crc32Algorithm crc = new();
         static SimpleChecksum sh64 = new();
         static async Task Main()
         {
@@ -95,17 +93,19 @@ namespace Test
             */
             CancellationTokenSource TokenSource = new CancellationTokenSource();
             Client.DownloadProgress += Client_DownloadProgress;
-            await Client.Download(URL, Output, 4, true);
-            await Client.WaitUntilAllSessionReady();
-            await Client.WaitUntilAllSessionDownloaded();
+            Client.DownloadLog += Client_DownloadLog;
+            await Client.Download(URL, Output, 2, false);
 
-            Client.DownloadAsync(URL, Output, false, 8, TokenSource.Token);
-            await Client.WaitUntilAllSessionReady();
-            await Client.WaitUntilAllSessionDownloaded();
-
+            await Task.Delay(1000);
             TokenSource.Cancel();
             Client.DownloadProgress -= Client_DownloadProgress;
+            Client.DownloadLog -= Client_DownloadLog;
             Console.WriteLine("Cancelled! Waiting for 10 secs...");
+        }
+
+        private static void Client_DownloadLog(object? sender, DownloadLogEvent e)
+        {
+            Console.WriteLine(e.Message);
         }
 
         private static void Client_DownloadProgress(object? sender, DownloadEvent e)
