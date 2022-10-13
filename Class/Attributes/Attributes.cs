@@ -18,14 +18,14 @@ namespace Hi3Helper.Http
         // Inner HttpClient handler
         private HttpClientHandler _handler;
         // Inner Buffer size
-        private readonly int _bufferSize = 4 << 20;
+        private const int _bufferSize = 4 << 20;
         // Inner Merge Buffer size
-        private readonly int _bufferMergeSize = 8 << 20;
+        private const int _bufferMergeSize = 8 << 20;
 
         // Max allowed Connections for HttpClient instance
-        private readonly byte ConnectionMax = 16;
+        private const byte ConnectionMax = 16;
         // Max allowed Sessions for HttpClient instance (in Multi-session mode)
-        private readonly byte ConnectionSessionsMax = 8;
+        private const byte ConnectionSessionsMax = 8;
         // Sessions count
         private byte ConnectionSessions;
         // Connection Token for Cancellation
@@ -92,7 +92,7 @@ namespace Hi3Helper.Http
                 {
                     AllowAutoRedirect = true,
                     UseCookies = true,
-                    MaxConnectionsPerServer = this.ConnectionMax,
+                    MaxConnectionsPerServer = ConnectionMax,
                     AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
                 });
 

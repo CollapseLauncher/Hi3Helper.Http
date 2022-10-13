@@ -16,8 +16,8 @@ namespace Hi3Helper.Http
             this.ConnectionToken = ThreadToken;
             this.ConnectionSessions = ConnectionSessions;
 
-            if (ConnectionSessions > this.ConnectionSessionsMax)
-                throw new HttpHelperAllowedSessionsMaxed($"You've maxed allowed Connection Sessions ({ConnectionSessions} sessions have been set and only <= {this.ConnectionSessionsMax} sessions allowed)");
+            if (ConnectionSessions > ConnectionSessionsMax)
+                throw new HttpHelperAllowedSessionsMaxed($"You've maxed allowed Connection Sessions ({ConnectionSessions} sessions have been set and only <= {ConnectionSessionsMax} sessions allowed)");
 
             await InitializeMultiSession();
             // await TryRunSessionVerification();

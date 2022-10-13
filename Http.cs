@@ -20,7 +20,7 @@ namespace Hi3Helper.Http
             {
                 AllowAutoRedirect = true,
                 UseCookies = true,
-                MaxConnectionsPerServer = this.ConnectionMax,
+                MaxConnectionsPerServer = ConnectionMax,
                 AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
             };
 
@@ -35,7 +35,7 @@ namespace Hi3Helper.Http
             {
                 AllowAutoRedirect = true,
                 UseCookies = true,
-                MaxConnectionsPerServer = this.ConnectionMax
+                MaxConnectionsPerServer = ConnectionMax
             };
 
             ResetState(false);
