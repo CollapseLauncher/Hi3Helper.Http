@@ -74,6 +74,8 @@ namespace Hi3Helper.Http
             }
         }
 
+        public long GetHashNumber(long num1, long num2, long s1 = 69420, long s2 = 87654) => (s1 * num1) ^ (s2 * num2);
+
         public void ResetState(bool IsStop)
         {
             if (IsStop)

@@ -69,7 +69,7 @@ namespace Hi3Helper.Http
             for (long StartOffset = 0, t = 0; t < this.ConnectionSessions; t++)
             {
                 EndOffset = t + 1 == this.ConnectionSessions ? this.SizeAttribute.SizeTotalToDownload - 1 : (StartOffset + SliceSize - 1);
-                PathOut = this.PathOutput + string.Format(PathSessionPrefix, (69420 * this.ConnectionSessions) ^ (87654 * t));
+                PathOut = this.PathOutput + string.Format(PathSessionPrefix, GetHashNumber(this.ConnectionSessions, t));
                 Session session = new Session(
                     this.PathURL, PathOut, null,
                     this.ConnectionToken, true, true,
@@ -173,7 +173,7 @@ namespace Hi3Helper.Http
             string SessionFilePathLegacy;
             for (int t = 0; t < Sessions; t++)
             {
-                SessionFilePath = Path + string.Format(PathSessionPrefix, (69420 * Sessions) ^ (87654 * t));
+                SessionFilePath = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
                 SessionFilePathLegacy = Path + string.Format(".{0:000}", t + 1);
                 try
                 {
@@ -200,7 +200,7 @@ namespace Hi3Helper.Http
             string SessionFilePath;
             for (int t = 0; t < Sessions; t++)
             {
-                SessionFilePath = Path + string.Format(PathSessionPrefix, (69420 * Sessions) ^ (87654 * t));
+                SessionFilePath = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
                 try
                 {
                     FileInfo fileInfo = new FileInfo(SessionFilePath);
