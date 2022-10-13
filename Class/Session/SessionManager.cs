@@ -68,15 +68,17 @@ namespace Hi3Helper.Http
 
             for (long StartOffset = 0, t = 0; t < this.ConnectionSessions; t++)
             {
+                long ID = GetHashNumber(this.ConnectionSessions, t);
                 EndOffset = t + 1 == this.ConnectionSessions ? this.SizeAttribute.SizeTotalToDownload - 1 : (StartOffset + SliceSize - 1);
-                PathOut = this.PathOutput + string.Format(PathSessionPrefix, GetHashNumber(this.ConnectionSessions, t));
+                PathOut = this.PathOutput + string.Format(PathSessionPrefix, ID);
                 Session session = new Session(
                     this.PathURL, PathOut, null,
                     this.ConnectionToken, true, true,
                     StartOffset, EndOffset, this.PathOverwrite)
                 {
                     IsLastSession = t + 1 == this.ConnectionSessions,
-                    SessionSize = EndOffset - StartOffset
+                    SessionSize = EndOffset - StartOffset,
+                    SessionID = ID
                 };
 
                 if (session.IsExistingFileOversized(StartOffset, EndOffset))
