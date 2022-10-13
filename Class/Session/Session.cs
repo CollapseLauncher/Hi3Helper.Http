@@ -42,23 +42,23 @@ namespace Hi3Helper.Http
             AdjustOffsets(OffsetStart, OffsetEnd);
         }
 
-        private long? _offsetStart { get; set; }
-        private long? _offsetEnd { get; set; }
-
         // Seek the StreamOutput to the end of file
         public void SeekStreamOutputToEnd() => this.StreamOutput.Seek(0, SeekOrigin.End);
 
         private void AdjustOffsets(long? Start, long? End)
         {
-            this.OffsetStart = this._offsetStart = (Start ?? 0) + this.StreamOutputSize;
-            this.OffsetEnd = this._offsetEnd = End;
+            this.OffsetStart = (Start ?? 0) + this.StreamOutputSize;
+            this.OffsetEnd = End;
         }
 
         public async Task TryReinitializeRequest(HttpClient _client)
         {
-            this.OffsetStart = this._offsetStart + this.StreamOutputSize;
             try
             {
+                this.StreamInput?.Dispose();
+                this.SessionRequest?.Dispose();
+                this.SessionResponse?.Dispose();
+
                 TrySetHttpRequest();
                 TrySetHttpRequestOffset();
                 await TrySetHttpResponse(_client);
@@ -140,7 +140,7 @@ namespace Hi3Helper.Http
         public long LastChecksumPos { get => this.Checksum.LastChecksumPos; }
 
         // Session Offset Properties
-        public long? OffsetStart { get; private set; }
+        public long? OffsetStart { get; set; }
         public long? OffsetEnd { get; private set; }
 
         // Path Properties
@@ -160,6 +160,7 @@ namespace Hi3Helper.Http
         public MultisessionState SessionState { get; set; }
         public long SessionSize { get; set; }
         public int SessionRetryAttempt { get; set; }
+        public long SessionID = 0;
 
         // Stream Properties
 #if !NETSTANDARD

@@ -77,6 +77,8 @@ namespace Hi3Helper.Http
             {
                 // Write Buffer to the output Stream
                 Input.StreamOutput.Write(Buffer, 0, Read);
+                // Increment as last OffsetStart adjusted
+                Input.OffsetStart += Read;
                 // Compute checksum from Buffer
                 // Input.Checksum.ComputeHash32(Buffer, Read);
                 // Set Inner Session Status
