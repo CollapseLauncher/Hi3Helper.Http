@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
@@ -22,38 +21,29 @@ namespace Hi3Helper.Http
 
             DownloadEvent Event = new DownloadEvent();
 
-            try
+            using (FileStream fs = new FileStream(this.PathOutput, FileMode.Create, FileAccess.Write))
             {
-                using (FileStream fs = new FileStream(this.PathOutput, FileMode.Create, FileAccess.Write))
+                for (int t = 0; t < this.ConnectionSessions; t++)
                 {
-                    for (int t = 0; t < this.ConnectionSessions; t++)
+                    string chunkPath = this.PathOutput + string.Format(PathSessionPrefix, GetHashNumber(this.ConnectionSessions, t));
+                    using (FileStream os = new FileStream(chunkPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                     {
-                        string chunkPath = this.PathOutput + string.Format(PathSessionPrefix, GetHashNumber(this.ConnectionSessions, t));
-                        using (FileStream os = new FileStream(chunkPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
-                        {
-                            await Task.Run(() => IOReadWrite(os, fs, _bufferMergeSize, this.ConnectionToken));
-                        }
+                        await Task.Run(() => IOReadWrite(os, fs, _bufferMergeSize, this.ConnectionToken));
                     }
                 }
-
-                // Update state
-                Event.UpdateDownloadEvent(
-                        this.SizeAttribute.SizeDownloadedLast,
-                        this.SizeAttribute.SizeDownloaded,
-                        this.SizeAttribute.SizeTotalToDownload,
-                        0,
-                        this.SessionsStopwatch.Elapsed.Milliseconds,
-                        this.DownloadState = MultisessionState.Finished
-                        );
-
-                this.UpdateProgress(Event);
             }
-            catch (TaskCanceledException) { }
-            catch (OperationCanceledException) { }
-            catch (Exception)
-            {
-                throw;
-            }
+
+            // Update state
+            Event.UpdateDownloadEvent(
+                    this.SizeAttribute.SizeDownloadedLast,
+                    this.SizeAttribute.SizeDownloaded,
+                    this.SizeAttribute.SizeTotalToDownload,
+                    0,
+                    this.SessionsStopwatch.Elapsed.Milliseconds,
+                    this.DownloadState = MultisessionState.Finished
+                    );
+
+            this.UpdateProgress(Event);
         }
 
         public async void MergeAsync() => await Merge();
