@@ -30,12 +30,13 @@ namespace Hi3Helper.Http
         public Http()
         {
             this.DownloadState = MultisessionState.Idle;
-            this._ignoreHttpCompression = false;
+            this._ignoreHttpCompression = true;
             this._handler = new HttpClientHandler()
             {
                 AllowAutoRedirect = true,
                 UseCookies = true,
-                MaxConnectionsPerServer = ConnectionMax
+                MaxConnectionsPerServer = ConnectionMax,
+                AutomaticDecompression = DecompressionMethods.None
             };
 
             ResetState(false);
