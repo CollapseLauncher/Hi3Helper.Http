@@ -20,7 +20,6 @@ namespace Hi3Helper.Http
                 throw new HttpHelperAllowedSessionsMaxed($"You've maxed allowed Connection Sessions ({ConnectionSessions} sessions have been set and only <= {ConnectionSessionsMax} sessions allowed)");
 
             await InitializeMultiSession();
-            // await TryRunSessionVerification();
             await RunMultiSessionTasks();
 
             ResetState(true);
