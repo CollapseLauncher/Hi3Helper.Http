@@ -51,7 +51,11 @@ namespace Hi3Helper.Http
             this.OffsetEnd = End;
         }
 
+#if NETSTANDARD
         public async Task TryReinitializeRequest(HttpClient _client)
+#elif NETCOREAPP
+        public void TryReinitializeRequest(HttpClient _client)
+#endif
         {
             try
             {
@@ -61,7 +65,11 @@ namespace Hi3Helper.Http
 
                 TrySetHttpRequest();
                 TrySetHttpRequestOffset();
+#if NETSTANDARD
                 await TrySetHttpResponse(_client);
+#elif NETCOREAPP
+                TrySetHttpResponse(_client);
+#endif
             }
             catch (Exception) { throw; }
         }
@@ -100,11 +108,19 @@ namespace Hi3Helper.Http
             catch (Exception) { throw; }
         }
 
+#if NETSTANDARD
         public async Task<bool> TrySetHttpResponse(HttpClient client)
+#elif NETCOREAPP
+        public bool TrySetHttpResponse(HttpClient client)
+#endif
         {
             try
             {
+#if NETSTANDARD
                 HttpResponseMessage Input = await client.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+#elif NETCOREAPP
+                HttpResponseMessage Input = client.Send(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+#endif
                 if (Input.IsSuccessStatusCode)
                 {
                     this.SessionResponse = Input;
