@@ -13,11 +13,7 @@ namespace Hi3Helper.Http
 
             foreach (Session session in this.Sessions)
             {
-#if NETSTANDARD
                 tasks.Add(RetryableContainer(session));
-#elif NETCOREAPP
-                tasks.Add(Task.Run(() => RetryableContainer(session)));
-#endif
             }
 
             await Task.WhenAll(tasks);
@@ -25,11 +21,7 @@ namespace Hi3Helper.Http
             this.DownloadState = MultisessionState.FinishedNeedMerge;
         }
 
-#if NETSTANDARD
         private async Task RetryableContainer(Session session)
-#elif NETCOREAPP
-        private void RetryableContainer(Session session)
-#endif
         {
             if (session == null) return;
             using (session)
@@ -41,11 +33,7 @@ namespace Hi3Helper.Http
                     session.SessionRetryAttempt++;
                     try
                     {
-#if NETSTANDARD
                         await Task.Run(() => IOReadWriteSession(session, InnerToken));
-#elif NETCOREAPP
-                        IOReadWriteSession(session, InnerToken);
-#endif
                         StillRetry = false;
                     }
                     catch (TaskCanceledException)
@@ -60,11 +48,7 @@ namespace Hi3Helper.Http
                     }
                     catch (Exception ex)
                     {
-#if NETSTANDARD
                         await session.TryReinitializeRequest(this._client);
-#elif NETCOREAPP
-                        session.TryReinitializeRequest(this._client);
-#endif
                         if (session.SessionRetryAttempt > this.RetryMax)
                         {
                             StillRetry = false;

@@ -9,11 +9,7 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-#if NETSTANDARD
         private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
-#elif NETCOREAPP
-        private Session InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
-#endif
         {
             this.SizeAttribute = new AttributesSize();
             this.DownloadState = MultisessionState.WaitingOnSession;
@@ -24,11 +20,7 @@ namespace Hi3Helper.Http
 
             if (!session.TrySetHttpRequest()) return null;
             if (!session.TrySetHttpRequestOffset()) return null;
-#if NETSTANDARD
             if (await session.TrySetHttpResponse(this._client))
-#elif NETCOREAPP
-            if (session.TrySetHttpResponse(this._client))
-#endif
             {
                 if (session.IsFileMode)
                     session.SeekStreamOutputToEnd();
@@ -56,11 +48,7 @@ namespace Hi3Helper.Http
             return session.SessionResponse.Content.Headers.ContentLength ?? 0;
         }
 
-#if NETSTANDARD
         private async Task InitializeMultiSession()
-#elif NETCOREAPP
-        private void InitializeMultiSession()
-#endif
         {
             this.SizeAttribute = new AttributesSize();
             this.DownloadState = MultisessionState.WaitingOnSession;
@@ -68,11 +56,7 @@ namespace Hi3Helper.Http
 
             // if (this.IsSessionContinue = LoadMetadata()) return;
 
-#if NETSTANDARD
             long? RemoteLength = await TryGetContentLength(this.PathURL, this.ConnectionToken);
-#elif NETCOREAPP
-            long? RemoteLength = TryGetContentLength(this.PathURL, this.ConnectionToken);
-#endif
 
             if (RemoteLength == null)
                 throw new NullReferenceException($"File can't be downloaded because the content-length is undefined!");
@@ -111,11 +95,7 @@ namespace Hi3Helper.Http
 
                 if (IsSetRequestOffsetSuccess)
                 {
-#if NETSTANDARD
                     IsSetResponseSuccess = await session.TrySetHttpResponse(this._client);
-#elif NETCOREAPP
-                    IsSetResponseSuccess = session.TrySetHttpResponse(this._client);
-#endif
                 }
 
                 IncrementDownloadedSize(session);
@@ -234,22 +214,14 @@ namespace Hi3Helper.Http
             return Ret;
         }
 
-#if NETSTANDARD
         public async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
-#elif NETCOREAPP
-        public long? TryGetContentLength(string URL, CancellationToken Token)
-#endif
         {
             byte CurrentRetry = 0;
             while (true)
             {
                 try
                 {
-#if NETSTANDARD
                     return await GetContentLength(URL, Token);
-#elif NETCOREAPP
-                    return GetContentLengthSync(URL, Token);
-#endif
                 }
                 catch (HttpRequestException)
                 {
@@ -258,11 +230,7 @@ namespace Hi3Helper.Http
                         throw;
 
                     PushLog($"Error while fetching File Size (Retry Attempt: {CurrentRetry})...", LogSeverity.Warning);
-#if NETSTANDARD
                     await Task.Delay(this.RetryInterval, Token);
-#elif NETCOREAPP
-                    Task.Delay(this.RetryInterval, Token).GetAwaiter().GetResult();
-#endif
                 }
             }
         }
@@ -270,17 +238,6 @@ namespace Hi3Helper.Http
         private async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
         {
             HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
-
-            long? Length = response.Content.Headers.ContentLength;
-
-            response.Dispose();
-
-            return Length;
-        }
-
-        private long? GetContentLengthSync(string Input, CancellationToken token = new CancellationToken())
-        {
-            HttpResponseMessage response = _client.Send(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
 
             long? Length = response.Content.Headers.ContentLength;
 

@@ -53,16 +53,8 @@ namespace Hi3Helper.Http
             this.PathOverwrite = Overwrite;
             this.ConnectionToken = ThreadToken;
 
-#if NETSTANDARD
             Session session = await InitializeSingleSession(OffsetStart, OffsetEnd, true, null);
             await RetryableContainer(session);
-#elif NETCOREAPP
-            await Task.Run(() =>
-            {
-                Session session = InitializeSingleSession(OffsetStart, OffsetEnd, true, null);
-                RetryableContainer(session);
-            });
-#endif
 
             this.DownloadState = MultisessionState.Finished;
 
@@ -78,17 +70,8 @@ namespace Hi3Helper.Http
             this.PathURL = URL;
             this.ConnectionToken = ThreadToken;
 
-#if NETSTANDARD
             Session session = await InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream);
             await RetryableContainer(session);
-#elif NETCOREAPP
-            await Task.Run(() =>
-            {
-
-                Session session = InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream);
-                RetryableContainer(session);
-            });
-#endif
 
             this.DownloadState = MultisessionState.Finished;
 
