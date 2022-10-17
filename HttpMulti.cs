@@ -8,8 +8,9 @@ namespace Hi3Helper.Http
         public async Task Download(string URL, string Output, byte ConnectionSessions = 4,
             bool Overwrite = false, CancellationToken ThreadToken = new CancellationToken())
         {
-            ResetState(false);
+            ResetState();
 
+            this.Sessions.Clear();
             this.PathURL = URL;
             this.PathOutput = Output;
             this.PathOverwrite = Overwrite;
@@ -19,10 +20,15 @@ namespace Hi3Helper.Http
             if (ConnectionSessions > ConnectionSessionsMax)
                 throw new HttpHelperAllowedSessionsMaxed($"You've maxed allowed Connection Sessions ({ConnectionSessions} sessions have been set and only <= {ConnectionSessionsMax} sessions allowed)");
 
+#if NETSTANDARD
             await InitializeMultiSession();
             await RunMultiSessionTasks();
+#elif NETCOREAPP
+            await Task.Run(InitializeMultiSession);
+            await Task.WhenAll(RunMultiSessionTasks());
 
-            ResetState(true);
+            this.DownloadState = MultisessionState.FinishedNeedMerge;
+#endif
         }
 
         public async void DownloadAsync(string URL, string Output, bool Overwrite = false,

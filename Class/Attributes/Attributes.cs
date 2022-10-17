@@ -75,31 +75,10 @@ namespace Hi3Helper.Http
 
         public long GetHashNumber(long num1, long num2, long s1 = 69420, long s2 = 87654) => (s1 * num1) ^ (s2 * num2);
 
-        public void ResetState(bool IsStop)
+        public void ResetState()
         {
-            if (IsStop)
-            {
-                this.InnerConnectionTokenSource.Cancel();
-                this.SessionsStopwatch.Stop();
-                this._client.Dispose();
-            }
-            else
-            {
-                this.InnerConnectionTokenSource = new CancellationTokenSource();
-                this.SessionsStopwatch = Stopwatch.StartNew();
-                this._client = new HttpClient(this._handler = new HttpClientHandler
-                {
-                    AllowAutoRedirect = true,
-                    UseCookies = true,
-                    MaxConnectionsPerServer = ConnectionMax,
-                    AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
-                });
-
-                if (this._clientUserAgent != null)
-                    this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
-            }
-
-            this.Sessions.Clear();
+            this.InnerConnectionTokenSource = new CancellationTokenSource();
+            this.SessionsStopwatch = Stopwatch.StartNew();
         }
     }
 }

@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,7 +10,12 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
+
+#if NETSTANDARD
         private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
+#elif NETCOREAPP
+        private Session InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
+#endif
         {
             this.SizeAttribute = new AttributesSize();
             this.DownloadState = MultisessionState.WaitingOnSession;
@@ -18,37 +24,54 @@ namespace Hi3Helper.Http
                 this.ConnectionToken, IsFileMode, false,
                 OffsetStart, OffsetEnd, this.PathOverwrite);
 
-            if (!session.TrySetHttpRequest()) return null;
-            if (!session.TrySetHttpRequestOffset()) return null;
-            if (await session.TrySetHttpResponse(this._client))
+            session.SessionRequest = new HttpRequestMessage()
             {
-                if (session.IsFileMode)
-                    session.SeekStreamOutputToEnd();
+                RequestUri = new Uri(this.PathURL),
+                Method = HttpMethod.Get
+            };
 
-                this.SizeAttribute.SizeDownloaded = session.StreamOutputSize;
-                this.SizeAttribute.SizeTotalToDownload = TryGetSingleSessionLength(session);
-                return session;
+            if (!!((session.IsLastSession ? session.OffsetEnd - 1 : session.OffsetEnd) - session.OffsetStart < 0
+                && (session.IsLastSession ? session.OffsetEnd - 1 : session.OffsetEnd) - session.OffsetStart == -1))
+                return null;
+
+            session.SessionRequest.Headers.Range = new RangeHeaderValue(session.OffsetStart, session.OffsetEnd);
+
+#if NETSTANDARD
+            HttpResponseMessage Input = await _client.SendAsync(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
+#elif NETCOREAPP
+            HttpResponseMessage Input = _client.Send(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
+#endif
+
+            if (!Input.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
             }
 
-            return null;
-        }
+            session.SessionResponse = Input;
 
-        private long TryGetSingleSessionLength(Session session)
-        {
+            if ((int)Input.StatusCode == 416) return null;
+
+            session.StreamOutput.Seek(0, SeekOrigin.End);
+
+            this.SizeAttribute.SizeDownloaded = session.StreamOutputSize;
+
             if (session.SessionResponse.Content.Headers.ContentLength == null)
             {
-                return 0;
+                this.SizeAttribute.SizeTotalToDownload = 0;
             }
-
-            if (session.IsFileMode)
+            else
             {
-                return (session.SessionResponse.Content.Headers.ContentLength ?? 0) + session.StreamOutputSize;
+                this.SizeAttribute.SizeTotalToDownload = (session.SessionResponse.Content.Headers.ContentLength ?? 0) + session.StreamOutputSize;
             }
 
-            return session.SessionResponse.Content.Headers.ContentLength ?? 0;
+            return session;
         }
 
+#if NETSTANDARD
         private async Task InitializeMultiSession()
+#elif NETCOREAPP
+        private void InitializeMultiSession()
+#endif
         {
             this.SizeAttribute = new AttributesSize();
             this.DownloadState = MultisessionState.WaitingOnSession;
@@ -56,7 +79,11 @@ namespace Hi3Helper.Http
 
             // if (this.IsSessionContinue = LoadMetadata()) return;
 
+#if NETSTANDARD
             long? RemoteLength = await TryGetContentLength(this.PathURL, this.ConnectionToken);
+#elif NETCOREAPP
+            long? RemoteLength = TryGetContentLength(this.PathURL, this.ConnectionToken);
+#endif
 
             if (RemoteLength == null)
                 throw new NullReferenceException($"File can't be downloaded because the content-length is undefined!");
@@ -95,7 +122,11 @@ namespace Hi3Helper.Http
 
                 if (IsSetRequestOffsetSuccess)
                 {
-                    IsSetResponseSuccess = await session.TrySetHttpResponse(this._client);
+#if NETSTANDARD
+                    IsSetResponseSuccess = await session.TrySetHttpResponse(_client);
+#elif NETCOREAPP
+                    IsSetResponseSuccess = session.TrySetHttpResponse(_client);
+#endif
                 }
 
                 IncrementDownloadedSize(session);
@@ -152,7 +183,7 @@ namespace Hi3Helper.Http
 
         private void IncrementDownloadedSize(Session session) => this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
 
-        public Session ReinitializeSession(Session Input, bool IsMultiSession, bool ForceOverwrite = false,
+        private Session ReinitializeSession(Session Input, bool IsMultiSession, bool ForceOverwrite = false,
             long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
         {
             Input.Dispose();
@@ -214,14 +245,22 @@ namespace Hi3Helper.Http
             return Ret;
         }
 
+#if NETSTANDARD
         public async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
+#elif NETCOREAPP
+        public long? TryGetContentLength(string URL, CancellationToken Token)
+#endif
         {
             byte CurrentRetry = 0;
             while (true)
             {
                 try
                 {
+#if NETSTANDARD
                     return await GetContentLength(URL, Token);
+#elif NETCOREAPP
+                    return GetContentLength(URL, Token);
+#endif
                 }
                 catch (HttpRequestException)
                 {
@@ -230,14 +269,24 @@ namespace Hi3Helper.Http
                         throw;
 
                     PushLog($"Error while fetching File Size (Retry Attempt: {CurrentRetry})...", LogSeverity.Warning);
+#if NETSTANDARD
                     await Task.Delay(this.RetryInterval, Token);
+#elif NETCOREAPP
+                    Task.Delay(this.RetryInterval, Token).GetAwaiter().GetResult();
+#endif
                 }
             }
         }
 
+#if NETSTANDARD
         private async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
         {
             HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
+#elif NETCOREAPP
+        private long? GetContentLength(string Input, CancellationToken token = new CancellationToken())
+        {
+            HttpResponseMessage response = _client.Send(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
+#endif
 
             long? Length = response.Content.Headers.ContentLength;
 

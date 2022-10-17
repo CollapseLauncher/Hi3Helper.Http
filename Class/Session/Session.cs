@@ -51,6 +51,7 @@ namespace Hi3Helper.Http
             this.OffsetEnd = End;
         }
 
+#if NETSTANDARD
         public async Task TryReinitializeRequest(HttpClient _client)
         {
             try
@@ -66,6 +67,51 @@ namespace Hi3Helper.Http
             catch (Exception) { throw; }
         }
 
+        public async Task<bool> TrySetHttpResponse(HttpClient _client)
+        {
+            HttpResponseMessage Input = await _client.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+            if (Input.IsSuccessStatusCode)
+            {
+                this.SessionResponse = Input;
+                return true;
+            }
+
+            if ((int)Input.StatusCode == 416) return false;
+
+            throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
+        }
+
+#elif NETCOREAPP
+        public void TryReinitializeRequest(HttpClient _client)
+        {
+            try
+            {
+                this.StreamInput?.Dispose();
+                this.SessionRequest?.Dispose();
+                this.SessionResponse?.Dispose();
+
+                TrySetHttpRequest();
+                TrySetHttpRequestOffset();
+                TrySetHttpResponse(_client);
+            }
+            catch (Exception) { throw; }
+        }
+
+        public bool TrySetHttpResponse(HttpClient _client)
+        {
+            HttpResponseMessage Input = _client.Send(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+            if (Input.IsSuccessStatusCode)
+            {
+                this.SessionResponse = Input;
+                return true;
+            }
+
+            if ((int)Input.StatusCode == 416) return false;
+
+            throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
+        }
+#endif
+
         public bool TrySetHttpRequest()
         {
             this.SessionRequest = new HttpRequestMessage()
@@ -77,10 +123,7 @@ namespace Hi3Helper.Http
             return IsExistingFileSizeValid();
         }
 
-        public bool IsExistingFileOversized(long OffsetStart, long OffsetEnd)
-        {
-            return this.StreamOutputSize > OffsetEnd + 1 - OffsetStart;
-        }
+        public bool IsExistingFileOversized(long OffsetStart, long OffsetEnd) => this.StreamOutputSize > OffsetEnd + 1 - OffsetStart;
 
         private bool IsExistingFileSizeValid() =>
             !((this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart < 0
@@ -98,25 +141,6 @@ namespace Hi3Helper.Http
                 return false;
             }
             catch (Exception) { throw; }
-        }
-
-        public async Task<bool> TrySetHttpResponse(HttpClient client)
-        {
-            try
-            {
-                HttpResponseMessage Input = await client.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
-                if (Input.IsSuccessStatusCode)
-                {
-                    this.SessionResponse = Input;
-                    return true;
-                }
-
-                if ((int)Input.StatusCode == 416) return false;
-
-                throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
-            }
-            catch (HttpRequestException) { throw; }
-            catch (Exception) { return false; }
         }
 
         public void InjectLastHash(int Hash) => this.Checksum.InjectHash(Hash);

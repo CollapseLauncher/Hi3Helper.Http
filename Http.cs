@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -24,7 +25,13 @@ namespace Hi3Helper.Http
                 AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
             };
 
-            ResetState(false);
+            this._client = new HttpClient(this._handler);
+
+            if (this._clientUserAgent != null)
+                this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
+
+            this.InnerConnectionTokenSource = new CancellationTokenSource();
+            this.SessionsStopwatch = Stopwatch.StartNew();
         }
 
         public Http()
@@ -39,43 +46,56 @@ namespace Hi3Helper.Http
                 AutomaticDecompression = DecompressionMethods.None
             };
 
-            ResetState(false);
+            this._client = new HttpClient(this._handler);
+
+            this.InnerConnectionTokenSource = new CancellationTokenSource();
+            this.SessionsStopwatch = Stopwatch.StartNew();
         }
 
         public async Task Download(string URL, string Output,
             bool Overwrite, long? OffsetStart = null, long? OffsetEnd = null,
             CancellationToken ThreadToken = new CancellationToken())
         {
-            ResetState(false);
+            ResetState();
 
             this.PathURL = URL;
             this.PathOutput = Output;
             this.PathOverwrite = Overwrite;
             this.ConnectionToken = ThreadToken;
 
+#if NETSTANDARD
             Session session = await InitializeSingleSession(OffsetStart, OffsetEnd, true, null);
             await RetryableContainer(session);
-
+#elif NETCOREAPP
+            await Task.Run(() =>
+            {
+                Session session = InitializeSingleSession(OffsetStart, OffsetEnd, true, null);
+                RetryableContainer(session);
+            });
+#endif
             this.DownloadState = MultisessionState.Finished;
-
-            ResetState(true);
         }
 
         public async Task Download(string URL, Stream Outstream,
             long? OffsetStart = null, long? OffsetEnd = null,
             CancellationToken ThreadToken = new CancellationToken())
         {
-            ResetState(false);
+            ResetState();
 
             this.PathURL = URL;
             this.ConnectionToken = ThreadToken;
 
+#if NETSTANDARD
             Session session = await InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream);
             await RetryableContainer(session);
-
+#elif NETCOREAPP
+            await Task.Run(() =>
+            {
+                Session session = InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream);
+                RetryableContainer(session);
+            });
+#endif
             this.DownloadState = MultisessionState.Finished;
-
-            ResetState(true);
         }
 
         public void Dispose()
