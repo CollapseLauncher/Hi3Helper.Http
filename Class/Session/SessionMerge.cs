@@ -7,7 +7,9 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-        public async Task Merge()
+        public async Task Merge() => await Task.Run(MergeSync);
+
+        public void MergeSync()
         {
             if (this.DownloadState != MultisessionState.FinishedNeedMerge)
             {
@@ -28,7 +30,7 @@ namespace Hi3Helper.Http
                     string chunkPath = this.PathOutput + string.Format(PathSessionPrefix, GetHashNumber(this.ConnectionSessions, t));
                     using (FileStream os = new FileStream(chunkPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                     {
-                        await Task.Run(() => IOReadWrite(os, fs, _bufferMergeSize, this.ConnectionToken));
+                        IOReadWrite(os, fs, _bufferMergeSize, this.ConnectionToken);
                     }
                 }
             }

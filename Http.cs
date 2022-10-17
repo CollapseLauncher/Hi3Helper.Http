@@ -52,6 +52,38 @@ namespace Hi3Helper.Http
             this.SessionsStopwatch = Stopwatch.StartNew();
         }
 
+#if NETCOREAPP
+        public void DownloadSync(string URL, string Output,
+            bool Overwrite, long? OffsetStart = null, long? OffsetEnd = null,
+            CancellationToken ThreadToken = new CancellationToken())
+        {
+            ResetState();
+
+            this.PathURL = URL;
+            this.PathOutput = Output;
+            this.PathOverwrite = Overwrite;
+            this.ConnectionToken = ThreadToken;
+
+            RetryableContainer(InitializeSingleSession(OffsetStart, OffsetEnd, true, null));
+
+            this.DownloadState = MultisessionState.Finished;
+        }
+
+        public void DownloadSync(string URL, Stream Outstream,
+            long? OffsetStart = null, long? OffsetEnd = null,
+            CancellationToken ThreadToken = new CancellationToken())
+        {
+            ResetState();
+
+            this.PathURL = URL;
+            this.ConnectionToken = ThreadToken;
+
+            RetryableContainer(InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream));
+
+            this.DownloadState = MultisessionState.Finished;
+        }
+#endif
+
         public async Task Download(string URL, string Output,
             bool Overwrite, long? OffsetStart = null, long? OffsetEnd = null,
             CancellationToken ThreadToken = new CancellationToken())
@@ -64,14 +96,10 @@ namespace Hi3Helper.Http
             this.ConnectionToken = ThreadToken;
 
 #if NETSTANDARD
-            Session session = await InitializeSingleSession(OffsetStart, OffsetEnd, true, null);
-            await RetryableContainer(session);
+            await RetryableContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, true, null));
 #elif NETCOREAPP
-            await Task.Run(() =>
-            {
-                Session session = InitializeSingleSession(OffsetStart, OffsetEnd, true, null);
-                RetryableContainer(session);
-            });
+            await Task.Run(() => 
+                RetryableContainer(InitializeSingleSession(OffsetStart, OffsetEnd, true, null)));
 #endif
             this.DownloadState = MultisessionState.Finished;
         }
@@ -86,14 +114,10 @@ namespace Hi3Helper.Http
             this.ConnectionToken = ThreadToken;
 
 #if NETSTANDARD
-            Session session = await InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream);
-            await RetryableContainer(session);
+            await RetryableContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream));
 #elif NETCOREAPP
             await Task.Run(() =>
-            {
-                Session session = InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream);
-                RetryableContainer(session);
-            });
+                RetryableContainer(InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream)));
 #endif
             this.DownloadState = MultisessionState.Finished;
         }
