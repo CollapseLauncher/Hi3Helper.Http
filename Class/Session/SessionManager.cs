@@ -230,6 +230,31 @@ namespace Hi3Helper.Http
             }
         }
 
+        public long CalculateExistingMultisessionFilesWithExpctdSize(string Path, byte Sessions, long ExpectedSize)
+        {
+            long Ret = 0;
+            string SessionFilePath;
+            FileInfo parentFile = new FileInfo(Path);
+            if (parentFile.Exists)
+            {
+                if (parentFile.Length == ExpectedSize)
+                    return parentFile.Length;
+            }
+
+            for (int t = 0; t < Sessions; t++)
+            {
+                SessionFilePath = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
+                try
+                {
+                    FileInfo fileInfo = new FileInfo(SessionFilePath);
+                    if (fileInfo.Exists) Ret += fileInfo.Length;
+                }
+                catch { }
+            }
+
+            return Ret;
+        }
+
         public long CalculateExistingMultisessionFiles(string Path, byte Sessions)
         {
             long Ret = 0;
