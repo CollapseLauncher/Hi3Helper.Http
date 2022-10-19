@@ -109,7 +109,6 @@ namespace Hi3Helper.Http
                     StartOffset, EndOffset, this.PathOverwrite)
                 {
                     IsLastSession = t + 1 == this.ConnectionSessions,
-                    SessionSize = EndOffset - StartOffset,
                     SessionID = ID
                 };
 
@@ -201,7 +200,6 @@ namespace Hi3Helper.Http
                 )
             {
                 IsLastSession = Input.IsLastSession,
-                SessionSize = (Input.OffsetEnd - Input.OffsetStart) ?? 0
             };
         }
 

@@ -10,7 +10,7 @@ namespace Hi3Helper.Http
     public class Session : IDisposable
     {
         public Session(string PathURL, string PathOutput, Stream SOutput,
-            CancellationToken SToken, bool IsFileMode, bool IsMultiSession,
+            CancellationToken SToken, bool IsFileMode,
             long? OffsetStart = null, long? OffsetEnd = null, bool Overwrite = false)
         {
             // Initialize Properties
@@ -19,9 +19,8 @@ namespace Hi3Helper.Http
             this.StreamOutput = SOutput;
             this.SessionToken = SToken;
             this.IsFileMode = IsFileMode;
-            this.IsMultiSession = IsMultiSession;
             this.SessionState = MultisessionState.Idle;
-            this.Checksum = new SimpleChecksum();
+            // this.Checksum = new SimpleChecksum();
 
             // If the OutStream is explicitly defined, use OutStream instead and set to IsFileMode == false.
             if (SOutput != null)
@@ -33,11 +32,10 @@ namespace Hi3Helper.Http
             }
 
             // Else, use file and set IsFileMode == true.
-            this.FileOutput = new FileInfo(this.PathOutput);
             if (Overwrite)
-                this.StreamOutput = this.FileOutput.Create();
+                this.StreamOutput = new FileStream(this.PathOutput, FileMode.Create, FileAccess.Write);
             else
-                this.StreamOutput = this.FileOutput.OpenWrite();
+                this.StreamOutput = new FileStream(this.PathOutput, FileMode.OpenOrCreate, FileAccess.Write);
             this.IsFileMode = true;
             AdjustOffsets(OffsetStart, OffsetEnd);
         }
@@ -143,13 +141,13 @@ namespace Hi3Helper.Http
             catch (Exception) { throw; }
         }
 
-        public void InjectLastHash(int Hash) => this.Checksum.InjectHash(Hash);
-        public void InjectLastHashPos(long Pos) => this.Checksum.InjectPos(Pos);
+        // public void InjectLastHash(int Hash) => this.Checksum.InjectHash(Hash);
+        // public void InjectLastHashPos(long Pos) => this.Checksum.InjectPos(Pos);
 
         // Implement Disposable for IDisposable
         public void Dispose()
         {
-            this.Checksum = null;
+            // this.Checksum = null;
             this.StreamInput?.Dispose();
             this.SessionRequest?.Dispose();
             this.SessionResponse?.Dispose();
@@ -159,9 +157,9 @@ namespace Hi3Helper.Http
         }
 
         // Checksum Properties
-        public SimpleChecksum Checksum { get; set; }
-        public int LastChecksumHash { get => this.Checksum.Hash32; }
-        public long LastChecksumPos { get => this.Checksum.LastChecksumPos; }
+        // public SimpleChecksum Checksum { get; set; }
+        // public int LastChecksumHash { get => this.Checksum.Hash32; }
+        // public long LastChecksumPos { get => this.Checksum.LastChecksumPos; }
 
         // Session Offset Properties
         public long? OffsetStart { get; set; }
@@ -173,16 +171,13 @@ namespace Hi3Helper.Http
 
         // Boolean Properties
         public bool IsLastSession { get; set; }
-        public bool IsMultiSession { get; set; }
         public bool IsFileMode { get; private set; }
-        public bool IsCompleted { get { return StreamOutputSize >= SessionSize; } }
 
         // Session Properties
         public CancellationToken SessionToken { get; private set; }
         public HttpRequestMessage SessionRequest { get; set; }
         public HttpResponseMessage SessionResponse { get; set; }
         public MultisessionState SessionState { get; set; }
-        public long SessionSize { get; set; }
         public int SessionRetryAttempt { get; set; }
         public long SessionID = 0;
 
@@ -197,7 +192,6 @@ namespace Hi3Helper.Http
                     .GetResult();
         }
 #endif
-        public FileInfo FileOutput { get; private set; }
         public Stream StreamOutput { get; private set; }
         public long StreamOutputSize => this.StreamOutput.CanWrite || this.StreamOutput.CanRead ? this.StreamOutput.Length : 0;
     }
