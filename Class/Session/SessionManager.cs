@@ -23,7 +23,7 @@ namespace Hi3Helper.Http
             this.DownloadState = MultisessionState.WaitingOnSession;
 
             Session session = new Session(this.PathURL, this.PathOutput, _Stream,
-                this.ConnectionToken, IsFileMode, false,
+                this.ConnectionToken, IsFileMode,
                 OffsetStart, OffsetEnd, this.PathOverwrite);
 
             session.SessionRequest = new HttpRequestMessage()
@@ -105,7 +105,7 @@ namespace Hi3Helper.Http
                 PathOut = this.PathOutput + string.Format(PathSessionPrefix, ID);
                 Session session = new Session(
                     this.PathURL, PathOut, null,
-                    this.ConnectionToken, true, true,
+                    this.ConnectionToken, true,
                     StartOffset, EndOffset, this.PathOverwrite)
                 {
                     IsLastSession = t + 1 == this.ConnectionSessions,
@@ -113,7 +113,7 @@ namespace Hi3Helper.Http
                 };
 
                 if (session.IsExistingFileOversized(StartOffset, EndOffset))
-                    session = ReinitializeSession(session, true, true, StartOffset, EndOffset);
+                    session = ReinitializeSession(session, true, StartOffset, EndOffset);
 
                 bool IsSetRequestSuccess = session.TrySetHttpRequest(),
                      IsSetRequestOffsetSuccess = false,
@@ -187,13 +187,13 @@ namespace Hi3Helper.Http
 
         private void IncrementDownloadedSize(Session session) => this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
 
-        private Session ReinitializeSession(Session Input, bool IsMultiSession, bool ForceOverwrite = false,
+        private Session ReinitializeSession(Session Input, bool ForceOverwrite = false,
             long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
         {
             Input.Dispose();
             return new Session(
                 this.PathURL, Input.PathOutput, null,
-                this.ConnectionToken, true, IsMultiSession,
+                this.ConnectionToken, true,
                 ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
                 ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart,
                 ForceOverwrite || this.PathOverwrite

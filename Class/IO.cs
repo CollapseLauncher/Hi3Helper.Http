@@ -6,6 +6,7 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
+        /*
         public bool IOReadVerifyMulti(Session Input)
         {
             // Initialize local checksum
@@ -33,6 +34,7 @@ namespace Hi3Helper.Http
 
             return Checksum.Hash32 == Input.LastChecksumHash;
         }
+        */
 
         public void IOReadWrite(Stream Input, Stream Output, CancellationToken Token)
         {
