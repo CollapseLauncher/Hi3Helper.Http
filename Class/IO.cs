@@ -10,9 +10,8 @@ namespace Hi3Helper.Http
         {
             // Initialize local checksum
             SimpleChecksum Checksum = new SimpleChecksum();
-            byte[] Buffer = new byte[_bufferSize];
             int Read;
-            int NextRead = Buffer.Length;
+            int NextRead = _buffer.Length;
 
             // Set Session State to verification check
             Input.SessionState = MultisessionState.CheckingLastSessionIntegrity;
@@ -20,12 +19,12 @@ namespace Hi3Helper.Http
             // Set Output Stream position to beginning
             Input.StreamOutput.Position = 0;
             // Read Stream into Buffer
-            while ((Read = Input.StreamOutput.Read(Buffer, 0, NextRead)) > 0)
+            while ((Read = Input.StreamOutput.Read(_buffer, 0, NextRead)) > 0)
             {
                 // Calculate Next Read Jump
-                NextRead = (int)Math.Min(Buffer.Length, Input.LastChecksumPos - Input.StreamOutput.Position);
+                NextRead = (int)Math.Min(_buffer.Length, Input.LastChecksumPos - Input.StreamOutput.Position);
                 // Compute checksum from Buffer
-                Checksum.ComputeHash32(Buffer, Read);
+                Checksum.ComputeHash32(_buffer, Read);
                 // Throw if Token Cancellation is requested
                 Input.SessionToken.ThrowIfCancellationRequested();
             }
@@ -35,17 +34,16 @@ namespace Hi3Helper.Http
             return Checksum.Hash32 == Input.LastChecksumHash;
         }
 
-        public void IOReadWrite(Stream Input, Stream Output, int BufferSize, CancellationToken Token)
+        public void IOReadWrite(Stream Input, Stream Output, CancellationToken Token)
         {
             DownloadEvent Event = new DownloadEvent();
-            byte[] Buffer = new byte[BufferSize];
             int Read;
 
             // Read Stream into Buffer
-            while ((Read = Input.Read(Buffer, 0, Buffer.Length)) > 0)
+            while ((Read = Input.Read(_buffer, 0, _buffer.Length)) > 0)
             {
                 // Write Buffer to the output Stream
-                Output.Write(Buffer, 0, Read);
+                Output.Write(_buffer, 0, Read);
                 // Throw if Token Cancellation is requested
                 Token.ThrowIfCancellationRequested();
 
@@ -69,14 +67,13 @@ namespace Hi3Helper.Http
         public void IOReadWriteSession(Session Input, CancellationToken InnerToken)
         {
             DownloadEvent Event = new DownloadEvent();
-            byte[] Buffer = new byte[_bufferSize];
             int Read;
 
             // Read Stream into Buffer
-            while ((Read = Input.StreamInput.Read(Buffer, 0, Buffer.Length)) > 0)
+            while ((Read = Input.StreamInput.Read(_buffer, 0, _buffer.Length)) > 0)
             {
                 // Write Buffer to the output Stream
-                Input.StreamOutput.Write(Buffer, 0, Read);
+                Input.StreamOutput.Write(_buffer, 0, Read);
                 // Increment as last OffsetStart adjusted
                 Input.OffsetStart += Read;
                 // Compute checksum from Buffer

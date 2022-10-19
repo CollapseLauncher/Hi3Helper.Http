@@ -17,7 +17,8 @@ namespace Hi3Helper.Http
         // Inner HttpClient handler
         private HttpClientHandler _handler;
         // Inner Buffer size
-        private const int _bufferSize = 4 << 20;
+        private const int _bufferSize = 16 << 10;
+        private readonly byte[] _buffer = new byte[_bufferSize];
         // Inner Merge Buffer size
         private const int _bufferMergeSize = 8 << 20;
 
@@ -48,7 +49,7 @@ namespace Hi3Helper.Http
         private const string PathSessionPrefix = ".{0}";
 
         // Download Statistics
-        private AttributesSize SizeAttribute;
+        private AttributesSize SizeAttribute = new AttributesSize();
 
         // This is for Multisession mode only
         public MultisessionState DownloadState;

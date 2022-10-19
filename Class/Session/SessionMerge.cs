@@ -30,7 +30,7 @@ namespace Hi3Helper.Http
                     string chunkPath = this.PathOutput + string.Format(PathSessionPrefix, GetHashNumber(this.ConnectionSessions, t));
                     using (FileStream os = new FileStream(chunkPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                     {
-                        IOReadWrite(os, fs, _bufferMergeSize, this.ConnectionToken);
+                        IOReadWrite(os, fs, this.ConnectionToken);
                     }
                 }
             }

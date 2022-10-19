@@ -10,14 +10,16 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-
 #if NETSTANDARD
         private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
 #elif NETCOREAPP
         private Session InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
 #endif
         {
-            this.SizeAttribute = new AttributesSize();
+            this.SizeAttribute.SizeTotalToDownload = 0;
+            this.SizeAttribute.SizeDownloaded = 0;
+            this.SizeAttribute.SizeDownloadedLast = 0;
+
             this.DownloadState = MultisessionState.WaitingOnSession;
 
             Session session = new Session(this.PathURL, this.PathOutput, _Stream,
@@ -73,7 +75,10 @@ namespace Hi3Helper.Http
         private void InitializeMultiSession()
 #endif
         {
-            this.SizeAttribute = new AttributesSize();
+            this.SizeAttribute.SizeTotalToDownload = 0;
+            this.SizeAttribute.SizeDownloaded = 0;
+            this.SizeAttribute.SizeDownloadedLast = 0;
+
             this.DownloadState = MultisessionState.WaitingOnSession;
             string PathOut;
 
