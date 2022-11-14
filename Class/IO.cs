@@ -42,7 +42,7 @@ namespace Hi3Helper.Http
             int Read;
 
             // Read Stream into Buffer
-            while ((Read = Input.Read(_buffer, 0, _buffer.Length)) > 0)
+            while ((Read = Input.Read(_buffer, 0, _bufferSize)) > 0)
             {
                 // Write Buffer to the output Stream
                 Output.Write(_buffer, 0, Read);
@@ -69,14 +69,22 @@ namespace Hi3Helper.Http
         private void IOReadWriteSession(Session Input, CancellationToken InnerToken)
         {
             DownloadEvent Event = new DownloadEvent();
-            byte[] Buffer = new byte[_bufferSize];
             int Read;
+            byte[] buffer = new byte[_bufferSize];
 
+#if NETCOREAPP
             // Read Stream into Buffer
-            while ((Read = Input.StreamInput.Read(Buffer, 0, _bufferSize)) > 0)
+            while ((Read = Input.StreamInput.Read(buffer)) > 0)
             {
                 // Write Buffer to the output Stream
-                Input.StreamOutput.Write(Buffer, 0, Read);
+                Input.StreamOutput.Write(buffer, 0, Read);
+#elif NETSTANDARD
+            // Read Stream into Buffer
+            while ((Read = Input.StreamInput.Read(buffer, 0, _bufferSize)) > 0)
+            {
+                // Write Buffer to the output Stream
+                Input.StreamOutput.Write(buffer, 0, Read);
+#endif
                 // Increment as last OffsetStart adjusted
                 Input.OffsetStart += Read;
                 // Compute checksum from Buffer
