@@ -53,7 +53,11 @@ namespace Hi3Helper.Http
                     session.SessionRetryAttempt++;
                     try
                     {
+#if NETSTANDARD
+                        await Task.Run(() => IOReadWriteSession(session, InnerToken));
+#elif NETCOREAPP
                         IOReadWriteSession(session, InnerToken);
+#endif
                         StillRetry = false;
                     }
                     catch (TaskCanceledException)
