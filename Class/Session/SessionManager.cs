@@ -153,7 +153,6 @@ namespace Hi3Helper.Http
             else
                 this.DownloadState = MultisessionState.Downloading;
 
-            this.IsDownloadContinue = this.SizeAttribute.SizeDownloaded > 0;
             // CreateOrUpdateMetadata();
         }
 

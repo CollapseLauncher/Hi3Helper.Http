@@ -40,7 +40,6 @@ namespace Hi3Helper.Http
         // Sessions list
         private List<Session> Sessions = new List<Session>();
         private Stopwatch SessionsStopwatch;
-        public bool IsDownloadContinue = false;
 
         // Path of the Download
         private string PathURL;
@@ -54,29 +53,9 @@ namespace Hi3Helper.Http
         // This is for Multisession mode only
         public MultisessionState DownloadState;
 
-        public bool IsDownloadFailed
-        {
-            get
-            {
-                if (this.ConnectionToken.IsCancellationRequested) return false;
+        private long GetHashNumber(long num1, long num2, long s1 = 69420, long s2 = 87654) => (s1 * num1) ^ (s2 * num2);
 
-                return this.DownloadState == MultisessionState.FailedDownloading;
-            }
-        }
-
-        public bool IsMergeFailed
-        {
-            get
-            {
-                if (this.ConnectionToken.IsCancellationRequested) return false;
-
-                return this.DownloadState == MultisessionState.FailedMerging;
-            }
-        }
-
-        public long GetHashNumber(long num1, long num2, long s1 = 69420, long s2 = 87654) => (s1 * num1) ^ (s2 * num2);
-
-        public void ResetState()
+        private void ResetState()
         {
             this.InnerConnectionTokenSource = new CancellationTokenSource();
             this.SessionsStopwatch = Stopwatch.StartNew();

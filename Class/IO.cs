@@ -36,7 +36,7 @@ namespace Hi3Helper.Http
         }
         */
 
-        public void IOReadWrite(Stream Input, Stream Output, CancellationToken Token)
+        private void IOReadWrite(Stream Input, Stream Output, CancellationToken Token)
         {
             DownloadEvent Event = new DownloadEvent();
             int Read;
@@ -66,7 +66,7 @@ namespace Hi3Helper.Http
             }
         }
 
-        public void IOReadWriteSession(Session Input, CancellationToken InnerToken)
+        private void IOReadWriteSession(Session Input, CancellationToken InnerToken)
         {
             DownloadEvent Event = new DownloadEvent();
             byte[] Buffer = new byte[_bufferSize];
