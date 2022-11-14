@@ -22,6 +22,7 @@ namespace Hi3Helper.Http
             Hash64 = 0;
             Hash32 = 0;
             _bufpos = 0;
+#if NETCOREAPP
             (_inbuf32[0], _inbuf32[1],
              _inbuf32[2], _inbuf32[3])
             =
@@ -37,6 +38,15 @@ namespace Hi3Helper.Http
              0, 0,
              0, 0,
              0, 0);
+#elif NETSTANDARD
+            _inbuf32[0] = 0; _inbuf32[1] = 0;
+            _inbuf32[2] = 0; _inbuf32[3] = 0;
+
+            _inbuf64[0] = 0; _inbuf64[1] = 0;
+            _inbuf64[2] = 0; _inbuf64[3] = 0;
+            _inbuf64[4] = 0; _inbuf64[5] = 0;
+            _inbuf64[6] = 0; _inbuf64[7] = 0;
+#endif
             _cancompute = false;
         }
 
