@@ -170,6 +170,14 @@ namespace Hi3Helper.Http
             }
         }
 
+        public async Task WaitUntillAllSessionDisposed()
+        {
+            while (!this.Sessions.All(x => x.IsDisposed))
+            {
+                await Task.Delay(150);
+            }
+        }
+
         public async Task WaitUntilAllSessionDownloaded()
         {
             if (this.Sessions.Count == 0) return;

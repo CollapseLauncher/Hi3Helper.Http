@@ -19,6 +19,7 @@ namespace Hi3Helper.Http
             this.StreamOutput = SOutput;
             this.SessionToken = SToken;
             this.IsFileMode = IsFileMode;
+            this.IsDisposed = false;
             this.SessionState = MultisessionState.Idle;
             // this.Checksum = new SimpleChecksum();
 
@@ -154,6 +155,8 @@ namespace Hi3Helper.Http
 
             if (this.IsFileMode)
                 this.StreamOutput?.Dispose();
+
+            this.IsDisposed = true;
         }
 
         // Checksum Properties
@@ -172,6 +175,7 @@ namespace Hi3Helper.Http
         // Boolean Properties
         public bool IsLastSession { get; set; }
         public bool IsFileMode { get; private set; }
+        public bool IsDisposed { get; private set; }
 
         // Session Properties
         public CancellationToken SessionToken { get; private set; }
