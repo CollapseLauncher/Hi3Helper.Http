@@ -73,9 +73,9 @@ namespace Hi3Helper.Http
                     catch (Exception ex)
                     {
 #if NETSTANDARD
-                        await session.TryReinitializeRequest(this._client);
+                        await session.TryReinitializeRequest();
 #elif NETCOREAPP
-                        session.TryReinitializeRequest(this._client);
+                        session.TryReinitializeRequest();
 #endif
                         if (session.SessionRetryAttempt > this.RetryMax)
                         {

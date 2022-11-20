@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public class Session : IDisposable
+    public class Session : HttpClient, IDisposable
     {
         public Session(string PathURL, string PathOutput, Stream SOutput,
             CancellationToken SToken, bool IsFileMode,
@@ -51,7 +51,7 @@ namespace Hi3Helper.Http
         }
 
 #if NETSTANDARD
-        public async Task TryReinitializeRequest(HttpClient _client)
+        public async Task TryReinitializeRequest()
         {
             try
             {
@@ -61,14 +61,14 @@ namespace Hi3Helper.Http
 
                 TrySetHttpRequest();
                 TrySetHttpRequestOffset();
-                await TrySetHttpResponse(_client);
+                await TrySetHttpResponse();
             }
             catch (Exception) { throw; }
         }
 
-        public async Task<bool> TrySetHttpResponse(HttpClient _client)
+        public async Task<bool> TrySetHttpResponse()
         {
-            HttpResponseMessage Input = await _client.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+            HttpResponseMessage Input = await base.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
             if (Input.IsSuccessStatusCode)
             {
                 this.SessionResponse = Input;
@@ -81,7 +81,7 @@ namespace Hi3Helper.Http
         }
 
 #elif NETCOREAPP
-        public void TryReinitializeRequest(HttpClient _client)
+        public void TryReinitializeRequest()
         {
             try
             {
@@ -91,14 +91,14 @@ namespace Hi3Helper.Http
 
                 TrySetHttpRequest();
                 TrySetHttpRequestOffset();
-                TrySetHttpResponse(_client);
+                TrySetHttpResponse();
             }
             catch (Exception) { throw; }
         }
 
-        public bool TrySetHttpResponse(HttpClient _client)
+        public bool TrySetHttpResponse()
         {
-            HttpResponseMessage Input = _client.Send(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+            HttpResponseMessage Input = base.Send(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
             if (Input.IsSuccessStatusCode)
             {
                 this.SessionResponse = Input;
@@ -146,12 +146,13 @@ namespace Hi3Helper.Http
         // public void InjectLastHashPos(long Pos) => this.Checksum.InjectPos(Pos);
 
         // Implement Disposable for IDisposable
-        public void Dispose()
+        public new void Dispose()
         {
             // this.Checksum = null;
             this.StreamInput?.Dispose();
             this.SessionRequest?.Dispose();
             this.SessionResponse?.Dispose();
+            base.Dispose();
 
             if (this.IsFileMode)
                 this.StreamOutput?.Dispose();

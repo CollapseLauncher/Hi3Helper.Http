@@ -127,9 +127,9 @@ namespace Hi3Helper.Http
                 if (IsSetRequestOffsetSuccess)
                 {
 #if NETSTANDARD
-                    IsSetResponseSuccess = await session.TrySetHttpResponse(_client);
+                    IsSetResponseSuccess = await session.TrySetHttpResponse();
 #elif NETCOREAPP
-                    IsSetResponseSuccess = session.TrySetHttpResponse(_client);
+                    IsSetResponseSuccess = session.TrySetHttpResponse();
 #endif
                 }
 
