@@ -43,15 +43,10 @@ namespace Hi3Helper.Http
             if (ConnectionSessions > ConnectionSessionsMax)
                 throw new HttpHelperAllowedSessionsMaxed($"You've maxed allowed Connection Sessions ({ConnectionSessions} sessions have been set and only <= {ConnectionSessionsMax} sessions allowed)");
 
-#if NETSTANDARD
-            await InitializeMultiSession();
-            await RunMultiSessionTasks();
-#elif NETCOREAPP
             await Task.Run(InitializeMultiSession);
             await Task.WhenAll(RunMultiSessionTasks());
 
             this.DownloadState = MultisessionState.FinishedNeedMerge;
-#endif
         }
 
         public async void DownloadAsync(string URL, string Output, bool Overwrite = false,

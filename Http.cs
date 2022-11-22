@@ -30,7 +30,6 @@ namespace Hi3Helper.Http
             if (this._clientUserAgent != null)
                 this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
 
-            this.InnerConnectionTokenSource = new CancellationTokenSource();
             this.SessionsStopwatch = Stopwatch.StartNew();
         }
 
@@ -48,7 +47,6 @@ namespace Hi3Helper.Http
 
             this._client = new HttpClient(this._handler);
 
-            this.InnerConnectionTokenSource = new CancellationTokenSource();
             this.SessionsStopwatch = Stopwatch.StartNew();
         }
 

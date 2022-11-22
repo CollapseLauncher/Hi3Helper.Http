@@ -7,31 +7,17 @@ namespace Hi3Helper.Http
 {
     public partial class Http
     {
-
-#if NETSTANDARD
-        private async Task RunMultiSessionTasks()
-        {
-            List<Task> tasks = new List<Task>();
-
-            foreach (Session session in this.Sessions)
-            {
-                tasks.Add(RetryableContainer(session));
-            }
-
-            await Task.WhenAll(tasks);
-
-            this.DownloadState = MultisessionState.FinishedNeedMerge;
-        }
-
-#elif NETCOREAPP
         private IEnumerable<Task> RunMultiSessionTasks()
         {
             foreach (Session session in this.Sessions)
             {
+#if NETSTANDARD
+                yield return RetryableContainer(session);
+#elif NETCOREAPP
                 yield return Task.Run(() => RetryableContainer(session));
+#endif
             }
         }
-#endif
 
 #if NETSTANDARD
         private async Task RetryableContainer(Session session)
@@ -39,54 +25,53 @@ namespace Hi3Helper.Http
         private void RetryableContainer(Session session)
 #endif
         {
-#if NETSTANDARD
             if (session == null) return;
-#elif NETCOREAPP
-            if (session == null) return;
-#endif
-            using (session)
+
+            bool StillRetry = true;
+            while (StillRetry)
             {
-                CancellationToken InnerToken = this.InnerConnectionTokenSource.Token;
-                bool StillRetry = true;
-                while (StillRetry)
+                session.SessionRetryAttempt++;
+                try
                 {
-                    session.SessionRetryAttempt++;
-                    try
-                    {
 #if NETSTANDARD
-                        await Task.Run(() => IOReadWriteSession(session, InnerToken));
+                    await Task.Run(() => IOReadWriteSession(session));
 #elif NETCOREAPP
-                        IOReadWriteSession(session, InnerToken);
+                    IOReadWriteSession(session);
 #endif
-                        StillRetry = false;
-                    }
-                    catch (TaskCanceledException)
+                    StillRetry = false;
+                }
+                catch (TaskCanceledException)
+                {
+                    StillRetry = false;
+                    throw;
+                }
+                catch (OperationCanceledException)
+                {
+                    StillRetry = false;
+                    throw;
+                }
+                catch (Exception ex)
+                {
+#if NETSTANDARD
+                    await session.TryReinitializeRequest();
+#elif NETCOREAPP
+                    session.TryReinitializeRequest();
+#endif
+                    if (session.SessionRetryAttempt > this.RetryMax)
                     {
                         StillRetry = false;
+                        this.DownloadState = MultisessionState.FailedDownloading;
+                        PushLog($"[Retry {session.SessionRetryAttempt}/{this.RetryMax}] Retry attempt has been exceeded on session ID {session.SessionID}! Retrying...\r\nURL: {this.PathURL}\r\nException: {ex}", LogSeverity.Error);
                         throw;
                     }
-                    catch (OperationCanceledException)
-                    {
-                        StillRetry = false;
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-#if NETSTANDARD
-                        await session.TryReinitializeRequest();
-#elif NETCOREAPP
-                        session.TryReinitializeRequest();
+                    PushLog($"[Retry {session.SessionRetryAttempt}/{this.RetryMax}] Error has occured on session ID {session.SessionID}!\r\nURL: {this.PathURL}\r\nException: {ex}", LogSeverity.Warning);
+                }
+                finally
+                {
+                    session.Dispose();
+#if DEBUG
+                    PushLog($"Disposed session ID {session.SessionID}!", LogSeverity.Info);
 #endif
-                        if (session.SessionRetryAttempt > this.RetryMax)
-                        {
-                            StillRetry = false;
-                            this.DownloadState = MultisessionState.FailedDownloading;
-                            this.InnerConnectionTokenSource.Cancel();
-                            PushLog($"[Retry {session.SessionRetryAttempt}/{this.RetryMax}] Retry attempt has been exceeded on session ID {session.SessionID}! Retrying...\r\nURL: {this.PathURL}\r\nException: {ex}", LogSeverity.Error);
-                            throw;
-                        }
-                        PushLog($"[Retry {session.SessionRetryAttempt}/{this.RetryMax}] Error has occured on session ID {session.SessionID}!\r\nURL: {this.PathURL}\r\nException: {ex}", LogSeverity.Warning);
-                    }
                 }
             }
         }

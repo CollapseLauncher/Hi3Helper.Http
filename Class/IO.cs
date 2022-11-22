@@ -66,7 +66,7 @@ namespace Hi3Helper.Http
             }
         }
 
-        private void IOReadWriteSession(Session Input, CancellationToken InnerToken)
+        private void IOReadWriteSession(Session Input)
         {
             DownloadEvent Event = new DownloadEvent();
             int Read;
@@ -93,8 +93,6 @@ namespace Hi3Helper.Http
                 Input.SessionState = MultisessionState.Downloading;
                 // Throw if Token Cancellation is requested
                 Input.SessionToken.ThrowIfCancellationRequested();
-                // Throw if Inner Token Cancellation is requested
-                InnerToken.ThrowIfCancellationRequested();
                 // Reset session retry attempt
                 Input.SessionRetryAttempt = 1;
 

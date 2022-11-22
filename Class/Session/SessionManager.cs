@@ -53,8 +53,6 @@ namespace Hi3Helper.Http
 
             if ((int)Input.StatusCode == 416) return null;
 
-            session.StreamOutput.Seek(0, SeekOrigin.End);
-
             this.SizeAttribute.SizeDownloaded = session.StreamOutputSize;
 
             if (session.SessionResponse.Content.Headers.ContentLength == null)
@@ -161,8 +159,7 @@ namespace Hi3Helper.Http
             if (this.ConnectionToken.IsCancellationRequested) return;
 
             while (this.Sessions.All(x => x.SessionState != MultisessionState.Downloading)
-               && !this.ConnectionToken.IsCancellationRequested
-               && !this.InnerConnectionTokenSource.Token.IsCancellationRequested)
+               && !this.ConnectionToken.IsCancellationRequested)
             {
                 if (this.DownloadState == MultisessionState.Idle) return;
                 await Task.Delay(33, this.ConnectionToken);
@@ -187,7 +184,6 @@ namespace Hi3Helper.Http
 
             while (this.Sessions.Any(x => x.SessionState == MultisessionState.Downloading)
                && !this.ConnectionToken.IsCancellationRequested
-               && !this.InnerConnectionTokenSource.Token.IsCancellationRequested
                && this.Sessions.Count != 0)
                 await Task.Delay(33, this.ConnectionToken);
         }

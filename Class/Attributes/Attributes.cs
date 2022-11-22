@@ -30,7 +30,6 @@ namespace Hi3Helper.Http
         private byte ConnectionSessions;
         // Connection Token for Cancellation
         private CancellationToken ConnectionToken;
-        private CancellationTokenSource InnerConnectionTokenSource;
 
         // Max Retry Count
         private byte RetryMax = 5;
@@ -57,7 +56,6 @@ namespace Hi3Helper.Http
 
         private void ResetState()
         {
-            this.InnerConnectionTokenSource = new CancellationTokenSource();
             this.SessionsStopwatch = Stopwatch.StartNew();
         }
     }
