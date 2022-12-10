@@ -166,7 +166,7 @@ namespace Hi3Helper.Http
             }
         }
 
-        public async Task WaitUntillAllSessionDisposed()
+        public async Task WaitUntilAllSessionDisposed()
         {
             while (!this.Sessions.All(x => x.IsDisposed))
             {
