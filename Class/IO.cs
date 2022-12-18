@@ -15,7 +15,7 @@ namespace Hi3Helper.Http
             int NextRead = _buffer.Length;
 
             // Set Session State to verification check
-            Input.SessionState = MultisessionState.CheckingLastSessionIntegrity;
+            Input.SessionState = DownloadState.CheckingLastSessionIntegrity;
 
             // Set Output Stream position to beginning
             Input.StreamOutput.Position = 0;
@@ -30,7 +30,7 @@ namespace Hi3Helper.Http
                 Input.SessionToken.ThrowIfCancellationRequested();
             }
 
-            Input.SessionState = MultisessionState.CompleteLastSessionIntegrity;
+            Input.SessionState = DownloadState.CompleteLastSessionIntegrity;
 
             return Checksum.Hash32 == Input.LastChecksumHash;
         }
@@ -40,10 +40,17 @@ namespace Hi3Helper.Http
         {
             DownloadEvent Event = new DownloadEvent();
             int Read;
+            byte[] _buffer = new byte[_bufferSize];
 
+#if NETCOREAPP
+            // Read Stream into Buffer
+            while ((Read = Input.Read(buffer)) > 0)
+            {
+#else
             // Read Stream into Buffer
             while ((Read = Input.Read(_buffer, 0, _bufferSize)) > 0)
             {
+#endif
                 // Write Buffer to the output Stream
                 Output.Write(_buffer, 0, Read);
                 // Throw if Token Cancellation is requested
@@ -76,21 +83,19 @@ namespace Hi3Helper.Http
             // Read Stream into Buffer
             while ((Read = Input.StreamInput.Read(buffer)) > 0)
             {
-                // Write Buffer to the output Stream
-                Input.StreamOutput.Write(buffer, 0, Read);
-#elif NETSTANDARD
+#else
             // Read Stream into Buffer
             while ((Read = Input.StreamInput.Read(buffer, 0, _bufferSize)) > 0)
             {
+#endif
                 // Write Buffer to the output Stream
                 Input.StreamOutput.Write(buffer, 0, Read);
-#endif
                 // Increment as last OffsetStart adjusted
                 Input.OffsetStart += Read;
                 // Compute checksum from Buffer
                 // Input.Checksum.ComputeHash32(Buffer, Read);
                 // Set Inner Session Status
-                Input.SessionState = MultisessionState.Downloading;
+                Input.SessionState = DownloadState.Downloading;
                 // Throw if Token Cancellation is requested
                 Input.SessionToken.ThrowIfCancellationRequested();
                 // Reset session retry attempt

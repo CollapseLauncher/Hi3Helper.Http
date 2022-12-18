@@ -7,7 +7,7 @@ namespace Hi3Helper.Http
         // Download Progress Event Handler
         public event EventHandler<DownloadEvent> DownloadProgress;
         // Log for external listener
-        public event EventHandler<DownloadLogEvent> DownloadLog;
+        public static HttpLogInvoker LogInvoker = new HttpLogInvoker();
 
         // Update Progress of the Download
         private void UpdateProgress(DownloadEvent Event) => DownloadProgress?.Invoke(this, Event);

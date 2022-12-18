@@ -11,12 +11,12 @@ namespace Hi3Helper.Http
 
         public void MergeSync()
         {
-            if (this.DownloadState != MultisessionState.FinishedNeedMerge)
+            if (this.DownloadState != DownloadState.FinishedNeedMerge)
             {
                 throw new InvalidOperationException($"The download status is unfinished and cannot be merged. Also you should only use it while using multisession download!\r\nCurrent Status: {this.DownloadState}");
             }
 
-            this.DownloadState = MultisessionState.Merging;
+            this.DownloadState = DownloadState.Merging;
             this.SessionsStopwatch = Stopwatch.StartNew();
             this.SizeAttribute.SizeDownloaded = 0;
             this.SizeAttribute.SizeDownloadedLast = 0;
@@ -42,7 +42,7 @@ namespace Hi3Helper.Http
                     this.SizeAttribute.SizeTotalToDownload,
                     0,
                     this.SessionsStopwatch.Elapsed.Milliseconds,
-                    this.DownloadState = MultisessionState.Finished
+                    this.DownloadState = DownloadState.Finished
                     );
 
             this.UpdateProgress(Event);
@@ -54,7 +54,7 @@ namespace Hi3Helper.Http
         {
             if (this.ConnectionToken.IsCancellationRequested) return;
 
-            while (this.DownloadState == MultisessionState.Merging)
+            while (this.DownloadState == DownloadState.Merging)
                 await Task.Delay(33, this.ConnectionToken);
         }
     }

@@ -24,7 +24,7 @@ namespace Hi3Helper.Http
             InitializeMultiSession();
             Task.WhenAll(RunMultiSessionTasks()).GetAwaiter().GetResult();
 
-            this.DownloadState = MultisessionState.FinishedNeedMerge;
+            this.DownloadState = DownloadState.FinishedNeedMerge;
         }
 #endif
 
@@ -46,7 +46,7 @@ namespace Hi3Helper.Http
             await Task.Run(InitializeMultiSession);
             await Task.WhenAll(RunMultiSessionTasks());
 
-            this.DownloadState = MultisessionState.FinishedNeedMerge;
+            this.DownloadState = DownloadState.FinishedNeedMerge;
         }
 
         public async void DownloadAsync(string URL, string Output, bool Overwrite = false,

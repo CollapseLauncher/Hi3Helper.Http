@@ -18,9 +18,6 @@ namespace Hi3Helper.Http
         private HttpClientHandler _handler;
         // Inner Buffer size
         private const int _bufferSize = 16 << 10;
-        private readonly byte[] _buffer = new byte[_bufferSize];
-        // Inner Merge Buffer size
-        private const int _bufferMergeSize = 8 << 20;
 
         // Max allowed Connections for HttpClient instance
         private const byte ConnectionMax = 16;
@@ -50,7 +47,7 @@ namespace Hi3Helper.Http
         private AttributesSize SizeAttribute = new AttributesSize();
 
         // This is for Multisession mode only
-        public MultisessionState DownloadState;
+        public DownloadState DownloadState;
 
         private long GetHashNumber(long num1, long num2, long s1 = 69420, long s2 = 87654) => (s1 * num1) ^ (s2 * num2);
 

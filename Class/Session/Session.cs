@@ -152,7 +152,7 @@ namespace Hi3Helper.Http
         {
             if (this.IsDisposed)
             {
-                Http.PushLog("TODO: Do not Dispose twice!", LogSeverity.Warning);
+                Http.PushLog("TODO: Do not Dispose twice!", DownloadLogSeverity.Warning);
                 return;
             }
             Dispose();
@@ -195,7 +195,7 @@ namespace Hi3Helper.Http
         public CancellationToken SessionToken { get; private set; }
         public HttpRequestMessage SessionRequest { get; set; }
         public HttpResponseMessage SessionResponse { get; set; }
-        public MultisessionState SessionState { get; set; }
+        public DownloadState SessionState { get; set; }
         public int SessionRetryAttempt { get; set; }
         public long SessionID = 0;
 
