@@ -13,7 +13,7 @@ namespace Hi3Helper.Http
         private void UpdateProgress(DownloadEvent Event) => DownloadProgress?.Invoke(this, Event);
 
         // Push log to listener
-        public static void PushLog(string message, LogSeverity severity) => LogInvoker.PushLog(message, severity);
+        public static void PushLog(string message, DownloadLogSeverity severity) => LogInvoker.PushLog(message, severity);
     }
 
     public class HttpLogInvoker
@@ -21,6 +21,6 @@ namespace Hi3Helper.Http
         // Log for external listener
         public static event EventHandler<DownloadLogEvent> DownloadLog;
         // Push log to listener
-        public void PushLog(string message, LogSeverity severity) => DownloadLog?.Invoke(this, new DownloadLogEvent(message, severity));
+        public void PushLog(string message, DownloadLogSeverity severity) => DownloadLog?.Invoke(this, new DownloadLogEvent(message, severity));
     }
 }
