@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net;
 using System.Net.Http;
 using System.Threading;
 
@@ -48,6 +47,9 @@ namespace Hi3Helper.Http
 
         // This is for Multisession mode only
         public DownloadState DownloadState;
+
+        // Check for status of Dispose
+        private bool IsDisposed = false;
 
         private long GetHashNumber(long num1, long num2, long s1 = 69420, long s2 = 87654) => (s1 * num1) ^ (s2 * num2);
 

@@ -12,7 +12,8 @@ namespace Hi3Helper.Http
         public Session(string PathURL, string PathOutput, Stream SOutput,
             CancellationToken SToken, bool IsFileMode, HttpClientHandler ClientHandler,
             long? OffsetStart = null, long? OffsetEnd = null,
-            bool Overwrite = false, string UserAgent = null)
+            bool Overwrite = false, string UserAgent = null,
+            bool UseExternalSessionClient = false)
         {
             // Initialize Properties
             this.PathURL = PathURL;
@@ -22,8 +23,13 @@ namespace Hi3Helper.Http
             this.IsFileMode = IsFileMode;
             this.IsDisposed = false;
             this.SessionState = DownloadState.Idle;
-            this.SessionClient = new HttpClient(ClientHandler);
+            this.SessionClient = UseExternalSessionClient ? null : new HttpClient(ClientHandler);
             // this.Checksum = new SimpleChecksum();
+
+            if (!UseExternalSessionClient && UserAgent != null)
+            {
+                this.SessionClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+            }
 
             // If the OutStream is explicitly defined, use OutStream instead and set to IsFileMode == false.
             if (SOutput != null)
@@ -52,37 +58,7 @@ namespace Hi3Helper.Http
             this.OffsetEnd = End;
         }
 
-#if NETSTANDARD
-        public async Task TryReinitializeRequest()
-        {
-            try
-            {
-                this.StreamInput?.Dispose();
-                this.SessionRequest?.Dispose();
-                this.SessionResponse?.Dispose();
-
-                TrySetHttpRequest();
-                TrySetHttpRequestOffset();
-                await TrySetHttpResponse();
-            }
-            catch (Exception) { throw; }
-        }
-
-        public async Task<bool> TrySetHttpResponse()
-        {
-            HttpResponseMessage Input = await this.SessionClient.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
-            if (Input.IsSuccessStatusCode)
-            {
-                this.SessionResponse = Input;
-                return true;
-            }
-
-            if ((int)Input.StatusCode == 416) return false;
-
-            throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
-        }
-
-#elif NETCOREAPP
+#if NETCOREAPP
         public void TryReinitializeRequest()
         {
             try
@@ -95,12 +71,41 @@ namespace Hi3Helper.Http
                 TrySetHttpRequestOffset();
                 TrySetHttpResponse();
             }
-            catch (Exception) { throw; }
+            catch (Exception ex) { throw ex; }
         }
 
         public bool TrySetHttpResponse()
         {
             HttpResponseMessage Input = this.SessionClient.Send(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+            if (Input.IsSuccessStatusCode)
+            {
+                this.SessionResponse = Input;
+                return true;
+            }
+
+            if ((int)Input.StatusCode == 416) return false;
+
+            throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
+        }
+#else
+        public async Task TryReinitializeRequest()
+        {
+            try
+            {
+                this.StreamInput?.Dispose();
+                this.SessionRequest?.Dispose();
+                this.SessionResponse?.Dispose();
+
+                TrySetHttpRequest();
+                TrySetHttpRequestOffset();
+                await TrySetHttpResponse();
+            }
+            catch (Exception ex) { throw ex; }
+        }
+
+        public async Task<bool> TrySetHttpResponse()
+        {
+            HttpResponseMessage Input = await this.SessionClient.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
             if (Input.IsSuccessStatusCode)
             {
                 this.SessionResponse = Input;
@@ -141,7 +146,7 @@ namespace Hi3Helper.Http
             {
                 return false;
             }
-            catch (Exception) { throw; }
+            catch (Exception ex) { throw ex; }
         }
 
         // public void InjectLastHash(int Hash) => this.Checksum.InjectHash(Hash);
@@ -191,7 +196,7 @@ namespace Hi3Helper.Http
         public bool IsDisposed { get; private set; }
 
         // Session Properties
-        private HttpClient SessionClient { get; set; }
+        public HttpClient SessionClient { get; set; }
         public CancellationToken SessionToken { get; private set; }
         public HttpRequestMessage SessionRequest { get; set; }
         public HttpResponseMessage SessionResponse { get; set; }
@@ -200,7 +205,7 @@ namespace Hi3Helper.Http
         public long SessionID = 0;
 
         // Stream Properties
-#if !NETSTANDARD
+#if NETCOREAPP
         public Stream StreamInput { get => this.SessionResponse?.Content.ReadAsStream(); }
 #else
         public Stream StreamInput
@@ -211,6 +216,6 @@ namespace Hi3Helper.Http
         }
 #endif
         public Stream StreamOutput { get; private set; }
-        public long StreamOutputSize => this.StreamOutput.CanWrite || this.StreamOutput.CanRead ? this.StreamOutput.Length : 0;
+        public long StreamOutputSize => (this.StreamOutput?.CanWrite ?? false) || (this.StreamOutput?.CanRead ?? false) ? this.StreamOutput.Length : 0;
     }
 }

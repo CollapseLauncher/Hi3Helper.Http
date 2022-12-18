@@ -71,7 +71,7 @@ namespace Hi3Helper.Http
                 {
                     session.Dispose();
 #if DEBUG
-                    PushLog($"Disposed session ID {session.SessionID}!", LogSeverity.Info);
+                    PushLog($"Disposed session ID {session.SessionID}!", DownloadLogSeverity.Info);
 #endif
                 }
             }

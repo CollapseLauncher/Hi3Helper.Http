@@ -39,9 +39,9 @@ namespace Hi3Helper.Http
             session.SessionRequest.Headers.Range = new RangeHeaderValue(session.OffsetStart, session.OffsetEnd);
 
 #if NETCOREAPP           
-            HttpResponseMessage Input = _client.Send(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
+            HttpResponseMessage Input = this._client.Send(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
 #else
-            HttpResponseMessage Input = await _client.SendAsync(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
+            HttpResponseMessage Input = await this._client.SendAsync(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
 #endif
             if (!Input.IsSuccessStatusCode)
             {
@@ -62,6 +62,8 @@ namespace Hi3Helper.Http
             {
                 this.SizeAttribute.SizeTotalToDownload = (session.SessionResponse.Content.Headers.ContentLength ?? 0) + session.StreamOutputSize;
             }
+
+            session.SessionClient = this._client;
 
             return session;
         }
@@ -100,47 +102,58 @@ namespace Hi3Helper.Http
                 long ID = GetHashNumber(this.ConnectionSessions, t);
                 EndOffset = t + 1 == this.ConnectionSessions ? this.SizeAttribute.SizeTotalToDownload - 1 : (StartOffset + SliceSize - 1);
                 PathOut = this.PathOutput + string.Format(PathSessionPrefix, ID);
-                Session session = new Session(
-                    this.PathURL, PathOut, null,
-                    this.ConnectionToken, true, this._handler,
-                    StartOffset, EndOffset, this.PathOverwrite,
-                    this._clientUserAgent)
+
+                if (ConnectionToken.IsCancellationRequested || this.IsDisposed) continue;
+
+                try
                 {
-                    IsLastSession = t + 1 == this.ConnectionSessions,
-                    SessionID = ID
-                };
+                    Session session = new Session(
+                        this.PathURL, PathOut, null,
+                        this.ConnectionToken, true, this._handler,
+                        StartOffset, EndOffset, this.PathOverwrite,
+                        this._clientUserAgent)
+                    {
+                        IsLastSession = t + 1 == this.ConnectionSessions,
+                        SessionID = ID
+                    };
 
-                if (session.IsExistingFileOversized(StartOffset, EndOffset))
-                    session = ReinitializeSession(session, true, StartOffset, EndOffset);
+                    if (session.IsExistingFileOversized(StartOffset, EndOffset))
+                        session = ReinitializeSession(session, true, StartOffset, EndOffset);
 
-                bool IsSetRequestSuccess = session.TrySetHttpRequest(),
-                     IsSetRequestOffsetSuccess = false,
-                     IsSetResponseSuccess = false;
+                    bool IsSetRequestSuccess = session.TrySetHttpRequest(),
+                         IsSetRequestOffsetSuccess = false,
+                         IsSetResponseSuccess = false;
 
-                if (IsSetRequestSuccess)
-                {
-                    IsSetRequestOffsetSuccess = session.TrySetHttpRequestOffset();
-                }
+                    if (IsSetRequestSuccess)
+                    {
+                        IsSetRequestOffsetSuccess = session.TrySetHttpRequestOffset();
+                    }
 
-                if (IsSetRequestOffsetSuccess)
-                {
+                    if (IsSetRequestOffsetSuccess)
+                    {
 #if NETCOREAPP
                     IsSetResponseSuccess = session.TrySetHttpResponse();
 #else
-                    IsSetResponseSuccess = await session.TrySetHttpResponse();
+                        IsSetResponseSuccess = await session.TrySetHttpResponse();
 #endif
+                    }
+
+                    IncrementDownloadedSize(session);
+
+                    if (IsSetResponseSuccess)
+                    {
+                        session.SeekStreamOutputToEnd();
+                        this.Sessions.Add(session);
+                    }
+                    else session.Dispose();
+
+                    StartOffset += SliceSize;
                 }
-
-                IncrementDownloadedSize(session);
-
-                if (IsSetResponseSuccess)
+                catch (IOException ex)
                 {
-                    session.SeekStreamOutputToEnd();
-                    this.Sessions.Add(session);
+                    Console.WriteLine(ex + $"IsDisposed {IsDisposed} IsCancelled {ConnectionToken.IsCancellationRequested}");
+                    throw ex;
                 }
-                else session.Dispose();
-
-                StartOffset += SliceSize;
             }
 
             if (this.Sessions.Count == 0)
@@ -171,6 +184,14 @@ namespace Hi3Helper.Http
             while (!this.Sessions.All(x => x.IsDisposed))
             {
                 await Task.Delay(150);
+            }
+        }
+
+        public async Task WaitUntilInstanceDisposed()
+        {
+            while (!this.IsDisposed)
+            {
+                await Task.Delay(10);
             }
         }
 

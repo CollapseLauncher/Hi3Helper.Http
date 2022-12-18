@@ -131,6 +131,7 @@ namespace Hi3Helper.Http
             }
 
             this.Sessions = null;
+            this.IsDisposed = true;
         }
 
         ~Http() => Dispose();
