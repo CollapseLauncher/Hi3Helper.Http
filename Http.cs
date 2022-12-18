@@ -125,6 +125,11 @@ namespace Hi3Helper.Http
             this._handler = null;
             this._client.Dispose();
 
+            if (this.Sessions != null && this.Sessions.Count > 0)
+            {
+                this.Sessions.Clear();
+            }
+
             this.Sessions = null;
         }
 

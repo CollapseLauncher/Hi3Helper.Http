@@ -23,8 +23,8 @@ namespace Hi3Helper.Http
             this.DownloadState = MultisessionState.WaitingOnSession;
 
             Session session = new Session(this.PathURL, this.PathOutput, _Stream,
-                this.ConnectionToken, IsFileMode,
-                OffsetStart, OffsetEnd, this.PathOverwrite);
+                this.ConnectionToken, IsFileMode, this._handler,
+                OffsetStart, OffsetEnd, this.PathOverwrite, this._clientUserAgent);
 
             session.SessionRequest = new HttpRequestMessage()
             {
@@ -103,8 +103,9 @@ namespace Hi3Helper.Http
                 PathOut = this.PathOutput + string.Format(PathSessionPrefix, ID);
                 Session session = new Session(
                     this.PathURL, PathOut, null,
-                    this.ConnectionToken, true,
-                    StartOffset, EndOffset, this.PathOverwrite)
+                    this.ConnectionToken, true, this._handler,
+                    StartOffset, EndOffset, this.PathOverwrite,
+                    this._clientUserAgent)
                 {
                     IsLastSession = t + 1 == this.ConnectionSessions,
                     SessionID = ID
@@ -196,10 +197,10 @@ namespace Hi3Helper.Http
             Input.Dispose();
             return new Session(
                 this.PathURL, Input.PathOutput, null,
-                this.ConnectionToken, true,
+                this.ConnectionToken, true, this._handler,
                 ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
                 ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart,
-                ForceOverwrite || this.PathOverwrite
+                ForceOverwrite || this.PathOverwrite, this._clientUserAgent
                 )
             {
                 IsLastSession = Input.IsLastSession,

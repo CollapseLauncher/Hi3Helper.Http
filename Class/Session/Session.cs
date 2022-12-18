@@ -7,11 +7,12 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public class Session : HttpClient, IDisposable
+    public class Session : IDisposable
     {
         public Session(string PathURL, string PathOutput, Stream SOutput,
-            CancellationToken SToken, bool IsFileMode,
-            long? OffsetStart = null, long? OffsetEnd = null, bool Overwrite = false)
+            CancellationToken SToken, bool IsFileMode, HttpClientHandler ClientHandler,
+            long? OffsetStart = null, long? OffsetEnd = null,
+            bool Overwrite = false, string UserAgent = null)
         {
             // Initialize Properties
             this.PathURL = PathURL;
@@ -20,7 +21,8 @@ namespace Hi3Helper.Http
             this.SessionToken = SToken;
             this.IsFileMode = IsFileMode;
             this.IsDisposed = false;
-            this.SessionState = MultisessionState.Idle;
+            this.SessionState = DownloadState.Idle;
+            this.SessionClient = new HttpClient(ClientHandler);
             // this.Checksum = new SimpleChecksum();
 
             // If the OutStream is explicitly defined, use OutStream instead and set to IsFileMode == false.
@@ -68,7 +70,7 @@ namespace Hi3Helper.Http
 
         public async Task<bool> TrySetHttpResponse()
         {
-            HttpResponseMessage Input = await base.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+            HttpResponseMessage Input = await this.SessionClient.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
             if (Input.IsSuccessStatusCode)
             {
                 this.SessionResponse = Input;
@@ -98,7 +100,7 @@ namespace Hi3Helper.Http
 
         public bool TrySetHttpResponse()
         {
-            HttpResponseMessage Input = base.Send(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+            HttpResponseMessage Input = this.SessionClient.Send(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
             if (Input.IsSuccessStatusCode)
             {
                 this.SessionResponse = Input;
@@ -146,13 +148,23 @@ namespace Hi3Helper.Http
         // public void InjectLastHashPos(long Pos) => this.Checksum.InjectPos(Pos);
 
         // Implement Disposable for IDisposable
-        public new void Dispose()
+        ~Session()
+        {
+            if (this.IsDisposed)
+            {
+                Http.PushLog("TODO: Do not Dispose twice!", LogSeverity.Warning);
+                return;
+            }
+            Dispose();
+        }
+
+        public void Dispose()
         {
             // this.Checksum = null;
             this.StreamInput?.Dispose();
             this.SessionRequest?.Dispose();
             this.SessionResponse?.Dispose();
-            base.Dispose();
+            this.SessionClient?.Dispose();
 
             if (this.IsFileMode)
                 this.StreamOutput?.Dispose();
@@ -179,6 +191,7 @@ namespace Hi3Helper.Http
         public bool IsDisposed { get; private set; }
 
         // Session Properties
+        private HttpClient SessionClient { get; set; }
         public CancellationToken SessionToken { get; private set; }
         public HttpRequestMessage SessionRequest { get; set; }
         public HttpResponseMessage SessionResponse { get; set; }
