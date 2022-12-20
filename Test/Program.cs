@@ -7,13 +7,14 @@ namespace Test
 {
     internal class Program
     {
-        static string URL = "https://prophost.ironmaid.xyz/_shared/_diffrepo/Cookbook_Hi3SEA_Hi3Global_6.0.0_lzma2_crc32.diff";
+        static string URL = "https://d2wztyirwsuyyo.cloudfront.net/ptpublic/bh3_global/20221206102501_KIc60hdTxKT9HG9O/BH3_v6.2.0_277a0ec45b1d.7z";
         static string Output = @".\Testing.diff";
         static string Output2 = @"C:\Users\neon-nyan\AppData\LocalLow\CollapseLauncher\GameFolder\Hi3TW\Games\BH3_v5.9.0_cba771e4ca76.7z.001";
         static string Output3 = @"C:\Users\neon-nyan\AppData\LocalLow\CollapseLauncher\GameFolder\Hi3TW\Games\BH3_v5.9.0_cba771e4ca76.7z.dummy";
         static string Output4 = @"C:\Users\neon-nyan\Downloads\bin\YuanShen_2.8.54_beta.zip";
-        static Http Client = new(true);
+        static Http Client;
         static SimpleChecksum sh64 = new();
+        static CancellationTokenSource TokenSource;
         static async Task Main()
         {
             #region testing
@@ -91,16 +92,30 @@ namespace Test
                 }
             }
             */
-            CancellationTokenSource TokenSource = new CancellationTokenSource();
-            Client.DownloadProgress += Client_DownloadProgress;
-            Client.DownloadLog += Client_DownloadLog;
-            await Client.Download(URL, Output, 2, false);
+            while (true)
+            {
+                try
+                {
+                    using (Client = new(true))
+                    {
+                        TokenSource = new CancellationTokenSource();
+                        Client.DownloadProgress += Client_DownloadProgress;
+                        WaitAndCancel();
+                        await Client.Download(URL, Output, 4, false, TokenSource.Token);
+                        Client.DownloadProgress -= Client_DownloadProgress;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine($"Cancelled!");
+                }
+            }
+        }
 
-            await Task.Delay(1000);
+        private static async void WaitAndCancel()
+        {
+            await Task.Delay(250);
             TokenSource.Cancel();
-            Client.DownloadProgress -= Client_DownloadProgress;
-            Client.DownloadLog -= Client_DownloadLog;
-            Console.WriteLine("Cancelled! Waiting for 10 secs...");
         }
 
         private static void Client_DownloadLog(object? sender, DownloadLogEvent e)

@@ -44,7 +44,7 @@ namespace Hi3Helper.Http
 
 #if NETCOREAPP
             // Read Stream into Buffer
-            while ((Read = Input.Read(buffer)) > 0)
+            while ((Read = Input.Read(_buffer)) > 0)
             {
 #else
             // Read Stream into Buffer

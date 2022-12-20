@@ -35,6 +35,7 @@ namespace Hi3Helper.Http
 
     public class HttpHelperUnhandledError : Exception
     {
+        public HttpHelperUnhandledError(string message) : base(message) { }
         public HttpHelperUnhandledError(string message, Exception ex) : base(message, ex) { }
     }
 }

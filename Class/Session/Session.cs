@@ -71,7 +71,7 @@ namespace Hi3Helper.Http
                 TrySetHttpRequestOffset();
                 TrySetHttpResponse();
             }
-            catch (Exception ex) { throw ex; }
+            catch (Exception) { throw; }
         }
 
         public bool TrySetHttpResponse()
@@ -92,6 +92,7 @@ namespace Hi3Helper.Http
         {
             try
             {
+                this.IsDisposed = false;
                 this.StreamInput?.Dispose();
                 this.SessionRequest?.Dispose();
                 this.SessionResponse?.Dispose();
@@ -146,7 +147,10 @@ namespace Hi3Helper.Http
             {
                 return false;
             }
-            catch (Exception ex) { throw ex; }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         // public void InjectLastHash(int Hash) => this.Checksum.InjectHash(Hash);
@@ -155,24 +159,23 @@ namespace Hi3Helper.Http
         // Implement Disposable for IDisposable
         ~Session()
         {
-            if (this.IsDisposed)
-            {
-                Http.PushLog("TODO: Do not Dispose twice!", DownloadLogSeverity.Warning);
-                return;
-            }
+            if (this.IsDisposed) return;
+
             Dispose();
         }
 
         public void Dispose()
         {
             // this.Checksum = null;
+
+            if (this.IsDisposed) return;
+
+            if (this.IsFileMode) this.StreamOutput?.Dispose();
+
             this.StreamInput?.Dispose();
             this.SessionRequest?.Dispose();
             this.SessionResponse?.Dispose();
             this.SessionClient?.Dispose();
-
-            if (this.IsFileMode)
-                this.StreamOutput?.Dispose();
 
             this.IsDisposed = true;
         }

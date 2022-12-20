@@ -93,7 +93,7 @@ namespace Hi3Helper.Http
             this.PathOverwrite = Overwrite;
             this.ConnectionToken = ThreadToken;
 
-#if NETCOREAPP           
+#if NETCOREAPP
             await Task.Run(() =>
                 RetryableContainer(InitializeSingleSession(OffsetStart, OffsetEnd, true, null)));
 #else
@@ -122,15 +122,15 @@ namespace Hi3Helper.Http
 
         public void Dispose()
         {
-            this._handler = null;
-            this._client.Dispose();
-
             if (this.Sessions != null && this.Sessions.Count > 0)
             {
                 this.Sessions.Clear();
             }
 
             this.Sessions = null;
+            this._handler = null;
+
+            this._client.Dispose();
             this.IsDisposed = true;
         }
 

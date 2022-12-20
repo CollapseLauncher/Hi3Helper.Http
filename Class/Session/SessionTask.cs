@@ -20,7 +20,7 @@ namespace Hi3Helper.Http
             }
         }
 
-#if NETCOREAPP           
+#if NETCOREAPP
         private void RetryableContainer(Session session)
 #else
         private async Task RetryableContainer(Session session)
@@ -41,15 +41,15 @@ namespace Hi3Helper.Http
 #endif
                     StillRetry = false;
                 }
-                catch (TaskCanceledException)
+                catch (TaskCanceledException ex)
                 {
                     StillRetry = false;
-                    throw;
+                    throw ex;
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException ex)
                 {
                     StillRetry = false;
-                    throw;
+                    throw ex;
                 }
                 catch (Exception ex)
                 {
@@ -70,9 +70,7 @@ namespace Hi3Helper.Http
                 finally
                 {
                     session.Dispose();
-#if DEBUG
                     PushLog($"Disposed session ID {session.SessionID}!", DownloadLogSeverity.Info);
-#endif
                 }
             }
         }

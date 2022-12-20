@@ -45,7 +45,8 @@ namespace Hi3Helper.Http
 #endif
             if (!Input.IsSuccessStatusCode)
             {
-                throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
+                session.Dispose();
+                throw new HttpHelperUnhandledError(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
             }
 
             session.SessionResponse = Input;
@@ -74,6 +75,8 @@ namespace Hi3Helper.Http
         private async Task InitializeMultiSession()
 #endif
         {
+            bool IsInitSucceeded = false;
+
             this.SizeAttribute.SizeTotalToDownload = 0;
             this.SizeAttribute.SizeDownloaded = 0;
             this.SizeAttribute.SizeDownloadedLast = 0;
@@ -83,42 +86,45 @@ namespace Hi3Helper.Http
 
             // if (this.IsSessionContinue = LoadMetadata()) return;
 
-#if NETCOREAPP           
-            long? RemoteLength = TryGetContentLength(this.PathURL, this.ConnectionToken);
+            Session session = null;
+            try
+            {
+#if NETCOREAPP
+                long? RemoteLength = TryGetContentLength(this.PathURL, this.ConnectionToken);
 #else
-            long? RemoteLength = await TryGetContentLength(this.PathURL, this.ConnectionToken);
+                long? RemoteLength = await TryGetContentLength(this.PathURL, this.ConnectionToken);
 #endif
 
-            if (RemoteLength == null)
-                throw new NullReferenceException($"File can't be downloaded because the content-length is undefined!");
-
-            this.SizeAttribute.SizeTotalToDownload = (long)RemoteLength;
-
-            long SliceSize = (long)Math.Ceiling((double)this.SizeAttribute.SizeTotalToDownload / this.ConnectionSessions);
-            long EndOffset;
-
-            for (long StartOffset = 0, t = 0; t < this.ConnectionSessions; t++)
-            {
-                long ID = GetHashNumber(this.ConnectionSessions, t);
-                EndOffset = t + 1 == this.ConnectionSessions ? this.SizeAttribute.SizeTotalToDownload - 1 : (StartOffset + SliceSize - 1);
-                PathOut = this.PathOutput + string.Format(PathSessionPrefix, ID);
-
-                if (ConnectionToken.IsCancellationRequested || this.IsDisposed) continue;
-
-                try
+                if (RemoteLength == null)
                 {
-                    Session session = new Session(
+                    throw new NullReferenceException($"File can't be downloaded because the content-length is undefined!");
+                }
+
+                this.SizeAttribute.SizeTotalToDownload = (long)RemoteLength;
+
+                long SliceSize = (long)Math.Ceiling((double)this.SizeAttribute.SizeTotalToDownload / this.ConnectionSessions);
+                long EndOffset;
+
+                for (long StartOffset = 0, t = 0; t < this.ConnectionSessions; t++)
+                {
+                    long ID = GetHashNumber(this.ConnectionSessions, t);
+                    EndOffset = t + 1 == this.ConnectionSessions ? this.SizeAttribute.SizeTotalToDownload - 1 : (StartOffset + SliceSize - 1);
+                    PathOut = this.PathOutput + string.Format(PathSessionPrefix, ID);
+
+                    session = new Session(
                         this.PathURL, PathOut, null,
                         this.ConnectionToken, true, this._handler,
                         StartOffset, EndOffset, this.PathOverwrite,
-                        this._clientUserAgent)
+                        this._clientUserAgent, false)
                     {
                         IsLastSession = t + 1 == this.ConnectionSessions,
                         SessionID = ID
                     };
 
                     if (session.IsExistingFileOversized(StartOffset, EndOffset))
+                    {
                         session = ReinitializeSession(session, true, StartOffset, EndOffset);
+                    }
 
                     bool IsSetRequestSuccess = session.TrySetHttpRequest(),
                          IsSetRequestOffsetSuccess = false,
@@ -132,7 +138,7 @@ namespace Hi3Helper.Http
                     if (IsSetRequestOffsetSuccess)
                     {
 #if NETCOREAPP
-                    IsSetResponseSuccess = session.TrySetHttpResponse();
+                        IsSetResponseSuccess = session.TrySetHttpResponse();
 #else
                         IsSetResponseSuccess = await session.TrySetHttpResponse();
 #endif
@@ -145,14 +151,36 @@ namespace Hi3Helper.Http
                         session.SeekStreamOutputToEnd();
                         this.Sessions.Add(session);
                     }
-                    else session.Dispose();
+                    else
+                    {
+                        throw new HttpHelperUnhandledError($"{ID} PANIC as the response sent {session.SessionResponse.StatusCode} code!!!");
+                    }
 
                     StartOffset += SliceSize;
+
+                    IsInitSucceeded = true;
                 }
-                catch (IOException ex)
+            }
+            catch (TaskCanceledException ex)
+            {
+                throw ex;
+            }
+            catch (OperationCanceledException ex)
+            {
+                throw ex;
+            }
+            catch (IOException ex)
+            {
+                PushLog($"Session initialization cannot be completed due to an error!\r\n{ex}", DownloadLogSeverity.Error);
+                throw ex;
+            }
+            finally
+            {
+                if (!IsInitSucceeded)
                 {
-                    Console.WriteLine(ex + $"IsDisposed {IsDisposed} IsCancelled {ConnectionToken.IsCancellationRequested}");
-                    throw ex;
+                    session?.Dispose();
+                    DisposeAllSessions();
+                    PushLog($"Session has been disposed during initialization!", DownloadLogSeverity.Error);
                 }
             }
 
@@ -167,25 +195,7 @@ namespace Hi3Helper.Http
             // CreateOrUpdateMetadata();
         }
 
-        public async Task WaitUntilAllSessionReady()
-        {
-            if (this.ConnectionToken.IsCancellationRequested) return;
-
-            while (this.Sessions.All(x => x.SessionState != DownloadState.Downloading)
-               && !this.ConnectionToken.IsCancellationRequested)
-            {
-                if (this.DownloadState == DownloadState.Idle) return;
-                await Task.Delay(33, this.ConnectionToken);
-            }
-        }
-
-        public async Task WaitUntilAllSessionDisposed()
-        {
-            while (!this.Sessions.All(x => x.IsDisposed))
-            {
-                await Task.Delay(150);
-            }
-        }
+        public void DisposeAllSessions() => this.Sessions?.ForEach(x => x.Dispose());
 
         public async Task WaitUntilInstanceDisposed()
         {
@@ -193,20 +203,6 @@ namespace Hi3Helper.Http
             {
                 await Task.Delay(10);
             }
-        }
-
-        public async Task WaitUntilAllSessionDownloaded()
-        {
-            if (this.Sessions.Count == 0) return;
-            if (this.ConnectionToken.IsCancellationRequested) return;
-            if (this.DownloadState == DownloadState.Idle
-             || this.DownloadState == DownloadState.WaitingOnSession)
-                throw new InvalidOperationException("You couldn't be able to use this method before all sessions are ready!");
-
-            while (this.Sessions.Any(x => x.SessionState == DownloadState.Downloading)
-               && !this.ConnectionToken.IsCancellationRequested
-               && this.Sessions.Count != 0)
-                await Task.Delay(33, this.ConnectionToken);
         }
 
         private void IncrementDownloadedSize(Session session) => this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
@@ -297,7 +293,7 @@ namespace Hi3Helper.Http
             return Ret;
         }
 
-#if NETCOREAPP           
+#if NETCOREAPP
         public long? TryGetContentLength(string URL, CancellationToken Token)
 #else
         public async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
@@ -330,7 +326,7 @@ namespace Hi3Helper.Http
             }
         }
 
-#if NETCOREAPP           
+#if NETCOREAPP
         private long? GetContentLength(string Input, CancellationToken token = new CancellationToken())
         {
             HttpResponseMessage response = _client.Send(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
