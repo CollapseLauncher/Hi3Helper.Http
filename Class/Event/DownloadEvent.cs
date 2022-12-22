@@ -4,16 +4,6 @@ namespace Hi3Helper.Http
 {
     public class DownloadEvent
     {
-        public DownloadEvent(long SizeLastDownloaded, long SizeDownloaded, long SizeToBeDownloaded,
-            long Read, double TotalSecond, DownloadState state)
-        {
-            this.Speed = 0;
-            this.SizeDownloaded = 0;
-            this.SizeToBeDownloaded = 0;
-            this.Read = 0;
-            this.State = DownloadState.Idle;
-        }
-
         public DownloadEvent()
         {
             this.Speed = 0;

@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace Hi3Helper.Http
 {
@@ -15,6 +16,9 @@ namespace Hi3Helper.Http
             this.RetryMax = RetryMax;
             this.RetryInterval = RetryInterval;
             this.DownloadState = DownloadState.Idle;
+            this.Sessions = new List<Session>();
+            this.SessionsStopwatch = Stopwatch.StartNew();
+            this.SizeAttribute = new AttributesSize();
             this._clientUserAgent = UserAgent;
             this._ignoreHttpCompression = IgnoreCompress;
             this._handler = new HttpClientHandler
@@ -29,13 +33,14 @@ namespace Hi3Helper.Http
 
             if (this._clientUserAgent != null)
                 this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
-
-            this.SessionsStopwatch = Stopwatch.StartNew();
         }
 
         public Http()
         {
             this.DownloadState = DownloadState.Idle;
+            this.Sessions = new List<Session>();
+            this.SessionsStopwatch = Stopwatch.StartNew();
+            this.SizeAttribute = new AttributesSize();
             this._ignoreHttpCompression = true;
             this._handler = new HttpClientHandler()
             {
@@ -46,8 +51,6 @@ namespace Hi3Helper.Http
             };
 
             this._client = new HttpClient(this._handler);
-
-            this.SessionsStopwatch = Stopwatch.StartNew();
         }
 
 #if NETCOREAPP

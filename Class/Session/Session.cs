@@ -3,11 +3,13 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
+#if !NETCOREAPP
 using System.Threading.Tasks;
+#endif
 
 namespace Hi3Helper.Http
 {
-    public class Session : IDisposable
+    internal sealed class Session : IDisposable
     {
         public Session(string PathURL, string PathOutput, Stream SOutput,
             CancellationToken SToken, bool IsFileMode, HttpClientHandler ClientHandler,
@@ -22,6 +24,7 @@ namespace Hi3Helper.Http
             this.SessionToken = SToken;
             this.IsFileMode = IsFileMode;
             this.IsDisposed = false;
+            this.IsUseExternalClient = UseExternalSessionClient;
             this.SessionState = DownloadState.Idle;
             this.SessionClient = UseExternalSessionClient ? null : new HttpClient(ClientHandler);
             // this.Checksum = new SimpleChecksum();
@@ -32,20 +35,18 @@ namespace Hi3Helper.Http
             }
 
             // If the OutStream is explicitly defined, use OutStream instead and set to IsFileMode == false.
-            if (SOutput != null)
+            if (!(this.IsFileMode = SOutput == null))
             {
                 this.StreamOutput = SOutput;
-                this.IsFileMode = false;
-                AdjustOffsets(OffsetStart, OffsetEnd);
-                return;
+            }
+            // Else, use file and set IsFileMode == true.
+            else
+            {
+                this.StreamOutput = Overwrite ?
+                      new FileStream(this.PathOutput, FileMode.Create, FileAccess.Write)
+                    : new FileStream(this.PathOutput, FileMode.OpenOrCreate, FileAccess.Write);
             }
 
-            // Else, use file and set IsFileMode == true.
-            if (Overwrite)
-                this.StreamOutput = new FileStream(this.PathOutput, FileMode.Create, FileAccess.Write);
-            else
-                this.StreamOutput = new FileStream(this.PathOutput, FileMode.OpenOrCreate, FileAccess.Write);
-            this.IsFileMode = true;
             AdjustOffsets(OffsetStart, OffsetEnd);
         }
 
@@ -175,7 +176,7 @@ namespace Hi3Helper.Http
             this.StreamInput?.Dispose();
             this.SessionRequest?.Dispose();
             this.SessionResponse?.Dispose();
-            this.SessionClient?.Dispose();
+            if (!this.IsUseExternalClient) this.SessionClient?.Dispose();
 
             this.IsDisposed = true;
         }
@@ -197,6 +198,7 @@ namespace Hi3Helper.Http
         public bool IsLastSession { get; set; }
         public bool IsFileMode { get; private set; }
         public bool IsDisposed { get; private set; }
+        private bool IsUseExternalClient { get; set; }
 
         // Session Properties
         public HttpClient SessionClient { get; set; }

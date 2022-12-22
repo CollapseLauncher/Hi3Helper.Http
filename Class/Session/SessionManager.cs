@@ -24,7 +24,7 @@ namespace Hi3Helper.Http
 
             Session session = new Session(this.PathURL, this.PathOutput, _Stream,
                 this.ConnectionToken, IsFileMode, this._handler,
-                OffsetStart, OffsetEnd, this.PathOverwrite, this._clientUserAgent);
+                OffsetStart, OffsetEnd, this.PathOverwrite, this._clientUserAgent, true);
 
             session.SessionRequest = new HttpRequestMessage()
             {

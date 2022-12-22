@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+#if !NETCOREAPP
 using System.Threading;
+#endif
 using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-
     public partial class Http
     {
         private IEnumerable<Task> RunMultiSessionTasks()
@@ -28,8 +29,7 @@ namespace Hi3Helper.Http
         {
             if (session == null) return;
 
-            bool StillRetry = true;
-            while (StillRetry)
+            while (true)
             {
                 session.SessionRetryAttempt++;
                 try
@@ -39,17 +39,15 @@ namespace Hi3Helper.Http
 #else
                     await Task.Run(() => IOReadWriteSession(session));
 #endif
-                    StillRetry = false;
+                    return;
                 }
-                catch (TaskCanceledException ex)
+                catch (TaskCanceledException)
                 {
-                    StillRetry = false;
-                    throw ex;
+                    throw;
                 }
-                catch (OperationCanceledException ex)
+                catch (OperationCanceledException)
                 {
-                    StillRetry = false;
-                    throw ex;
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -60,7 +58,6 @@ namespace Hi3Helper.Http
 #endif
                     if (session.SessionRetryAttempt > this.RetryMax)
                     {
-                        StillRetry = false;
                         this.DownloadState = DownloadState.FailedDownloading;
                         PushLog($"[Retry {session.SessionRetryAttempt}/{this.RetryMax}] Retry attempt has been exceeded on session ID {session.SessionID}! Retrying...\r\nURL: {this.PathURL}\r\nException: {ex}", DownloadLogSeverity.Error);
                         throw;
