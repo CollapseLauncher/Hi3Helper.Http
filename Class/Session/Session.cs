@@ -24,7 +24,6 @@ namespace Hi3Helper.Http
             this.SessionToken = SToken;
             this.IsFileMode = IsFileMode;
             this.IsDisposed = false;
-            this.IsUseExternalClient = UseExternalSessionClient;
             this.SessionState = DownloadState.Idle;
             this.SessionClient = UseExternalSessionClient ? null : new HttpClient(ClientHandler);
             // this.Checksum = new SimpleChecksum();
@@ -197,7 +196,6 @@ namespace Hi3Helper.Http
         public bool IsLastSession { get; set; }
         public bool IsFileMode { get; private set; }
         public bool IsDisposed { get; private set; }
-        private bool IsUseExternalClient { get; set; }
 
         // Session Properties
         public HttpClient SessionClient { get; set; }
