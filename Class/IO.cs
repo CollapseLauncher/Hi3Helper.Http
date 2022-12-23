@@ -40,18 +40,19 @@ namespace Hi3Helper.Http
         {
             DownloadEvent Event = new DownloadEvent();
             int Read;
+            byte[] Buffer = new byte[_bufferSize];
 
 #if NETCOREAPP
             // Read Stream into Buffer
-            while ((Read = Input.Read(_buffer)) > 0)
+            while ((Read = Input.Read(Buffer)) > 0)
             {
 #else
             // Read Stream into Buffer
-            while ((Read = Input.Read(_buffer, 0, _bufferSize)) > 0)
+            while ((Read = Input.Read(Buffer, 0, _bufferSize)) > 0)
             {
 #endif
                 // Write Buffer to the output Stream
-                Output.Write(_buffer, 0, Read);
+                Output.Write(Buffer, 0, Read);
                 // Throw if Token Cancellation is requested
                 Token.ThrowIfCancellationRequested();
 
