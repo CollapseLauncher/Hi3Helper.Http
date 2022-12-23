@@ -127,7 +127,7 @@ namespace Hi3Helper.Http
         {
             if (this.Sessions != null && this.Sessions.Count > 0)
             {
-                this.Sessions.Clear();
+                DisposeAllSessions();
             }
 
             this.Sessions = null;
