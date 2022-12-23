@@ -28,6 +28,7 @@ namespace Hi3Helper.Http
 #endif
         {
             if (session == null) return;
+            bool AllowDispose = false;
 
             while (true)
             {
@@ -39,14 +40,17 @@ namespace Hi3Helper.Http
 #else
                     await Task.Run(() => IOReadWriteSession(session));
 #endif
+                    AllowDispose = true;
                     return;
                 }
                 catch (TaskCanceledException)
                 {
+                    AllowDispose = true;
                     throw;
                 }
                 catch (OperationCanceledException)
                 {
+                    AllowDispose = true;
                     throw;
                 }
                 catch (Exception ex)
@@ -58,6 +62,7 @@ namespace Hi3Helper.Http
 #endif
                     if (session.SessionRetryAttempt > this.RetryMax)
                     {
+                        AllowDispose = true;
                         this.DownloadState = DownloadState.FailedDownloading;
                         PushLog($"[Retry {session.SessionRetryAttempt}/{this.RetryMax}] Retry attempt has been exceeded on session ID {session.SessionID}! Retrying...\r\nURL: {this.PathURL}\r\nException: {ex}", DownloadLogSeverity.Error);
                         throw;
@@ -66,8 +71,11 @@ namespace Hi3Helper.Http
                 }
                 finally
                 {
-                    session.Dispose();
-                    PushLog($"Disposed session ID {session.SessionID}!", DownloadLogSeverity.Info);
+                    if (AllowDispose)
+                    {
+                        session.Dispose();
+                        PushLog($"Disposed session ID {session.SessionID}!", DownloadLogSeverity.Info);
+                    }
                 }
             }
         }
