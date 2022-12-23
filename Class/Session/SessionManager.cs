@@ -32,8 +32,8 @@ namespace Hi3Helper.Http
                 Method = HttpMethod.Get
             };
 
-            if (!!((session.IsLastSession ? session.OffsetEnd - 1 : session.OffsetEnd) - session.OffsetStart < 0
-                && (session.IsLastSession ? session.OffsetEnd - 1 : session.OffsetEnd) - session.OffsetStart == -1))
+            if (!!(session.OffsetEnd - session.OffsetStart < 0
+                && session.OffsetEnd - session.OffsetStart == -1))
                 return null;
 
             session.SessionRequest.Headers.Range = new RangeHeaderValue(session.OffsetStart, session.OffsetEnd);
