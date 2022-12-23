@@ -176,7 +176,6 @@ namespace Hi3Helper.Http
             this.StreamInput?.Dispose();
             this.SessionRequest?.Dispose();
             this.SessionResponse?.Dispose();
-            if (!this.IsUseExternalClient) this.SessionClient?.Dispose();
 
             this.IsDisposed = true;
         }
