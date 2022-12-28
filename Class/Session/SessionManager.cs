@@ -75,7 +75,7 @@ namespace Hi3Helper.Http
         private async Task InitializeMultiSession()
 #endif
         {
-            bool IsInitSucceeded = false;
+            bool IsInitSucceeded = true;
 
             this.SizeAttribute.SizeTotalToDownload = 0;
             this.SizeAttribute.SizeDownloaded = 0;
@@ -157,21 +157,22 @@ namespace Hi3Helper.Http
                     }
 
                     StartOffset += SliceSize;
-
-                    IsInitSucceeded = true;
                 }
             }
             catch (TaskCanceledException ex)
             {
+                IsInitSucceeded = false;
                 throw ex;
             }
             catch (OperationCanceledException ex)
             {
+                IsInitSucceeded = false;
                 throw ex;
             }
             catch (IOException ex)
             {
                 PushLog($"Session initialization cannot be completed due to an error!\r\n{ex}", DownloadLogSeverity.Error);
+                IsInitSucceeded = false;
                 throw ex;
             }
             finally
