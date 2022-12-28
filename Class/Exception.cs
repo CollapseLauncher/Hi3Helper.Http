@@ -2,7 +2,6 @@
 
 namespace Hi3Helper.Http
 {
-    [Serializable]
     public class HttpHelperSessionNotReady : Exception
     {
         public HttpHelperSessionNotReady(string message) : base(message) { }

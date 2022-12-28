@@ -1,6 +1,6 @@
 ﻿namespace Hi3Helper.Http
 {
-    public class DownloadLogEvent
+    public sealed class DownloadLogEvent
     {
         public DownloadLogEvent(string message, DownloadLogSeverity severity)
         {

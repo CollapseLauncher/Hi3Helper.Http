@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    internal sealed class Session : IDisposable
+    public sealed class Session : IDisposable
     {
         public Session(string PathURL, string PathOutput, Stream SOutput,
             CancellationToken SToken, bool IsFileMode, HttpClientHandler ClientHandler,
@@ -27,6 +27,7 @@ namespace Hi3Helper.Http
             this.SessionState = DownloadState.Idle;
             this.SessionClient = UseExternalSessionClient ? null : new HttpClient(ClientHandler);
             // this.Checksum = new SimpleChecksum();
+            this.SessionID = 0;
 
             if (!UseExternalSessionClient && UserAgent != null)
             {
@@ -185,39 +186,34 @@ namespace Hi3Helper.Http
         // public long LastChecksumPos { get => this.Checksum.LastChecksumPos; }
 
         // Session Offset Properties
-        public long? OffsetStart { get; set; }
-        public long? OffsetEnd { get; private set; }
+        public long? OffsetStart;
+        public long? OffsetEnd;
 
         // Path Properties
-        public string PathURL { get; private set; }
-        public string PathOutput { get; private set; }
+        public string PathURL;
+        public string PathOutput;
 
         // Boolean Properties
-        public bool IsLastSession { get; set; }
-        public bool IsFileMode { get; private set; }
-        public bool IsDisposed { get; private set; }
+        public bool IsLastSession;
+        public bool IsFileMode;
+        public bool IsDisposed;
 
         // Session Properties
-        public HttpClient SessionClient { get; set; }
-        public CancellationToken SessionToken { get; private set; }
-        public HttpRequestMessage SessionRequest { get; set; }
-        public HttpResponseMessage SessionResponse { get; set; }
-        public DownloadState SessionState { get; set; }
-        public int SessionRetryAttempt { get; set; }
-        public long SessionID = 0;
+        public HttpClient SessionClient;
+        public CancellationToken SessionToken;
+        public HttpRequestMessage SessionRequest;
+        public HttpResponseMessage SessionResponse;
+        public DownloadState SessionState;
+        public int SessionRetryAttempt;
+        public long SessionID;
 
         // Stream Properties
 #if NETCOREAPP
-        public Stream StreamInput { get => this.SessionResponse?.Content.ReadAsStream(); }
+        public Stream StreamInput => this.SessionResponse?.Content.ReadAsStream();
 #else
-        public Stream StreamInput
-        {
-            get => this.SessionResponse?.Content.ReadAsStreamAsync()
-                    .GetAwaiter()
-                    .GetResult();
-        }
+        public Stream StreamInput => this.SessionResponse?.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
 #endif
-        public Stream StreamOutput { get; private set; }
+        public Stream StreamOutput;
         public long StreamOutputSize => (this.StreamOutput?.CanWrite ?? false) || (this.StreamOutput?.CanRead ?? false) ? this.StreamOutput.Length : 0;
     }
 }

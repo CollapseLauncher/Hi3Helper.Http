@@ -2,7 +2,7 @@
 
 namespace Hi3Helper.Http
 {
-    public class DownloadEvent
+    public sealed class DownloadEvent
     {
         public DownloadEvent()
         {

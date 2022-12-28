@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public partial class Http
+    public sealed partial class Http
     {
         public async Task Merge() => await Task.Run(MergeSync);
 

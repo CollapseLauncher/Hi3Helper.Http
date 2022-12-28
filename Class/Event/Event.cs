@@ -2,7 +2,7 @@
 
 namespace Hi3Helper.Http
 {
-    public partial class Http
+    public sealed partial class Http
     {
         // Download Progress Event Handler
         public event EventHandler<DownloadEvent> DownloadProgress;

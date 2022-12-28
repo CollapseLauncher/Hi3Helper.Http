@@ -1,9 +1,9 @@
 ﻿namespace Hi3Helper.Http
 {
-    internal class AttributesSize
+    internal sealed class AttributesSize
     {
-        public long SizeTotalToDownload { get; set; }
-        public long SizeDownloaded { get; set; }
-        public long SizeDownloadedLast { get; set; }
+        public long SizeTotalToDownload;
+        public long SizeDownloaded;
+        public long SizeDownloadedLast;
     }
 }
