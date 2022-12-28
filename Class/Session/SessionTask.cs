@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public partial class Http
+    public sealed partial class Http
     {
         private IEnumerable<Task> RunMultiSessionTasks()
         {

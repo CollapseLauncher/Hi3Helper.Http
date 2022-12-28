@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
@@ -8,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public partial class Http
+    public sealed partial class Http
     {
 #if NETCOREAPP
         private Session InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
@@ -144,7 +143,7 @@ namespace Hi3Helper.Http
 #endif
                     }
 
-                    IncrementDownloadedSize(session);
+                    this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
 
                     if (IsSetResponseSuccess)
                     {
@@ -206,8 +205,6 @@ namespace Hi3Helper.Http
             }
         }
 
-        private void IncrementDownloadedSize(Session session) => this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
-
         private Session ReinitializeSession(Session Input, bool ForceOverwrite = false,
             long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
         {
@@ -262,24 +259,6 @@ namespace Hi3Helper.Http
                     return parentFile.Length;
             }
 
-            for (int t = 0; t < Sessions; t++)
-            {
-                SessionFilePath = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
-                try
-                {
-                    FileInfo fileInfo = new FileInfo(SessionFilePath);
-                    if (fileInfo.Exists) Ret += fileInfo.Length;
-                }
-                catch { }
-            }
-
-            return Ret;
-        }
-
-        public long CalculateExistingMultisessionFiles(string Path, byte Sessions)
-        {
-            long Ret = 0;
-            string SessionFilePath;
             for (int t = 0; t < Sessions; t++)
             {
                 SessionFilePath = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));

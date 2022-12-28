@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 namespace Hi3Helper.Http
 {
-    public partial class Http : IDisposable
+    public sealed partial class Http : IDisposable
     {
         public Http(bool IgnoreCompress = true, byte RetryMax = 5, short RetryInterval = 1000, string UserAgent = null)
         {

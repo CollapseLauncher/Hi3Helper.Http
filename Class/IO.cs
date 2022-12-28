@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace Hi3Helper.Http
 {
-    public partial class Http
+    public sealed partial class Http
     {
         /*
         public bool IOReadVerifyMulti(Session Input)

@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public partial class Http
+    public sealed partial class Http
     {
 #if NETCOREAPP
         public void DownloadSync(string URL, string Output, byte ConnectionSessions = 4,
