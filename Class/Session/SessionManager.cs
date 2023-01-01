@@ -37,7 +37,7 @@ namespace Hi3Helper.Http
 
             session.SessionRequest.Headers.Range = new RangeHeaderValue(session.OffsetStart, session.OffsetEnd);
 
-#if NETCOREAPP           
+#if NETCOREAPP
             HttpResponseMessage Input = this._client.Send(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
 #else
             HttpResponseMessage Input = await this._client.SendAsync(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
@@ -68,7 +68,40 @@ namespace Hi3Helper.Http
             return session;
         }
 
-#if NETCOREAPP           
+#if NETCOREAPP
+        private (Stream, long) GetSessionAsStream(string URL, long? OffsetStart, long? OffsetEnd, CancellationToken Token)
+#else
+        private async Task<(Stream, long)> GetSessionAsStream(string URL, long? OffsetStart, long? OffsetEnd, CancellationToken Token)
+#endif
+        {
+            HttpRequestMessage requesst = new HttpRequestMessage()
+            {
+                RequestUri = new Uri(URL),
+                Method = HttpMethod.Get
+            };
+
+            requesst.Headers.Range = new RangeHeaderValue(OffsetStart, OffsetEnd);
+
+#if NETCOREAPP
+            HttpResponseMessage request = this._client.Send(requesst, HttpCompletionOption.ResponseHeadersRead, Token);
+#else
+            HttpResponseMessage request = await this._client.SendAsync(requesst, HttpCompletionOption.ResponseHeadersRead, Token);
+#endif
+
+            if (!request.IsSuccessStatusCode || (int)request.StatusCode == 416)
+            {
+                request.Dispose();
+                throw new HttpHelperUnhandledError(string.Format("HttpResponse has returned unsuccessful code: {0}", request.StatusCode));
+            }
+
+#if NETCOREAPP
+            return (request.Content.ReadAsStream(), request.Content.Headers.ContentLength ?? 0);
+#else
+            return (request.Content.ReadAsStreamAsync().GetAwaiter().GetResult(), request.Content.Headers.ContentLength ?? 0);
+#endif
+        }
+
+#if NETCOREAPP
         private void InitializeMultiSession()
 #else
         private async Task InitializeMultiSession()
