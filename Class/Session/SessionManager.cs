@@ -70,9 +70,6 @@ namespace Hi3Helper.Http
 
 #if NETCOREAPP
         private (Stream, long) GetSessionAsStream(string URL, long? OffsetStart, long? OffsetEnd, CancellationToken Token)
-#else
-        private async Task<(Stream, long)> GetSessionAsStream(string URL, long? OffsetStart, long? OffsetEnd, CancellationToken Token)
-#endif
         {
             HttpRequestMessage requesst = new HttpRequestMessage()
             {
@@ -82,11 +79,7 @@ namespace Hi3Helper.Http
 
             requesst.Headers.Range = new RangeHeaderValue(OffsetStart, OffsetEnd);
 
-#if NETCOREAPP
             HttpResponseMessage request = this._client.Send(requesst, HttpCompletionOption.ResponseHeadersRead, Token);
-#else
-            HttpResponseMessage request = await this._client.SendAsync(requesst, HttpCompletionOption.ResponseHeadersRead, Token);
-#endif
 
             if (!request.IsSuccessStatusCode || (int)request.StatusCode == 416)
             {
@@ -94,12 +87,9 @@ namespace Hi3Helper.Http
                 throw new HttpHelperUnhandledError(string.Format("HttpResponse has returned unsuccessful code: {0}", request.StatusCode));
             }
 
-#if NETCOREAPP
             return (request.Content.ReadAsStream(), request.Content.Headers.ContentLength ?? 0);
-#else
-            return (request.Content.ReadAsStreamAsync().GetAwaiter().GetResult(), request.Content.Headers.ContentLength ?? 0);
-#endif
         }
+#endif
 
 #if NETCOREAPP
         private void InitializeMultiSession()

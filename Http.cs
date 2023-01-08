@@ -105,12 +105,10 @@ namespace Hi3Helper.Http
             this.DownloadState = DownloadState.Finished;
         }
 
+#if NETCOREAPP
         public async Task<(Stream, long)> DownloadFromSessionStreamAsync(string URL, long? OffsetStart = 0, long? OffsetEnd = null,
             CancellationToken ThreadToken = new CancellationToken()) =>
-#if NETCOREAPP
             await Task.Run(() => GetSessionAsStream(URL, OffsetStart, OffsetEnd, ThreadToken));
-#else
-            await GetSessionAsStream(URL, OffsetStart, OffsetEnd, ThreadToken);
 #endif
 
 #if NETCOREAPP
