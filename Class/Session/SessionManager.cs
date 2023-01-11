@@ -168,6 +168,12 @@ namespace Hi3Helper.Http
 
                     this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
 
+                    if (session.StreamOutputSize == SliceSize)
+                    {
+                        PushLog($"Session ID: {ID} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Error);
+                        continue;
+                    }
+
                     if (IsSetResponseSuccess)
                     {
                         session.SeekStreamOutputToEnd();
