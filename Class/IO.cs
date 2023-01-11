@@ -77,19 +77,23 @@ namespace Hi3Helper.Http
         {
             DownloadEvent Event = new DownloadEvent();
             int Read;
-            byte[] Buffer = new byte[_bufferSize];
-
 #if NETCOREAPP
+            Span<byte> Buffer = stackalloc byte[_bufferSize];
+
             // Read Stream into Buffer
             while ((Read = Input.StreamInput.Read(Buffer)) > 0)
             {
+                // Write Buffer to the output Stream
+                Input.StreamOutput.Write(Buffer.Slice(0, Read));
 #else
+            byte[] Buffer = new byte[_bufferSize];
+
             // Read Stream into Buffer
             while ((Read = Input.StreamInput.Read(Buffer, 0, _bufferSize)) > 0)
             {
-#endif
                 // Write Buffer to the output Stream
                 Input.StreamOutput.Write(Buffer, 0, Read);
+#endif
                 // Increment as last OffsetStart adjusted
                 Input.OffsetStart += Read;
                 // Compute checksum from Buffer
