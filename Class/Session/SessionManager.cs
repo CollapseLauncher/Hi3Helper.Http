@@ -143,9 +143,12 @@ namespace Hi3Helper.Http
                         SessionID = ID
                     };
 
-                    if (session.IsExistingFileOversized(StartOffset, EndOffset))
+                    long _Start = StartOffset;
+                    StartOffset += SliceSize;
+
+                    if (session.IsExistingFileOversized(_Start, EndOffset))
                     {
-                        session = ReinitializeSession(session, true, StartOffset, EndOffset);
+                        session = ReinitializeSession(session, true, _Start, EndOffset);
                     }
 
                     bool IsSetRequestSuccess = session.TrySetHttpRequest(),
@@ -183,8 +186,6 @@ namespace Hi3Helper.Http
                     {
                         throw new HttpHelperUnhandledError($"{ID} PANIC as the response sent {session.SessionResponse.StatusCode} code!!!");
                     }
-
-                    StartOffset += SliceSize;
                 }
             }
             catch (TaskCanceledException ex)
