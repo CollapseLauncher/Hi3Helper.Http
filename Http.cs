@@ -72,14 +72,14 @@ namespace Hi3Helper.Http
 
         public void DownloadSync(string URL, Stream Outstream,
             long? OffsetStart = null, long? OffsetEnd = null,
-            CancellationToken ThreadToken = new CancellationToken())
+            CancellationToken ThreadToken = new CancellationToken(), bool IgnoreOutStreamLength = false)
         {
             ResetState();
 
             this.PathURL = URL;
             this.ConnectionToken = ThreadToken;
 
-            RetryableContainer(InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream));
+            RetryableContainer(InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream, IgnoreOutStreamLength));
 
             this.DownloadState = DownloadState.Finished;
         }
@@ -119,7 +119,7 @@ namespace Hi3Helper.Http
 
         public async Task Download(string URL, Stream Outstream,
             long? OffsetStart = null, long? OffsetEnd = null,
-            CancellationToken ThreadToken = new CancellationToken())
+            CancellationToken ThreadToken = new CancellationToken(), bool IgnoreOutStreamLength = false)
         {
             ResetState();
 
@@ -128,9 +128,9 @@ namespace Hi3Helper.Http
 
 #if NETCOREAPP
             await Task.Run(() =>
-                RetryableContainer(InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream)));
+                RetryableContainer(InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream, IgnoreOutStreamLength)));
 #else
-            await RetryableContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream));
+            await RetryableContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream, IgnoreOutStreamLength));
 #endif
             this.DownloadState = DownloadState.Finished;
         }

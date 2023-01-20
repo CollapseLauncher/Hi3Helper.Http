@@ -15,7 +15,7 @@ namespace Hi3Helper.Http
             CancellationToken SToken, bool IsFileMode, HttpClientHandler ClientHandler,
             long? OffsetStart = null, long? OffsetEnd = null,
             bool Overwrite = false, string UserAgent = null,
-            bool UseExternalSessionClient = false)
+            bool UseExternalSessionClient = false, bool IgnoreOutStreamLength = false)
         {
             // Initialize Properties
             this.PathURL = PathURL;
@@ -47,15 +47,15 @@ namespace Hi3Helper.Http
                     : new FileStream(this.PathOutput, FileMode.OpenOrCreate, FileAccess.Write);
             }
 
-            AdjustOffsets(OffsetStart, OffsetEnd);
+            AdjustOffsets(OffsetStart, OffsetEnd, IgnoreOutStreamLength);
         }
 
         // Seek the StreamOutput to the end of file
         public void SeekStreamOutputToEnd() => this.StreamOutput.Seek(0, SeekOrigin.End);
 
-        private void AdjustOffsets(long? Start, long? End)
+        private void AdjustOffsets(long? Start, long? End, bool IgnoreOutStreamLength = false)
         {
-            this.OffsetStart = (Start ?? 0) + this.StreamOutputSize;
+            this.OffsetStart = (Start ?? 0) + (IgnoreOutStreamLength ? 0 : this.StreamOutputSize);
             this.OffsetEnd = End;
         }
 

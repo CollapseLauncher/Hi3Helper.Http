@@ -10,9 +10,9 @@ namespace Hi3Helper.Http
     public sealed partial class Http
     {
 #if NETCOREAPP
-        private Session InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
+        private Session InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false)
 #else
-        private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null)
+        private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false)
 #endif
         {
             this.SizeAttribute.SizeTotalToDownload = 0;
@@ -23,7 +23,7 @@ namespace Hi3Helper.Http
 
             Session session = new Session(this.PathURL, this.PathOutput, _Stream,
                 this.ConnectionToken, IsFileMode, this._handler,
-                OffsetStart, OffsetEnd, this.PathOverwrite, this._clientUserAgent, true);
+                OffsetStart, OffsetEnd, this.PathOverwrite, this._clientUserAgent, true, IgnoreOutStreamLength);
 
             session.SessionRequest = new HttpRequestMessage()
             {
