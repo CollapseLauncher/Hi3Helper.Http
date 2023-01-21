@@ -171,9 +171,9 @@ namespace Hi3Helper.Http
 
                     this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
 
-                    if (session.StreamOutputSize == SliceSize)
+                    if (session.StreamOutputSize == (EndOffset - _Start) + 1)
                     {
-                        PushLog($"Session ID: {ID} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Error);
+                        PushLog($"Session ID: {ID} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Warning);
                         continue;
                     }
 
