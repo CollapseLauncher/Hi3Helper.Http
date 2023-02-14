@@ -45,7 +45,7 @@ namespace Hi3Helper.Http
             if (!Input.IsSuccessStatusCode)
             {
                 session.Dispose();
-                throw new HttpHelperUnhandledError(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
+                throw new HttpHelperUnhandledError(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", Input.StatusCode, this.PathURL));
             }
 
             session.SessionResponse = Input;
@@ -84,7 +84,7 @@ namespace Hi3Helper.Http
             if (!request.IsSuccessStatusCode || (int)request.StatusCode == 416)
             {
                 request.Dispose();
-                throw new HttpHelperUnhandledError(string.Format("HttpResponse has returned unsuccessful code: {0}", request.StatusCode));
+                throw new HttpHelperUnhandledError(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", request.StatusCode, URL));
             }
 
             return (request.Content.ReadAsStream(), request.Content.Headers.ContentLength ?? 0);

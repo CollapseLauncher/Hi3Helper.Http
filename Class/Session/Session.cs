@@ -86,7 +86,7 @@ namespace Hi3Helper.Http
 
             if ((int)Input.StatusCode == 416) return false;
 
-            throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
+            throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", Input.StatusCode, PathURL));
         }
 #else
         public async Task TryReinitializeRequest()
@@ -116,7 +116,7 @@ namespace Hi3Helper.Http
 
             if ((int)Input.StatusCode == 416) return false;
 
-            throw new HttpRequestException(string.Format("HttpResponse has returned unsuccessful code: {0}", Input.StatusCode));
+            throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", Input.StatusCode, PathURL));
         }
 #endif
 
