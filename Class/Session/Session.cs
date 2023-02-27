@@ -72,7 +72,11 @@ namespace Hi3Helper.Http
                 TrySetHttpRequestOffset();
                 TrySetHttpResponse();
             }
-            catch (Exception) { throw; }
+            catch (Exception ex)
+            {
+                Http.PushLog($"Failed while reinitialize session ID: {this.SessionID}\r\n{ex}", DownloadLogSeverity.Error);
+                throw;
+            }
         }
 
         public bool TrySetHttpResponse()
