@@ -16,7 +16,7 @@ namespace Hi3Helper.Http
         // Inner HttpClient handler
         private HttpClientHandler _handler;
         // Inner Buffer size
-        private const int _bufferSize = 16 << 10;
+        private const int _bufferSize = 64 << 10;
 
         // Max allowed Connections for HttpClient instance
         private const byte ConnectionMax = 16;
