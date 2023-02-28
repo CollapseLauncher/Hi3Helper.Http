@@ -1,46 +1,48 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
     public sealed partial class Http
     {
-        /*
-        public bool IOReadVerifyMulti(Session Input)
+#if NETCOREAPP
+        private async ValueTask IOReadWriteAsync(Stream Input, Stream Output, CancellationToken Token)
         {
-            // Initialize local checksum
-            SimpleChecksum Checksum = new SimpleChecksum();
+            DownloadEvent Event = new DownloadEvent();
             int Read;
-            int NextRead = _buffer.Length;
+            Memory<byte> Buffer = new byte[_bufferSizeMerge];
 
-            // Set Session State to verification check
-            Input.SessionState = DownloadState.CheckingLastSessionIntegrity;
-
-            // Set Output Stream position to beginning
-            Input.StreamOutput.Position = 0;
             // Read Stream into Buffer
-            while ((Read = Input.StreamOutput.Read(_buffer, 0, NextRead)) > 0)
+            while ((Read = await Input.ReadAsync(Buffer, Token)) > 0)
             {
-                // Calculate Next Read Jump
-                NextRead = (int)Math.Min(_buffer.Length, Input.LastChecksumPos - Input.StreamOutput.Position);
-                // Compute checksum from Buffer
-                Checksum.ComputeHash32(_buffer, Read);
-                // Throw if Token Cancellation is requested
-                Input.SessionToken.ThrowIfCancellationRequested();
+                // Write Buffer to the output Stream
+                await Output.WriteAsync(Buffer.Slice(0, Read), Token);
+
+                // Increment SizeDownloaded attribute
+                this.SizeAttribute.SizeDownloaded += Read;
+                this.SizeAttribute.SizeDownloadedLast += Read;
+
+                // Update state
+                Event.UpdateDownloadEvent(
+                        this.SizeAttribute.SizeDownloadedLast,
+                        this.SizeAttribute.SizeDownloaded,
+                        this.SizeAttribute.SizeTotalToDownload,
+                        Read,
+                        this.SessionsStopwatch.Elapsed.TotalSeconds,
+                        this.DownloadState
+                        );
+                this.UpdateProgress(Event);
             }
-
-            Input.SessionState = DownloadState.CompleteLastSessionIntegrity;
-
-            return Checksum.Hash32 == Input.LastChecksumHash;
         }
-        */
+#endif
 
         private void IOReadWrite(Stream Input, Stream Output, CancellationToken Token)
         {
             DownloadEvent Event = new DownloadEvent();
             int Read;
-            byte[] Buffer = new byte[_bufferSize];
+            byte[] Buffer = new byte[_bufferSizeMerge];
 
 #if NETCOREAPP
             // Read Stream into Buffer
@@ -48,7 +50,7 @@ namespace Hi3Helper.Http
             {
 #else
             // Read Stream into Buffer
-            while ((Read = Input.Read(Buffer, 0, _bufferSize)) > 0)
+            while ((Read = Input.Read(Buffer, 0, _bufferSizeMerge)) > 0)
             {
 #endif
                 // Write Buffer to the output Stream
@@ -96,12 +98,63 @@ namespace Hi3Helper.Http
 #endif
                 // Increment as last OffsetStart adjusted
                 Input.OffsetStart += Read;
-                // Compute checksum from Buffer
-                // Input.Checksum.ComputeHash32(Buffer, Read);
                 // Set Inner Session Status
                 Input.SessionState = DownloadState.Downloading;
                 // Throw if Token Cancellation is requested
                 Input.SessionToken.ThrowIfCancellationRequested();
+                // Reset session retry attempt
+                Input.SessionRetryAttempt = 1;
+
+                // Lock SizeAttribute to avoid race condition while updating status
+                lock (this.SizeAttribute)
+                {
+                    // Increment SizeDownloaded attribute
+                    this.SizeAttribute.SizeDownloaded += Read;
+                    this.SizeAttribute.SizeDownloadedLast += Read;
+
+                    // Update download state
+                    Event.UpdateDownloadEvent(
+                            this.SizeAttribute.SizeDownloadedLast,
+                            this.SizeAttribute.SizeDownloaded,
+                            this.SizeAttribute.SizeTotalToDownload,
+                            Read,
+                            this.SessionsStopwatch.Elapsed.TotalSeconds,
+                            this.DownloadState
+                            );
+                    this.UpdateProgress(Event);
+                }
+            }
+        }
+
+#if NETCOREAPP
+        private async ValueTask IOReadWriteSessionAsync(Session Input)
+#else
+        private async Task IOReadWriteSessionAsync(Session Input)
+#endif
+        {
+            DownloadEvent Event = new DownloadEvent();
+            int Read;
+#if NETCOREAPP
+            Memory<byte> Buffer = new byte[_bufferSize];
+
+            // Read Stream into Buffer
+            while ((Read = await Input.StreamInput.ReadAsync(Buffer, Input.SessionToken)) > 0)
+            {
+                // Write Buffer to the output Stream
+                await Input.StreamOutput.WriteAsync(Buffer.Slice(0, Read), Input.SessionToken);
+#else
+            byte[] Buffer = new byte[_bufferSize];
+
+            // Read Stream into Buffer
+            while ((Read = await Input.StreamInput.ReadAsync(Buffer, 0, _bufferSize, Input.SessionToken)) > 0)
+            {
+                // Write Buffer to the output Stream
+                await Input.StreamOutput.WriteAsync(Buffer, 0, Read, Input.SessionToken);
+#endif
+                // Increment as last OffsetStart adjusted
+                Input.OffsetStart += Read;
+                // Set Inner Session Status
+                Input.SessionState = DownloadState.Downloading;
                 // Reset session retry attempt
                 Input.SessionRetryAttempt = 1;
 

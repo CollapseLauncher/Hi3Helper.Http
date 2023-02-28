@@ -91,11 +91,7 @@ namespace Hi3Helper.Http
         }
 #endif
 
-#if NETCOREAPP
-        private void InitializeMultiSession()
-#else
         private async Task InitializeMultiSession()
-#endif
         {
             bool IsInitSucceeded = true;
 
@@ -112,7 +108,7 @@ namespace Hi3Helper.Http
             try
             {
 #if NETCOREAPP
-                long? RemoteLength = TryGetContentLength(this.PathURL, this.ConnectionToken);
+                long? RemoteLength = await TryGetContentLengthAsync(this.PathURL, this.ConnectionToken);
 #else
                 long? RemoteLength = await TryGetContentLength(this.PathURL, this.ConnectionToken);
 #endif
@@ -163,7 +159,7 @@ namespace Hi3Helper.Http
                     if (IsSetRequestOffsetSuccess)
                     {
 #if NETCOREAPP
-                        IsSetResponseSuccess = session.TrySetHttpResponse();
+                        IsSetResponseSuccess = await session.TrySetHttpResponseAsync();
 #else
                         IsSetResponseSuccess = await session.TrySetHttpResponse();
 #endif
@@ -174,6 +170,7 @@ namespace Hi3Helper.Http
                     if (session.StreamOutputSize == (EndOffset - _Start) + 1)
                     {
                         PushLog($"Session ID: {ID} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Warning);
+                        session?.Dispose();
                         continue;
                     }
 
@@ -221,8 +218,6 @@ namespace Hi3Helper.Http
                 this.DownloadState = DownloadState.FinishedNeedMerge;
             else
                 this.DownloadState = DownloadState.Downloading;
-
-            // CreateOrUpdateMetadata();
         }
 
         public void DisposeAllSessions() => this.Sessions?.ForEach(x => x.Dispose());
@@ -302,6 +297,40 @@ namespace Hi3Helper.Http
 
             return Ret;
         }
+
+#if NETCOREAPP
+        public async ValueTask<long?> TryGetContentLengthAsync(string URL, CancellationToken Token)
+        {
+            byte CurrentRetry = 0;
+            while (true)
+            {
+                try
+                {
+                    return await GetContentLengthAsync(URL, Token);
+                }
+                catch (HttpRequestException)
+                {
+                    CurrentRetry++;
+                    if (CurrentRetry > this.RetryMax)
+                        throw;
+
+                    PushLog($"Error while fetching File Size (Retry Attempt: {CurrentRetry})...", DownloadLogSeverity.Warning);
+                    await Task.Delay(this.RetryInterval, Token);
+                }
+            }
+        }
+
+        private async ValueTask<long?> GetContentLengthAsync(string Input, CancellationToken token = new CancellationToken())
+        {
+            HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
+
+            long? Length = response.Content.Headers.ContentLength;
+
+            response.Dispose();
+
+            return Length;
+        }
+#endif
 
 #if NETCOREAPP
         public long? TryGetContentLength(string URL, CancellationToken Token)

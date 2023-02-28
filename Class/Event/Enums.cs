@@ -6,9 +6,7 @@
         Downloading, Merging,
         Finished, FinishedNeedMerge,
         FailedMerging, FailedDownloading,
-        CancelledMerging, CancelledDownloading,
-        CheckingLastSessionIntegrity,
-        CompleteLastSessionIntegrity
+        CancelledMerging, CancelledDownloading
     }
 
     public enum DownloadLogSeverity : int

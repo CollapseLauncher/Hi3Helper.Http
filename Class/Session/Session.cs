@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
+using System.Threading.Tasks;
 #if !NETCOREAPP
 using System.Threading.Tasks;
 #endif
@@ -26,7 +27,6 @@ namespace Hi3Helper.Http
             this.IsDisposed = false;
             this.SessionState = DownloadState.Idle;
             this.SessionClient = UseExternalSessionClient ? null : new HttpClient(ClientHandler);
-            // this.Checksum = new SimpleChecksum();
             this.SessionID = 0;
 
             if (!UseExternalSessionClient && UserAgent != null)
@@ -79,9 +79,42 @@ namespace Hi3Helper.Http
             }
         }
 
+        public async ValueTask TryReinitializeRequestAsync()
+        {
+            try
+            {
+                this.StreamInput?.Dispose();
+                this.SessionRequest?.Dispose();
+                this.SessionResponse?.Dispose();
+
+                TrySetHttpRequest();
+                TrySetHttpRequestOffset();
+                await TrySetHttpResponseAsync();
+            }
+            catch (Exception ex)
+            {
+                Http.PushLog($"Failed while reinitialize session ID: {this.SessionID}\r\n{ex}", DownloadLogSeverity.Error);
+                throw;
+            }
+        }
+
         public bool TrySetHttpResponse()
         {
             HttpResponseMessage Input = this.SessionClient.Send(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
+            if (Input.IsSuccessStatusCode)
+            {
+                this.SessionResponse = Input;
+                return true;
+            }
+
+            if ((int)Input.StatusCode == 416) return false;
+
+            throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", Input.StatusCode, PathURL));
+        }
+
+        public async ValueTask<bool> TrySetHttpResponseAsync()
+        {
+            HttpResponseMessage Input = await this.SessionClient.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
             if (Input.IsSuccessStatusCode)
             {
                 this.SessionResponse = Input;
@@ -158,9 +191,6 @@ namespace Hi3Helper.Http
             }
         }
 
-        // public void InjectLastHash(int Hash) => this.Checksum.InjectHash(Hash);
-        // public void InjectLastHashPos(long Pos) => this.Checksum.InjectPos(Pos);
-
         // Implement Disposable for IDisposable
         ~Session()
         {
@@ -171,8 +201,6 @@ namespace Hi3Helper.Http
 
         public void Dispose()
         {
-            // this.Checksum = null;
-
             if (this.IsDisposed) return;
 
             if (this.IsFileMode) this.StreamOutput?.Dispose();
@@ -183,11 +211,6 @@ namespace Hi3Helper.Http
 
             this.IsDisposed = true;
         }
-
-        // Checksum Properties
-        // public SimpleChecksum Checksum { get; set; }
-        // public int LastChecksumHash { get => this.Checksum.Hash32; }
-        // public long LastChecksumPos { get => this.Checksum.LastChecksumPos; }
 
         // Session Offset Properties
         public long? OffsetStart;
