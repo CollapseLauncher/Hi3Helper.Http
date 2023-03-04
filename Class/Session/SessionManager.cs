@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
@@ -299,6 +300,14 @@ namespace Hi3Helper.Http
         }
 
 #if NETCOREAPP
+        public async ValueTask<(int, bool)> GetURLStatus(string URL, CancellationToken Token)
+        {
+            using (HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(URL) }, HttpCompletionOption.ResponseHeadersRead, Token))
+            {
+                return ((int)response.StatusCode, response.IsSuccessStatusCode);
+            }
+        }
+
         public async ValueTask<long?> TryGetContentLengthAsync(string URL, CancellationToken Token)
         {
             byte CurrentRetry = 0;
