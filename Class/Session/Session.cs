@@ -185,10 +185,6 @@ namespace Hi3Helper.Http
             {
                 return false;
             }
-            catch (Exception)
-            {
-                throw;
-            }
         }
 
         // Implement Disposable for IDisposable
