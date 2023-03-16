@@ -4,9 +4,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-#if !NETCOREAPP
-using System.Threading.Tasks;
-#endif
 
 namespace Hi3Helper.Http
 {
