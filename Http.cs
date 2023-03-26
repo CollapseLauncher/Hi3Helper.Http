@@ -106,15 +106,13 @@ namespace Hi3Helper.Http
         }
 
 #if NETCOREAPP
-        public async Task<(Stream, long)> DownloadFromSessionStreamAsync(string URL, long? OffsetStart = 0, long? OffsetEnd = null,
-            CancellationToken ThreadToken = new CancellationToken()) =>
-            await Task.Run(() => GetSessionAsStream(URL, OffsetStart, OffsetEnd, ThreadToken));
+        public async ValueTask<(Stream, long)> DownloadFromSessionStreamAsync(string URL, long? OffsetStart = 0, long? OffsetEnd = null,
+            CancellationToken ThreadToken = new CancellationToken()) => await GetSessionAsStreamAsync(URL, OffsetStart, OffsetEnd, ThreadToken);
 #endif
 
 #if NETCOREAPP
         public (Stream, long) DownloadFromSessionStream(string URL, long? OffsetStart = 0, long? OffsetEnd = null,
-            CancellationToken ThreadToken = new CancellationToken()) =>
-            GetSessionAsStream(URL, OffsetStart, OffsetEnd, ThreadToken);
+            CancellationToken ThreadToken = new CancellationToken()) => GetSessionAsStream(URL, OffsetStart, OffsetEnd, ThreadToken);
 #endif
 
         public async Task Download(string URL, Stream Outstream,

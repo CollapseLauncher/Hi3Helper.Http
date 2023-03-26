@@ -69,25 +69,44 @@ namespace Hi3Helper.Http
         }
 
 #if NETCOREAPP
+        private async ValueTask<(Stream, long)> GetSessionAsStreamAsync(string URL, long? OffsetStart, long? OffsetEnd, CancellationToken Token)
+        {
+            HttpRequestMessage request = GetSessionRequest(URL, OffsetStart, OffsetEnd);
+            HttpResponseMessage response = await this._client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, Token);
+
+            return (GetSessionStream(response), response.Content.Headers.ContentLength ?? 0);
+        }
+
         private (Stream, long) GetSessionAsStream(string URL, long? OffsetStart, long? OffsetEnd, CancellationToken Token)
         {
-            HttpRequestMessage requesst = new HttpRequestMessage()
+            HttpRequestMessage request = GetSessionRequest(URL, OffsetStart, OffsetEnd);
+            HttpResponseMessage response = this._client.Send(request, HttpCompletionOption.ResponseHeadersRead, Token);
+
+            return (GetSessionStream(response), response.Content.Headers.ContentLength ?? 0);
+        }
+
+        private HttpRequestMessage GetSessionRequest(string URL, long? OffsetStart, long? OffsetEnd)
+        {
+            HttpRequestMessage request = new HttpRequestMessage()
             {
                 RequestUri = new Uri(URL),
                 Method = HttpMethod.Get
             };
 
-            requesst.Headers.Range = new RangeHeaderValue(OffsetStart, OffsetEnd);
+            request.Headers.Range = new RangeHeaderValue(OffsetStart, OffsetEnd);
 
-            HttpResponseMessage request = this._client.Send(requesst, HttpCompletionOption.ResponseHeadersRead, Token);
+            return request;
+        }
 
-            if (!request.IsSuccessStatusCode || (int)request.StatusCode == 416)
+        private Stream GetSessionStream(HttpResponseMessage response)
+        {
+            if (!response.IsSuccessStatusCode || (int)response.StatusCode == 416)
             {
-                request.Dispose();
-                throw new HttpHelperUnhandledError(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", request.StatusCode, URL));
+                response.Dispose();
+                throw new HttpHelperUnhandledError(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", response.StatusCode, response.RequestMessage.RequestUri));
             }
 
-            return (request.Content.ReadAsStream(), request.Content.Headers.ContentLength ?? 0);
+            return response.Content.ReadAsStream();
         }
 #endif
 
