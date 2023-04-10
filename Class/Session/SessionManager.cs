@@ -204,21 +204,21 @@ namespace Hi3Helper.Http
                     }
                 }
             }
-            catch (TaskCanceledException ex)
+            catch (TaskCanceledException)
             {
                 IsInitSucceeded = false;
-                throw ex;
+                throw;
             }
-            catch (OperationCanceledException ex)
+            catch (OperationCanceledException)
             {
                 IsInitSucceeded = false;
-                throw ex;
+                throw;
             }
-            catch (IOException ex)
+            catch (Exception ex)
             {
                 PushLog($"Session initialization cannot be completed due to an error!\r\n{ex}", DownloadLogSeverity.Error);
                 IsInitSucceeded = false;
-                throw ex;
+                throw;
             }
             finally
             {
