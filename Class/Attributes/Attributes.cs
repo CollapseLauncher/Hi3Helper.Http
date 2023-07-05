@@ -52,7 +52,7 @@ namespace Hi3Helper.Http
         // Check for status of Dispose
         private bool IsDisposed = false;
 
-        private long GetHashNumber(long num1, long num2, long s1 = 69420, long s2 = 87654) => (s1 * num1) ^ (s2 * num2);
+        public static long GetHashNumber(long num1, long num2, long s1 = 69420, long s2 = 87654) => (s1 * num1) ^ (s2 * num2);
 
         private void ResetState() => this.SessionsStopwatch.Restart();
     }
