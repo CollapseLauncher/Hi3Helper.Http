@@ -196,11 +196,18 @@ namespace Hi3Helper.Http
         {
             if (this.IsDisposed) return;
 
-            if (this.IsFileMode) this.StreamOutput?.Dispose();
+            try
+            {
+                if (this.IsFileMode) this.StreamOutput?.Dispose();
 
-            this.StreamInput?.Dispose();
-            this.SessionRequest?.Dispose();
-            this.SessionResponse?.Dispose();
+                this.StreamInput?.Dispose();
+                this.SessionRequest?.Dispose();
+                this.SessionResponse?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Http.PushLog($"Exception while disposing session: {ex}", DownloadLogSeverity.Warning);
+            }
 
             this.IsDisposed = true;
         }
