@@ -80,7 +80,7 @@ namespace Hi3Helper.Http
             DownloadEvent Event = new DownloadEvent();
             int Read;
 #if NETCOREAPP
-            Span<byte> Buffer = stackalloc byte[_bufferSize];
+            Span<byte> Buffer = new byte[_bufferSize];
 
             // Read Stream into Buffer
             while ((Read = Input.StreamInput.Read(Buffer)) > 0)
