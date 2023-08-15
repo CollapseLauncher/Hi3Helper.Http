@@ -43,16 +43,9 @@ namespace Hi3Helper.Http
             DownloadEvent Event = new DownloadEvent();
             int Read;
             byte[] Buffer = new byte[_bufferSizeMerge];
-
-#if NETCOREAPP
-            // Read Stream into Buffer
-            while ((Read = Input.Read(Buffer)) > 0)
-            {
-#else
             // Read Stream into Buffer
             while ((Read = Input.Read(Buffer, 0, _bufferSizeMerge)) > 0)
             {
-#endif
                 // Write Buffer to the output Stream
                 Output.Write(Buffer, 0, Read);
                 // Throw if Token Cancellation is requested
@@ -79,15 +72,6 @@ namespace Hi3Helper.Http
         {
             DownloadEvent Event = new DownloadEvent();
             int Read;
-#if NETCOREAPP
-            Span<byte> Buffer = new byte[_bufferSize];
-
-            // Read Stream into Buffer
-            while ((Read = Input.StreamInput.Read(Buffer)) > 0)
-            {
-                // Write Buffer to the output Stream
-                Input.StreamOutput.Write(Buffer.Slice(0, Read));
-#else
             byte[] Buffer = new byte[_bufferSize];
 
             // Read Stream into Buffer
@@ -95,7 +79,6 @@ namespace Hi3Helper.Http
             {
                 // Write Buffer to the output Stream
                 Input.StreamOutput.Write(Buffer, 0, Read);
-#endif
                 // Increment as last OffsetStart adjusted
                 Input.OffsetStart += Read;
                 // Set Inner Session Status
@@ -134,15 +117,6 @@ namespace Hi3Helper.Http
         {
             DownloadEvent Event = new DownloadEvent();
             int Read;
-#if NETCOREAPP
-            Memory<byte> Buffer = new byte[_bufferSize];
-
-            // Read Stream into Buffer
-            while ((Read = await Input.StreamInput.ReadAsync(Buffer, Input.SessionToken)) > 0)
-            {
-                // Write Buffer to the output Stream
-                await Input.StreamOutput.WriteAsync(Buffer.Slice(0, Read), Input.SessionToken);
-#else
             byte[] Buffer = new byte[_bufferSize];
 
             // Read Stream into Buffer
@@ -150,7 +124,6 @@ namespace Hi3Helper.Http
             {
                 // Write Buffer to the output Stream
                 await Input.StreamOutput.WriteAsync(Buffer, 0, Read, Input.SessionToken);
-#endif
                 // Increment as last OffsetStart adjusted
                 Input.OffsetStart += Read;
                 // Set Inner Session Status
