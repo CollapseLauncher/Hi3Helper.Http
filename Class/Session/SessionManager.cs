@@ -357,6 +357,14 @@ namespace Hi3Helper.Http
 
             return Length;
         }
+#else
+        public async Task<(int, bool)> GetURLStatus(string URL, CancellationToken Token)
+        {
+            using (HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(URL) }, HttpCompletionOption.ResponseHeadersRead, Token))
+            {
+                return ((int)response.StatusCode, response.IsSuccessStatusCode);
+            }
+        }
 #endif
 
 #if NETCOREAPP
