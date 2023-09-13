@@ -57,77 +57,13 @@ namespace Hi3Helper.Http
         }
 
 #if NETCOREAPP
-        public void TryReinitializeRequest()
-        {
-            try
-            {
-                this.StreamInput?.Dispose();
-                this.SessionRequest?.Dispose();
-                this.SessionResponse?.Dispose();
-
-                TrySetHttpRequest();
-                TrySetHttpRequestOffset();
-                TrySetHttpResponse();
-            }
-            catch (Exception ex)
-            {
-                Http.PushLog($"Failed while reinitialize session ID: {this.SessionID}\r\n{ex}", DownloadLogSeverity.Error);
-                throw;
-            }
-        }
-
-        public async ValueTask TryReinitializeRequestAsync()
-        {
-            try
-            {
-                this.StreamInput?.Dispose();
-                this.SessionRequest?.Dispose();
-                this.SessionResponse?.Dispose();
-
-                TrySetHttpRequest();
-                TrySetHttpRequestOffset();
-                await TrySetHttpResponseAsync();
-            }
-            catch (Exception ex)
-            {
-                Http.PushLog($"Failed while reinitialize session ID: {this.SessionID}\r\n{ex}", DownloadLogSeverity.Error);
-                throw;
-            }
-        }
-
-        public bool TrySetHttpResponse()
-        {
-            HttpResponseMessage Input = this.SessionClient.Send(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
-            if (Input.IsSuccessStatusCode)
-            {
-                this.SessionResponse = Input;
-                return true;
-            }
-
-            if ((int)Input.StatusCode == 416) return false;
-
-            throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", Input.StatusCode, PathURL));
-        }
-
-        public async ValueTask<bool> TrySetHttpResponseAsync()
-        {
-            HttpResponseMessage Input = await this.SessionClient.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
-            if (Input.IsSuccessStatusCode)
-            {
-                this.SessionResponse = Input;
-                return true;
-            }
-
-            if ((int)Input.StatusCode == 416) return false;
-
-            throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", Input.StatusCode, PathURL));
-        }
+        public async ValueTask TryReinitializeRequest()
 #else
         public async Task TryReinitializeRequest()
+#endif
         {
             try
             {
-                this.IsDisposed = false;
                 this.StreamInput?.Dispose();
                 this.SessionRequest?.Dispose();
                 this.SessionResponse?.Dispose();
@@ -136,10 +72,18 @@ namespace Hi3Helper.Http
                 TrySetHttpRequestOffset();
                 await TrySetHttpResponse();
             }
-            catch (Exception ex) { throw ex; }
+            catch (Exception ex)
+            {
+                Http.PushLog($"Failed while reinitialize session ID: {this.SessionID}\r\n{ex}", DownloadLogSeverity.Error);
+                throw;
+            }
         }
 
+#if NETCOREAPP
+        public async ValueTask<bool> TrySetHttpResponse()
+#else
         public async Task<bool> TrySetHttpResponse()
+#endif
         {
             HttpResponseMessage Input = await this.SessionClient.SendAsync(this.SessionRequest, HttpCompletionOption.ResponseHeadersRead, this.SessionToken);
             if (Input.IsSuccessStatusCode)
@@ -152,7 +96,6 @@ namespace Hi3Helper.Http
 
             throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", Input.StatusCode, PathURL));
         }
-#endif
 
         public bool TrySetHttpRequest()
         {
@@ -236,7 +179,7 @@ namespace Hi3Helper.Http
 
         // Stream Properties
 #if NETCOREAPP
-        public Stream StreamInput => this.SessionResponse?.Content.ReadAsStream();
+        public Stream StreamInput => this.SessionResponse?.Content.ReadAsStream(SessionToken);
 #else
         public Stream StreamInput => this.SessionResponse?.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
 #endif

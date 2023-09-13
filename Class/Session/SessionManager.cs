@@ -10,7 +10,7 @@ namespace Hi3Helper.Http
     public sealed partial class Http
     {
 #if NETCOREAPP
-        private Session InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false)
+        private async ValueTask<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false)
 #else
         private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false)
 #endif
@@ -37,11 +37,7 @@ namespace Hi3Helper.Http
 
             session.SessionRequest.Headers.Range = new RangeHeaderValue(session.OffsetStart, session.OffsetEnd);
 
-#if NETCOREAPP
-            HttpResponseMessage Input = this._client.Send(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
-#else
             HttpResponseMessage Input = await this._client.SendAsync(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
-#endif
             if (!Input.IsSuccessStatusCode)
             {
                 session.Dispose();
@@ -68,48 +64,6 @@ namespace Hi3Helper.Http
             return session;
         }
 
-#if NETCOREAPP
-        private async ValueTask<(Stream, long)> GetSessionAsStreamAsync(string URL, long? OffsetStart, long? OffsetEnd, CancellationToken Token)
-        {
-            HttpRequestMessage request = GetSessionRequest(URL, OffsetStart, OffsetEnd);
-            HttpResponseMessage response = await this._client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, Token);
-
-            return (GetSessionStream(response), response.Content.Headers.ContentLength ?? 0);
-        }
-
-        private (Stream, long) GetSessionAsStream(string URL, long? OffsetStart, long? OffsetEnd, CancellationToken Token)
-        {
-            HttpRequestMessage request = GetSessionRequest(URL, OffsetStart, OffsetEnd);
-            HttpResponseMessage response = this._client.Send(request, HttpCompletionOption.ResponseHeadersRead, Token);
-
-            return (GetSessionStream(response), response.Content.Headers.ContentLength ?? 0);
-        }
-
-        private HttpRequestMessage GetSessionRequest(string URL, long? OffsetStart, long? OffsetEnd)
-        {
-            HttpRequestMessage request = new HttpRequestMessage()
-            {
-                RequestUri = new Uri(URL),
-                Method = HttpMethod.Get
-            };
-
-            request.Headers.Range = new RangeHeaderValue(OffsetStart, OffsetEnd);
-
-            return request;
-        }
-
-        private Stream GetSessionStream(HttpResponseMessage response)
-        {
-            if (!response.IsSuccessStatusCode || (int)response.StatusCode == 416)
-            {
-                response.Dispose();
-                throw new HttpHelperUnhandledError(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", response.StatusCode, response.RequestMessage.RequestUri));
-            }
-
-            return response.Content.ReadAsStream();
-        }
-#endif
-
         private async Task InitializeMultiSession()
         {
             bool IsInitSucceeded = true;
@@ -121,16 +75,10 @@ namespace Hi3Helper.Http
             this.DownloadState = DownloadState.WaitingOnSession;
             string PathOut;
 
-            // if (this.IsSessionContinue = LoadMetadata()) return;
-
             Session session = null;
             try
             {
-#if NETCOREAPP
-                long? RemoteLength = await TryGetContentLengthAsync(this.PathURL, this.ConnectionToken);
-#else
                 long? RemoteLength = await TryGetContentLength(this.PathURL, this.ConnectionToken);
-#endif
 
                 if (RemoteLength == null)
                 {
@@ -177,11 +125,7 @@ namespace Hi3Helper.Http
 
                     if (IsSetRequestOffsetSuccess)
                     {
-#if NETCOREAPP
-                        IsSetResponseSuccess = await session.TrySetHttpResponseAsync();
-#else
                         IsSetResponseSuccess = await session.TrySetHttpResponse();
-#endif
                     }
 
                     this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
@@ -252,7 +196,7 @@ namespace Hi3Helper.Http
         private Session ReinitializeSession(Session Input, bool ForceOverwrite = false,
             long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
         {
-            Input.Dispose();
+            Input?.Dispose();
             return new Session(
                 this.PathURL, Input.PathOutput, null,
                 this.ConnectionToken, true, this._handler,
@@ -319,56 +263,18 @@ namespace Hi3Helper.Http
 
 #if NETCOREAPP
         public async ValueTask<(int, bool)> GetURLStatus(string URL, CancellationToken Token)
-        {
-            using (HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(URL) }, HttpCompletionOption.ResponseHeadersRead, Token))
-            {
-                return ((int)response.StatusCode, response.IsSuccessStatusCode);
-            }
-        }
-
-        public async ValueTask<long?> TryGetContentLengthAsync(string URL, CancellationToken Token)
-        {
-            byte CurrentRetry = 0;
-            while (true)
-            {
-                try
-                {
-                    return await GetContentLengthAsync(URL, Token);
-                }
-                catch (HttpRequestException)
-                {
-                    CurrentRetry++;
-                    if (CurrentRetry > this.RetryMax)
-                        throw;
-
-                    PushLog($"Error while fetching File Size (Retry Attempt: {CurrentRetry})...", DownloadLogSeverity.Warning);
-                    await Task.Delay(this.RetryInterval, Token);
-                }
-            }
-        }
-
-        private async ValueTask<long?> GetContentLengthAsync(string Input, CancellationToken token = new CancellationToken())
-        {
-            HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
-
-            long? Length = response.Content.Headers.ContentLength;
-
-            response.Dispose();
-
-            return Length;
-        }
 #else
         public async Task<(int, bool)> GetURLStatus(string URL, CancellationToken Token)
+#endif
         {
             using (HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(URL) }, HttpCompletionOption.ResponseHeadersRead, Token))
             {
                 return ((int)response.StatusCode, response.IsSuccessStatusCode);
             }
         }
-#endif
 
 #if NETCOREAPP
-        public long? TryGetContentLength(string URL, CancellationToken Token)
+        public async ValueTask<long?> TryGetContentLength(string URL, CancellationToken Token)
 #else
         public async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
 #endif
@@ -378,11 +284,7 @@ namespace Hi3Helper.Http
             {
                 try
                 {
-#if NETCOREAPP
-                    return GetContentLength(URL, Token);
-#else
                     return await GetContentLength(URL, Token);
-#endif
                 }
                 catch (HttpRequestException)
                 {
@@ -391,25 +293,18 @@ namespace Hi3Helper.Http
                         throw;
 
                     PushLog($"Error while fetching File Size (Retry Attempt: {CurrentRetry})...", DownloadLogSeverity.Warning);
-#if NETCOREAPP
-                    Task.Delay(this.RetryInterval, Token).GetAwaiter().GetResult();
-#else
                     await Task.Delay(this.RetryInterval, Token);
-#endif
                 }
             }
         }
 
 #if NETCOREAPP
-        private long? GetContentLength(string Input, CancellationToken token = new CancellationToken())
-        {
-            HttpResponseMessage response = _client.Send(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
+        private async ValueTask<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
 #else
-            private async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
+        private async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
+#endif
         {
             HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
-#endif
-
             long? Length = response.Content.Headers.ContentLength;
 
             response.Dispose();
