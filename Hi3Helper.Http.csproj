@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<TargetFrameworks>net8.0</TargetFrameworks>
 		<Platforms>x64</Platforms>
-		<Configurations>Debug;Release;Publish</Configurations>
+		<Configurations>Debug;Release</Configurations>
 		<DebugType>portable</DebugType>
 	</PropertyGroup>
 
@@ -12,9 +12,7 @@
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
 		<Optimize>True</Optimize>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Publish|x64'">
-		<Optimize>True</Optimize>
+		<DebugType>portable</DebugType>
 	</PropertyGroup>
 
 	<ItemGroup>
