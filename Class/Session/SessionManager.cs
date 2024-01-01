@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -24,42 +23,21 @@ namespace Hi3Helper.Http
             Session session = new Session(this.PathURL, this.PathOutput, _Stream,
                 this.ConnectionToken, IsFileMode, this._handler,
                 OffsetStart, OffsetEnd, this.PathOverwrite, this._clientUserAgent, true, IgnoreOutStreamLength);
-
-            session.SessionRequest = new HttpRequestMessage()
-            {
-                RequestUri = new Uri(this.PathURL),
-                Method = HttpMethod.Get
-            };
-
-            if (!!(session.OffsetEnd - session.OffsetStart < 0
-                && session.OffsetEnd - session.OffsetStart == -1))
-                return null;
-
-            session.SessionRequest.Headers.Range = new RangeHeaderValue(session.OffsetStart, session.OffsetEnd);
-
-            HttpResponseMessage Input = await this._client.SendAsync(session.SessionRequest, HttpCompletionOption.ResponseHeadersRead, session.SessionToken);
-            if (!Input.IsSuccessStatusCode)
-            {
-                session.Dispose();
-                throw new HttpHelperUnhandledError(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", Input.StatusCode, this.PathURL));
-            }
-
-            session.SessionResponse = Input;
-
-            if ((int)Input.StatusCode == 416) return null;
-
-            this.SizeAttribute.SizeDownloaded = session.StreamOutputSize;
-
-            if (session.SessionResponse.Content.Headers.ContentLength == null)
-            {
-                this.SizeAttribute.SizeTotalToDownload = 0;
-            }
-            else
-            {
-                this.SizeAttribute.SizeTotalToDownload = (session.SessionResponse.Content.Headers.ContentLength ?? 0) + session.StreamOutputSize;
-            }
-
             session.SessionClient = this._client;
+
+            if (!await session.TryGetHttpRequest())
+            {
+#if NETCOREAPP
+                await session.DisposeAsync();
+#else
+                await session.Dispose();
+#endif
+                return null;
+            }
+
+            if ((int)session.StreamInput._statusCode == 416) return null;
+            this.SizeAttribute.SizeTotalToDownload = session.StreamInput.Length;
+            this.SizeAttribute.SizeDownloaded = session.StreamOutputSize;
 
             return session;
         }
@@ -112,40 +90,35 @@ namespace Hi3Helper.Http
                     if (session.IsExistingFileOversized(_Start, EndOffset))
                     {
                         session = ReinitializeSession(session, true, _Start, EndOffset);
-                    }
-
-                    bool IsSetRequestSuccess = session.TrySetHttpRequest(),
-                         IsSetRequestOffsetSuccess = false,
-                         IsSetResponseSuccess = false;
-
-                    if (IsSetRequestSuccess)
-                    {
-                        IsSetRequestOffsetSuccess = session.TrySetHttpRequestOffset();
-                    }
-
-                    if (IsSetRequestOffsetSuccess)
-                    {
-                        IsSetResponseSuccess = await session.TrySetHttpResponse();
+                        PushLog($"Session ID: {ID} output file has been re-created due to the size being oversized!", DownloadLogSeverity.Warning);
                     }
 
                     this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
-
                     if (session.StreamOutputSize == (EndOffset - _Start) + 1)
                     {
                         PushLog($"Session ID: {ID} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Warning);
+#if NETCOREAPP
+                        await session.DisposeAsync();
+#else
                         session?.Dispose();
+#endif
                         continue;
                     }
 
-                    if (IsSetResponseSuccess)
+                    bool isSuccess = await session.TryGetHttpRequest();
+                    if ((int)session.StreamInput._statusCode == 413)
                     {
-                        session.SeekStreamOutputToEnd();
-                        this.Sessions.Add(session);
+#if NETCOREAPP
+                        await session.DisposeAsync();
+#else
+                        session?.Dispose();
+#endif
+                        PushLog($"Session ID: {ID} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Warning);
+                        continue;
                     }
-                    else
-                    {
-                        throw new HttpHelperUnhandledError($"{ID} PANIC as the response sent {session.SessionResponse.StatusCode} code!!!");
-                    }
+
+                    session.SeekStreamOutputToEnd();
+                    this.Sessions.Add(session);
                 }
             }
             catch (TaskCanceledException)
@@ -304,9 +277,11 @@ namespace Hi3Helper.Http
         private async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
 #endif
         {
-            HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(Input) }, HttpCompletionOption.ResponseHeadersRead, token);
+            HttpRequestMessage message = new HttpRequestMessage() { RequestUri = new Uri(Input) };
+            HttpResponseMessage response = await _client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, token);
             long? Length = response.Content.Headers.ContentLength;
 
+            message.Dispose();
             response.Dispose();
 
             return Length;

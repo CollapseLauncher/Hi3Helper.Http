@@ -43,11 +43,7 @@ namespace Hi3Helper.Http
             byte[] Buffer = new byte[_bufferSize];
 
             // Read Stream into Buffer
-#if NET7_0_OR_GREATER
-            while ((Read = await Input.StreamInput.ReadAtLeastAsync(Buffer, _bufferSize, false, Input.SessionToken)) > 0)
-#else
             while ((Read = await Input.StreamInput.ReadAsync(Buffer, 0, _bufferSize, Input.SessionToken)) > 0)
-#endif
             {
                 // Write Buffer to the output Stream
                 await Input.StreamOutput.WriteAsync(Buffer, 0, Read, Input.SessionToken);
