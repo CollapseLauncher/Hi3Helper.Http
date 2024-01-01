@@ -30,7 +30,7 @@ namespace Hi3Helper.Http
 #if NETCOREAPP
                 await session.DisposeAsync();
 #else
-                await session.Dispose();
+                session.Dispose();
 #endif
                 return null;
             }

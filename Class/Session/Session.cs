@@ -18,7 +18,13 @@ namespace Hi3Helper.Http
         internal protected HttpStatusCode _statusCode;
         internal protected bool _isSuccessStatusCode;
 
-        internal static async ValueTask<HttpResponseInputStream> CreateStreamAsync(HttpClient client, string url, long? startOffset, long? endOffset, CancellationToken token)
+        internal static async
+#if NETCOREAPP
+        ValueTask<HttpResponseInputStream>
+#else
+        Task<HttpResponseInputStream>
+#endif
+        CreateStreamAsync(HttpClient client, string url, long? startOffset, long? endOffset, CancellationToken token)
         {
             HttpResponseInputStream httpResponseInputStream = new HttpResponseInputStream();
             httpResponseInputStream._networkRequest = new HttpRequestMessage()
@@ -34,7 +40,12 @@ namespace Hi3Helper.Http
             if (httpResponseInputStream._isSuccessStatusCode)
             {
                 httpResponseInputStream._networkLength = httpResponseInputStream._networkResponse.Content.Headers.ContentLength ?? 0;
-                httpResponseInputStream._networkStream = await httpResponseInputStream._networkResponse.Content.ReadAsStreamAsync(token);
+                httpResponseInputStream._networkStream = await httpResponseInputStream._networkResponse.Content
+#if NETCOREAPP
+                    .ReadAsStreamAsync(token);
+#else
+                    .ReadAsStreamAsync();
+#endif
                 return httpResponseInputStream;
             }
 
@@ -68,13 +79,18 @@ namespace Hi3Helper.Http
             }
             return totalRead;
         }
+#endif
 
         private int ReadUntilFull(byte[] buffer, int offset, int count)
         {
             int totalRead = 0;
             while (offset < count)
             {
+#if NETCOREAPP
                 int read = _networkStream.Read(buffer.AsSpan(offset));
+#else
+                int read = _networkStream.Read(buffer, offset, count);
+#endif
                 if (read == 0) return totalRead;
 
                 totalRead += read;
@@ -83,7 +99,6 @@ namespace Hi3Helper.Http
             }
             return totalRead;
         }
-#endif
 
         public override int Read(byte[] buffer, int offset, int count) => ReadUntilFull(buffer, offset, count);
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
@@ -232,7 +247,13 @@ namespace Hi3Helper.Http
             }
         }
 
-        public async ValueTask<bool> TryGetHttpRequest()
+        public async
+#if NETCOREAPP
+        ValueTask<bool>
+#else
+        Task<bool>
+#endif
+        TryGetHttpRequest()
         {
             if (IsExistingFileSizeValid())
             {
