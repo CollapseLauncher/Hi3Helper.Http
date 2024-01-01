@@ -141,8 +141,13 @@ namespace Hi3Helper.Http
             {
                 if (!IsInitSucceeded)
                 {
+#if NETCOREAPP
+                    if (session != null) await session.DisposeAsync();
+                    await DisposeAllSessionsAsync();
+#else
                     session?.Dispose();
                     DisposeAllSessions();
+#endif
                     PushLog($"Session has been disposed during initialization!", DownloadLogSeverity.Error);
                 }
             }
@@ -156,15 +161,29 @@ namespace Hi3Helper.Http
                 this.DownloadState = DownloadState.Downloading;
         }
 
-        public void DisposeAllSessions() => this.Sessions?.ForEach(x => x.Dispose());
-
-        public async Task WaitUntilInstanceDisposed()
+        public void DisposeAllSessions()
         {
-            while (!this.IsDisposed)
+            if (Sessions == null || Sessions.Count == 0) return;
+            foreach (Session session in Sessions)
             {
-                await Task.Delay(10);
+                if (session != null && !session.IsDisposed)
+                    session.Dispose();
             }
         }
+
+#if NETCOREAPP
+        public async ValueTask DisposeAllSessionsAsync()
+        {
+            if (Sessions == null || Sessions.Count == 0) return;
+            foreach (Session session in Sessions)
+            {
+                if (session != null && !session.IsDisposed)
+                    await session.DisposeAsync();
+            }
+        }
+#endif
+
+        public async Task WaitUntilInstanceDisposed() { }
 
         private Session ReinitializeSession(Session Input, bool ForceOverwrite = false,
             long? GivenOffsetStart = null, long? GivenOffsetEnd = null)

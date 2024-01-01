@@ -54,7 +54,11 @@ namespace Hi3Helper.Http
                 {
                     if (AllowDispose)
                     {
+#if NETCOREAPP
+                        await session.DisposeAsync();
+#else
                         session.Dispose();
+#endif
                         PushLog($"Disposed session ID {session.SessionID}!", DownloadLogSeverity.Info);
                     }
                 }

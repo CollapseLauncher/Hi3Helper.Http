@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    public class HttpResponseInputStream : Stream
+    internal class HttpResponseInputStream : Stream
     {
         private protected HttpRequestMessage _networkRequest;
         private protected HttpResponseMessage _networkResponse;
@@ -18,13 +18,7 @@ namespace Hi3Helper.Http
         internal protected HttpStatusCode _statusCode;
         internal protected bool _isSuccessStatusCode;
 
-        internal static async
-#if NETCOREAPP
-        ValueTask<HttpResponseInputStream>
-#else
-        Task<HttpResponseInputStream>
-#endif
-        CreateStreamAsync(HttpClient client, string url, long? startOffset, long? endOffset, CancellationToken token)
+        internal static async Task<HttpResponseInputStream> CreateStreamAsync(HttpClient client, string url, long? startOffset, long? endOffset, CancellationToken token)
         {
             HttpResponseInputStream httpResponseInputStream = new HttpResponseInputStream();
             httpResponseInputStream._networkRequest = new HttpRequestMessage()
@@ -33,7 +27,8 @@ namespace Hi3Helper.Http
                 Method = HttpMethod.Get
             };
             httpResponseInputStream._networkRequest.Headers.Range = new RangeHeaderValue(startOffset, endOffset);
-            httpResponseInputStream._networkResponse = await client.SendAsync(httpResponseInputStream._networkRequest, HttpCompletionOption.ResponseHeadersRead, token);
+            httpResponseInputStream._networkResponse = await client
+                .SendAsync(httpResponseInputStream._networkRequest, HttpCompletionOption.ResponseHeadersRead, token);
 
             httpResponseInputStream._statusCode = httpResponseInputStream._networkResponse.StatusCode;
             httpResponseInputStream._isSuccessStatusCode = httpResponseInputStream._networkResponse.IsSuccessStatusCode;
@@ -79,7 +74,54 @@ namespace Hi3Helper.Http
             }
             return totalRead;
         }
+
+        public async ValueTask<int> ReadUntilFullAsync(Memory<byte> buffer, CancellationToken token)
+        {
+            int totalRead = 0;
+            while (totalRead < buffer.Length)
+            {
+                int read = await _networkStream.ReadAsync(buffer.Slice(totalRead), token);
+                if (read == 0) return totalRead;
+
+                totalRead += read;
+                _currentPosition += read;
+            }
+            return totalRead;
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => await ReadUntilFullAsync(buffer, cancellationToken);
+        public override int Read(Span<byte> buffer) => ReadUntilFull(buffer);
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
 #endif
+
+
+        private async
+#if NETCOREAPP
+            ValueTask<int>
+#else
+            Task<int>
+#endif
+            ReadUntilFullAsync(byte[] buffer, int offset, int count, CancellationToken token)
+        {
+            int totalRead = 0;
+            while (offset < count)
+            {
+                int read = await _networkStream
+#if NETCOREAPP
+                    .ReadAsync(buffer.AsMemory(offset), token);
+#else
+                    .ReadAsync(buffer, offset, count - offset, token);
+#endif
+                if (read == 0) return totalRead;
+
+                totalRead += read;
+                offset += read;
+                _currentPosition += read;
+            }
+            return totalRead;
+        }
 
         private int ReadUntilFull(byte[] buffer, int offset, int count)
         {
@@ -100,14 +142,10 @@ namespace Hi3Helper.Http
             return totalRead;
         }
 
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) => await ReadUntilFullAsync(buffer, offset, count, cancellationToken);
         public override int Read(byte[] buffer, int offset, int count) => ReadUntilFull(buffer, offset, count);
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException();
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-
-#if NETCOREAPP
-        public override int Read(Span<byte> buffer) => ReadUntilFull(buffer);
-        public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
-#endif
 
         public override bool CanRead
         {
@@ -140,9 +178,8 @@ namespace Hi3Helper.Http
             set { throw new NotSupportedException(); }
         }
 
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotImplementedException();
-
-        public override void SetLength(long value) => throw new NotImplementedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
 
         protected override void Dispose(bool disposing)
         {
@@ -171,12 +208,12 @@ namespace Hi3Helper.Http
 #endif
     }
 
-    public sealed class Session : IDisposable
+    internal sealed class Session : IDisposable
 #if NETCOREAPP
         , IAsyncDisposable
 #endif
     {
-        public Session(string PathURL, string PathOutput, Stream SOutput,
+        internal Session(string PathURL, string PathOutput, Stream SOutput,
             CancellationToken SToken, bool IsFileMode, HttpClientHandler ClientHandler,
             long? OffsetStart = null, long? OffsetEnd = null,
             bool Overwrite = false, string UserAgent = null,
@@ -190,7 +227,9 @@ namespace Hi3Helper.Http
             this.IsFileMode = IsFileMode;
             this.IsDisposed = false;
             this.SessionState = DownloadState.Idle;
-            this.SessionClient = UseExternalSessionClient ? null : new HttpClient(ClientHandler);
+            this.SessionClient = UseExternalSessionClient ? null : new HttpClient(ClientHandler)
+            { Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec) }
+            ;
             this.SessionID = 0;
 
             if (!UseExternalSessionClient && UserAgent != null)
@@ -215,7 +254,7 @@ namespace Hi3Helper.Http
         }
 
         // Seek the StreamOutput to the end of file
-        public void SeekStreamOutputToEnd() => this.StreamOutput.Seek(0, SeekOrigin.End);
+        internal void SeekStreamOutputToEnd() => this.StreamOutput.Seek(0, SeekOrigin.End);
 
         private void AdjustOffsets(long? Start, long? End, bool IgnoreOutStreamLength = false)
         {
@@ -224,9 +263,9 @@ namespace Hi3Helper.Http
         }
 
 #if NETCOREAPP
-        public async ValueTask<bool> TryReinitializeRequest()
+        internal async ValueTask<bool> TryReinitializeRequest()
 #else
-        public async Task<bool> TryReinitializeRequest()
+        internal async Task<bool> TryReinitializeRequest()
 #endif
         {
             try
@@ -247,7 +286,7 @@ namespace Hi3Helper.Http
             }
         }
 
-        public async
+        internal async
 #if NETCOREAPP
         ValueTask<bool>
 #else
@@ -257,14 +296,17 @@ namespace Hi3Helper.Http
         {
             if (IsExistingFileSizeValid())
             {
-                this.StreamInput = await HttpResponseInputStream.CreateStreamAsync(this.SessionClient, this.PathURL, this.OffsetStart, this.OffsetEnd, this.SessionToken);
+                this.StreamInput = await TaskExtensions.RetryTimeoutAfter(
+                    async () => await HttpResponseInputStream.CreateStreamAsync(this.SessionClient, this.PathURL, this.OffsetStart, this.OffsetEnd, this.SessionToken),
+                    this.SessionToken
+                    );
                 return this.StreamInput != null;
             }
 
             return false;
         }
 
-        public bool IsExistingFileOversized(long OffsetStart, long OffsetEnd) => this.StreamOutputSize > OffsetEnd + 1 - OffsetStart;
+        internal bool IsExistingFileOversized(long OffsetStart, long OffsetEnd) => this.StreamOutputSize > OffsetEnd + 1 - OffsetStart;
 
         private bool IsExistingFileSizeValid() =>
             !((this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart < 0
@@ -317,28 +359,28 @@ namespace Hi3Helper.Http
         }
 
         // Session Offset Properties
-        public long? OffsetStart;
-        public long? OffsetEnd;
+        internal long? OffsetStart;
+        internal long? OffsetEnd;
 
         // Path Properties
-        public string PathURL;
-        public string PathOutput;
+        internal string PathURL;
+        internal string PathOutput;
 
         // Boolean Properties
-        public bool IsLastSession;
-        public bool IsFileMode;
-        public bool IsDisposed;
+        internal bool IsLastSession;
+        internal bool IsFileMode;
+        internal bool IsDisposed;
 
         // Session Properties
-        public HttpClient SessionClient;
-        public CancellationToken SessionToken;
-        public DownloadState SessionState;
-        public int SessionRetryAttempt;
-        public long SessionID;
+        internal HttpClient SessionClient;
+        internal CancellationToken SessionToken;
+        internal DownloadState SessionState;
+        internal int SessionRetryAttempt { get; set; }
+        internal long SessionID;
 
         // Stream Properties
-        public HttpResponseInputStream StreamInput;
-        public Stream StreamOutput;
-        public long StreamOutputSize => (this.StreamOutput?.CanWrite ?? false) || (this.StreamOutput?.CanRead ?? false) ? this.StreamOutput.Length : 0;
+        internal HttpResponseInputStream StreamInput;
+        internal Stream StreamOutput;
+        internal long StreamOutputSize => (this.StreamOutput?.CanWrite ?? false) || (this.StreamOutput?.CanRead ?? false) ? this.StreamOutput.Length : 0;
     }
 }

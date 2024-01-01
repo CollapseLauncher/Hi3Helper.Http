@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
@@ -28,9 +29,9 @@ namespace Hi3Helper.Http
         private CancellationToken ConnectionToken;
 
         // Max Retry Count
-        private byte RetryMax = 5;
+        private int RetryMax = TaskExtensions.DefaultRetryAttempt;
         // Retry Interval (in milliseconds)
-        private short RetryInterval = 1000;
+        private int RetryInterval = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec).Milliseconds;
 
         // Sessions list
         private List<Session> Sessions;

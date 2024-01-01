@@ -10,6 +10,9 @@ using System.Threading.Tasks;
 namespace Hi3Helper.Http
 {
     public sealed partial class Http : IDisposable
+#if NETCOREAPP
+        , IAsyncDisposable
+#endif
     {
         public Http(bool IgnoreCompress = true, byte RetryMax = 5, short RetryInterval = 1000, string UserAgent = null)
         {
@@ -29,7 +32,9 @@ namespace Hi3Helper.Http
                 AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
             };
 
-            this._client = new HttpClient(this._handler);
+            this._client = new HttpClient(this._handler)
+            { Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec) }
+            ;
 
             if (this._clientUserAgent != null)
                 this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
@@ -50,7 +55,9 @@ namespace Hi3Helper.Http
                 AutomaticDecompression = DecompressionMethods.None
             };
 
-            this._client = new HttpClient(this._handler);
+            this._client = new HttpClient(this._handler)
+            { Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec) }
+            ;
         }
 
         public HttpClient GetHttpClient() => this._client;
@@ -87,15 +94,30 @@ namespace Hi3Helper.Http
         public void Dispose()
         {
             if (this.Sessions != null && this.Sessions.Count > 0)
-            {
                 DisposeAllSessions();
-            }
 
+            FinalizeDispose();
+        }
+
+#if NETCOREAPP
+        public async ValueTask DisposeAsync()
+        {
+            if (this.Sessions != null && this.Sessions.Count > 0)
+                await DisposeAllSessionsAsync();
+
+            FinalizeDispose();
+        }
+#endif
+
+        private void FinalizeDispose()
+        {
             this.Sessions = null;
             this._handler = null;
 
             this._client.Dispose();
             this.IsDisposed = true;
+
+            GC.SuppressFinalize(this);
         }
 
         ~Http() => Dispose();
