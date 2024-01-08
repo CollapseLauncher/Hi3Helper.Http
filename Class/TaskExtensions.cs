@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,6 +9,17 @@ namespace Hi3Helper.Http
     {
         internal const int DefaultTimeoutSec = 10;
         internal const int DefaultRetryAttempt = 5;
+
+#if NETCOREAPP
+        internal static async ValueTask TaskWhenAll(this IAsyncEnumerable<Task> tasks, CancellationToken token, int taskCount)
+        {
+            ParallelOptions parallelOptions = new ParallelOptions { CancellationToken = token, MaxDegreeOfParallelism = taskCount };
+            await Parallel.ForEachAsync(tasks, parallelOptions, async (task, _) =>
+            {
+                await task;
+            });
+        }
+#endif
 
         internal static async Task<T> RetryTimeoutAfter<T>(Func<Task<T>> taskFunction, CancellationToken token = default, int timeout = DefaultTimeoutSec, int retryAttempt = DefaultRetryAttempt)
         {
@@ -19,7 +31,7 @@ namespace Hi3Helper.Http
                 {
                     Task<T> taskDelegated = taskFunction();
                     lastTaskID = taskDelegated.Id;
-                    Task<T> completedTask = await Task.WhenAny(taskDelegated, ThrowExceptionAfterTimeout<T>(timeout, token));
+                    Task<T> completedTask = await Task.WhenAny(taskDelegated, ThrowExceptionAfterTimeout<T>(timeout, taskDelegated, token));
                     if (completedTask == taskDelegated)
                         return await taskDelegated;
                 }
@@ -28,11 +40,7 @@ namespace Hi3Helper.Http
                 catch (Exception)
                 {
                     string msg = $"The operation for task ID: {lastTaskID} has timed out! Retrying attempt left: {retryTotal--}";
-#if DEBUG
-                    Console.WriteLine(msg);
-#else
                     Http.PushLog(msg, DownloadLogSeverity.Warning);
-#endif
                     await Task.Delay(1000); // Wait 1s interval before retrying
                     continue;
                 }
@@ -42,17 +50,21 @@ namespace Hi3Helper.Http
 
         internal static async Task<T> TimeoutAfter<T>(this Task<T> task, CancellationToken token = default, int timeout = DefaultTimeoutSec)
         {
-            Task<T> completedTask = await Task.WhenAny(task, ThrowExceptionAfterTimeout<T>(timeout, token));
-            if (completedTask == task)
-                return await task;
-
-            throw new TimeoutException($"The operation for task ID: {task.Id} has timed out!");
+            Task<T> completedTask = await Task.WhenAny(task, ThrowExceptionAfterTimeout<T>(timeout, task, token));
+            return await completedTask;
         }
 
-        private static async Task<T> ThrowExceptionAfterTimeout<T>(int timeout, CancellationToken token = default)
+        private static async Task<T> ThrowExceptionAfterTimeout<T>(int timeout, Task mainTask, CancellationToken token = default)
         {
             int timeoutMs = timeout * 1000;
             await Task.Delay(timeoutMs, token);
+            if (!(mainTask.IsCompleted ||
+#if NETCOREAPP
+                mainTask.IsCompletedSuccessfully ||
+#endif
+                mainTask.IsCanceled || mainTask.IsFaulted || mainTask.Exception != null))
+                throw new TimeoutException($"The operation for task has timed out!");
+
             return default;
         }
     }

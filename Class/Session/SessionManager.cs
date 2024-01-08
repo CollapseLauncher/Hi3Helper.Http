@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -42,148 +44,155 @@ namespace Hi3Helper.Http
             return session;
         }
 
-        private async Task InitializeMultiSession()
+        private async
+#if NETCOREAPP
+            IAsyncEnumerable<Task>
+#else
+            Task<Task[]>
+#endif
+            GetMultisessionTasks(string inputUrl, string outputPath, int sessionThread,
+#if NETCOREAPP
+            [EnumeratorCancellation]
+#endif
+            CancellationToken token)
         {
-            bool IsInitSucceeded = true;
-
             this.SizeAttribute.SizeTotalToDownload = 0;
             this.SizeAttribute.SizeDownloaded = 0;
             this.SizeAttribute.SizeDownloadedLast = 0;
 
             this.DownloadState = DownloadState.WaitingOnSession;
-            string PathOut;
 
-            Session session = null;
-            try
+            long minimumAllowedLength = (1 << 10) * sessionThread;
+            long remoteLength = await GetContentLengthNonNull(inputUrl, token);
+            if (remoteLength < minimumAllowedLength) throw new NullReferenceException($"The file size to be downloaded must be more than or equal minimum allowed size: {minimumAllowedLength}!");
+
+            this.SizeAttribute.SizeTotalToDownload = remoteLength;
+            long sliceSize = (long)Math.Ceiling((double)remoteLength / sessionThread);
+
+#if !NETCOREAPP
+            Task[] returnTask = new Task[sessionThread];
+#endif
+
+            for (
+                long startOffset = 0, endOffset = 0, currentThread = 0;
+                currentThread < sessionThread;
+                currentThread++
+                )
             {
-                long? RemoteLength = await TryGetContentLength(this.PathURL, this.ConnectionToken);
-
-                if (RemoteLength == null)
+                bool isInitSucceed = true;
+                Session session = null;
+                try
                 {
-                    throw new NullReferenceException($"File can't be downloaded because the content-length is undefined!");
-                }
+                    long sessionId = GetHashNumber(sessionThread, currentThread);
+                    string sessionOutPath = outputPath + string.Format(PathSessionPrefix, sessionId);
 
-                this.SizeAttribute.SizeTotalToDownload = (long)RemoteLength;
-
-                long SliceSize = (long)Math.Ceiling((double)this.SizeAttribute.SizeTotalToDownload / this.ConnectionSessions);
-                long EndOffset;
-
-                for (long StartOffset = 0, t = 0; t < this.ConnectionSessions; t++)
-                {
-                    long ID = GetHashNumber(this.ConnectionSessions, t);
-                    EndOffset = t + 1 == this.ConnectionSessions ? this.SizeAttribute.SizeTotalToDownload - 1 : (StartOffset + SliceSize - 1);
-                    PathOut = this.PathOutput + string.Format(PathSessionPrefix, ID);
-
+                    endOffset = currentThread + 1 == sessionThread ? remoteLength - 1 : (startOffset + sliceSize - 1);
                     session = new Session(
-                        this.PathURL, PathOut, null,
+                        inputUrl, sessionOutPath, null,
                         this.ConnectionToken, true, this._handler,
-                        StartOffset, EndOffset, this.PathOverwrite,
+                        startOffset, endOffset, this.PathOverwrite,
                         this._clientUserAgent, false)
                     {
-                        IsLastSession = t + 1 == this.ConnectionSessions,
-                        SessionID = ID
+                        IsLastSession = currentThread + 1 == this.ConnectionSessions,
+                        SessionID = sessionId
                     };
+                    session.SessionState = DownloadState.WaitingOnSession;
 
-                    long _Start = StartOffset;
-                    StartOffset += SliceSize;
+                    long lastStartOffset = startOffset;
+                    startOffset += sliceSize;
 
-                    if (session.IsExistingFileOversized(_Start, EndOffset))
+                    if (session.IsExistingFileOversized(lastStartOffset, endOffset))
                     {
-                        session = ReinitializeSession(session, true, _Start, EndOffset);
-                        PushLog($"Session ID: {ID} output file has been re-created due to the size being oversized!", DownloadLogSeverity.Warning);
+                        session =
+#if NETCOREAPP
+                            await
+#endif
+                            ReinitializeSession(session, token, true, lastStartOffset, endOffset);
+                        PushLog($"Session ID: {sessionId} output file has been re-created due to the size being oversized!", DownloadLogSeverity.Warning);
                     }
 
                     this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
-                    if (session.StreamOutputSize == (EndOffset - _Start) + 1)
+                    bool isRequestSuccess = true;
+                    if ((session.StreamOutputSize == (endOffset - lastStartOffset) + 1)
+                     || (!(isRequestSuccess = await session.TryGetHttpRequest()) && (int)session.StreamInput._statusCode == 413))
                     {
-                        PushLog($"Session ID: {ID} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Warning);
-#if NETCOREAPP
-                        await session.DisposeAsync();
-#else
-                        session?.Dispose();
-#endif
+                        PushLog($"Session ID: {sessionId} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Warning);
+                        isInitSucceed = false;
                         continue;
                     }
 
-                    bool isSuccess = await session.TryGetHttpRequest();
-                    if ((int)session.StreamInput._statusCode == 413)
-                    {
-#if NETCOREAPP
-                        await session.DisposeAsync();
-#else
-                        session?.Dispose();
-#endif
-                        PushLog($"Session ID: {ID} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Warning);
-                        continue;
-                    }
+                    if (!isRequestSuccess)
+                        throw new HttpRequestException($"Error has occurred while requesting HTTP response to {inputUrl} with status code: {(int)session.StreamInput._statusCode} ({session.StreamInput._statusCode})");
 
                     session.SeekStreamOutputToEnd();
-                    this.Sessions.Add(session);
+#if !NETCOREAPP
+                    returnTask[currentThread] = SessionTaskRunnerContainer(session);
+#endif
                 }
-            }
-            catch (TaskCanceledException)
-            {
-                IsInitSucceeded = false;
-                throw;
-            }
-            catch (OperationCanceledException)
-            {
-                IsInitSucceeded = false;
-                throw;
-            }
-            catch (Exception ex)
-            {
-                PushLog($"Session initialization cannot be completed due to an error!\r\n{ex}", DownloadLogSeverity.Error);
-                IsInitSucceeded = false;
-                throw;
-            }
-            finally
-            {
-                if (!IsInitSucceeded)
+                catch (Exception ex)
                 {
-#if NETCOREAPP
-                    if (session != null) await session.DisposeAsync();
-                    await DisposeAllSessionsAsync();
-#else
-                    session?.Dispose();
-                    DisposeAllSessions();
-#endif
-                    PushLog($"Session has been disposed during initialization!", DownloadLogSeverity.Error);
+                    this.DownloadState = DownloadState.FailedDownloading;
+                    session.SessionState = DownloadState.FailedDownloading;
+                    PushLog($"Session initialization cannot be completed due to an error!\r\n{ex}", DownloadLogSeverity.Error);
+                    isInitSucceed = false;
+                    throw;
                 }
-            }
-
-            if (this.Sessions.Count == 0)
-                this.DownloadState = DownloadState.Idle;
-
-            if (this.SizeAttribute.SizeDownloaded == this.SizeAttribute.SizeTotalToDownload)
-                this.DownloadState = DownloadState.FinishedNeedMerge;
-            else
-                this.DownloadState = DownloadState.Downloading;
-        }
-
-        public void DisposeAllSessions()
-        {
-            if (Sessions == null || Sessions.Count == 0) return;
-            foreach (Session session in Sessions)
-            {
-                if (session != null && !session.IsDisposed)
-                    session.Dispose();
-            }
-        }
+                finally
+                {
+                    if (!isInitSucceed && session != null)
+                    {
+#if NETCOREAPP
+                        await session.DisposeAsync();
+#else
+                        session.Dispose();
+                        returnTask[currentThread] = Task.CompletedTask;
+#endif
+                        PushLog($"Session has been disposed during initialization!", DownloadLogSeverity.Error);
+                    }
+                }
 
 #if NETCOREAPP
-        public async ValueTask DisposeAllSessionsAsync()
-        {
-            if (Sessions == null || Sessions.Count == 0) return;
-            foreach (Session session in Sessions)
-            {
-                if (session != null && !session.IsDisposed)
-                    await session.DisposeAsync();
-            }
-        }
+                PushLog($"Session: {currentThread + 1}/{sessionThread} has been started for the URL: {inputUrl}", DownloadLogSeverity.Info);
+                if (isInitSucceed) yield return SessionTaskRunnerContainer(session);
 #endif
+            }
 
+#if !NETCOREAPP
+            return returnTask;
+#endif
+        }
+
+        [Obsolete("This method has no use anymore. Please consider to not calling this method as this will be removed in the next changes.")]
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
         public async Task WaitUntilInstanceDisposed() { }
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+
+        private
+#if NETCOREAPP
+            async ValueTask<Session>
+#else
+            Session
+#endif
+            ReinitializeSession(Session Input, CancellationToken Token,
+            bool ForceOverwrite = false, long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
+        {
+            if (Input == null) throw new NullReferenceException("Input session cannot be null while reinitialization is requested!");
+#if NETCOREAPP
+            await Input.DisposeAsync();
+#else
+            Input.Dispose();
+#endif
+            return new Session(
+                Input.PathURL, Input.PathOutput, null,
+                Token, true, this._handler,
+                ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
+                ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart,
+                ForceOverwrite || this.PathOverwrite, this._clientUserAgent
+                )
+            {
+                IsLastSession = Input.IsLastSession,
+            };
+        }
 
         private Session ReinitializeSession(Session Input, bool ForceOverwrite = false,
             long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
@@ -262,6 +271,21 @@ namespace Hi3Helper.Http
             using (HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(URL) }, HttpCompletionOption.ResponseHeadersRead, Token))
             {
                 return ((int)response.StatusCode, response.IsSuccessStatusCode);
+            }
+        }
+
+#if NETCOREAPP
+        public async ValueTask<long> GetContentLengthNonNull(string URL, CancellationToken Token)
+#else
+        public async Task<long> GetContentLengthNonNull(string URL, CancellationToken Token)
+#endif
+        {
+            using (HttpRequestMessage message = new HttpRequestMessage() { RequestUri = new Uri(URL) })
+            {
+                using (HttpResponseMessage response = await _client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, Token))
+                {
+                    return response?.Content?.Headers?.ContentLength ?? 0;
+                }
             }
         }
 

@@ -9,8 +9,6 @@ namespace Hi3Helper.Http
             bool Overwrite = false, CancellationToken ThreadToken = new CancellationToken())
         {
             ResetState();
-
-            this.Sessions.Clear();
             this.PathURL = URL;
             this.PathOutput = Output;
             this.PathOverwrite = Overwrite;
@@ -20,8 +18,11 @@ namespace Hi3Helper.Http
             if (ConnectionSessions > ConnectionSessionsMax)
                 throw new HttpHelperAllowedSessionsMaxed($"You've maxed allowed Connection Sessions ({ConnectionSessions} sessions have been set and only <= {ConnectionSessionsMax} sessions allowed)");
 
-            await InitializeMultiSession();
-            await Task.WhenAll(RunMultiSessionTasks());
+#if NETCOREAPP
+            await GetMultisessionTasks(URL, Output, ConnectionSessions, ThreadToken).TaskWhenAll(ThreadToken, ConnectionSessions);
+#else
+            await Task.WhenAll(GetMultisessionTasks(URL, Output, ConnectionSessions, ThreadToken));
+#endif
 
             this.DownloadState = DownloadState.FinishedNeedMerge;
         }

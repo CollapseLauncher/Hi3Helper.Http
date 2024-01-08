@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
@@ -32,9 +31,6 @@ namespace Hi3Helper.Http
         private int RetryMax = TaskExtensions.DefaultRetryAttempt;
         // Retry Interval (in milliseconds)
         private int RetryInterval = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec).Milliseconds;
-
-        // Sessions list
-        private List<Session> Sessions;
         private Stopwatch SessionsStopwatch;
 
         // Path of the Download

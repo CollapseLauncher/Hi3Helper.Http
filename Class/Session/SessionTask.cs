@@ -1,54 +1,48 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
     public sealed partial class Http
     {
-        private IEnumerable<Task> RunMultiSessionTasks()
-        {
-            foreach (Session session in this.Sessions)
-            {
-                yield return RetryableContainer(session);
-            }
-        }
-
-        private async Task RetryableContainer(Session session)
+        private async Task SessionTaskRunnerContainer(Session session)
         {
             if (session == null) return;
-            bool AllowDispose = false;
-
             while (true)
             {
-                session.SessionRetryAttempt++;
+                bool AllowDispose = false;
                 try
                 {
+                    this.DownloadState = DownloadState.Downloading;
+                    session.SessionState = DownloadState.Downloading;
                     await IOReadWriteSession(session);
                     AllowDispose = true;
                     return;
                 }
                 catch (TaskCanceledException)
                 {
+                    this.DownloadState = DownloadState.CancelledDownloading;
+                    session.SessionState = DownloadState.CancelledDownloading;
                     AllowDispose = true;
                     throw;
                 }
                 catch (OperationCanceledException)
                 {
+                    this.DownloadState = DownloadState.CancelledDownloading;
+                    session.SessionState = DownloadState.CancelledDownloading;
                     AllowDispose = true;
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    await session.TryReinitializeRequest();
-                    if (session.SessionRetryAttempt > this.RetryMax)
-                    {
-                        AllowDispose = true;
-                        this.DownloadState = DownloadState.FailedDownloading;
-                        PushLog($"[Retry {session.SessionRetryAttempt}/{this.RetryMax}] Retry attempt has been exceeded on session ID {session.SessionID}! Retrying...\r\nURL: {this.PathURL}\r\nException: {ex}", DownloadLogSeverity.Error);
-                        throw;
-                    }
-                    PushLog($"[Retry {session.SessionRetryAttempt}/{this.RetryMax}] Error has occurred on session ID {session.SessionID}!\r\nURL: {this.PathURL}\r\nException: {ex}", DownloadLogSeverity.Warning);
+                    PushLog($"An error has occurred on session ID: {session.SessionID}. The session will retry to re-establish the connection...\r\nException: {ex}", DownloadLogSeverity.Warning);
+                    (bool, Exception) retryStatus = await session.TryReinitializeRequest();
+                    if (retryStatus.Item1 && retryStatus.Item2 == null) continue;
+
+                    AllowDispose = true;
+                    this.DownloadState = DownloadState.FailedDownloading;
+                    session.SessionState = DownloadState.FailedDownloading;
+                    throw retryStatus.Item2 != null ? retryStatus.Item2 : ex;
                 }
                 finally
                 {
