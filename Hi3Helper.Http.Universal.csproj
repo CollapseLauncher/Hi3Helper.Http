@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
-		<Platforms>x64</Platforms>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<Platforms>AnyCPU</Platforms>
 		<Configurations>Debug;Release</Configurations>
 		<DebugType>portable</DebugType>
 		<IsTrimmable>True</IsTrimmable>
