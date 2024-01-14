@@ -46,7 +46,9 @@ namespace Hi3Helper.Http
         public DownloadState DownloadState { get; private set; }
 
         // Check for status of Dispose
+        #pragma warning disable CS0414 // Field is assigned but its value is never used
         private bool IsDisposed = false;
+        #pragma warning restore CS0414 // Field is assigned but its value is never used
 
         public static long GetHashNumber(long num1, long num2, long s1 = 69420, long s2 = 87654) => (s1 * num1) ^ (s2 * num2);
 
