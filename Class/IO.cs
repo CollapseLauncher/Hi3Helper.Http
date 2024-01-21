@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,10 +30,11 @@ namespace Hi3Helper.Http
                 ) > 0)
             {
                 // Write Buffer to the output Stream
-                await Output
 #if NETCOREAPP
-                    .WriteAsync(Buffer.AsMemory(0, Read), Token);
+                Token.ThrowIfCancellationRequested();
+                Output.Write(Buffer, 0, Read);
 #else
+                await Output
                     .WriteAsync(Buffer, 0, Read, Token);
 #endif
 
@@ -75,10 +75,11 @@ namespace Hi3Helper.Http
                 ) > 0)
             {
                 // Write Buffer to the output Stream
-                await Input.StreamOutput
 #if NETCOREAPP
-                    .WriteAsync(Buffer.AsMemory(0, Read), Input.SessionToken);
+                Input.SessionToken.ThrowIfCancellationRequested();
+                Input.StreamOutput.Write(Buffer, 0, Read);
 #else
+                await Input.StreamOutput
                     .WriteAsync(Buffer, 0, Read, Input.SessionToken);
 #endif
                 // Increment as last OffsetStart adjusted
