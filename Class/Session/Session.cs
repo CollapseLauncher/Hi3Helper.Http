@@ -96,7 +96,6 @@ namespace Hi3Helper.Http
         public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
 #endif
 
-
         private async
 #if NETCOREAPP
             ValueTask<int>
@@ -226,10 +225,17 @@ namespace Hi3Helper.Http
             this.SessionToken = SToken;
             this.IsFileMode = IsFileMode;
             this.IsDisposed = false;
+            this.IsUseExternalSession = UseExternalSessionClient;
             this.SessionState = DownloadState.Idle;
             this.SessionClient = UseExternalSessionClient ? null : new HttpClient(ClientHandler)
-            { Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec) }
-            ;
+            {
+                Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
+#if NET7_0_OR_GREATER
+                ,
+                DefaultRequestVersion = HttpVersion.Version30,
+                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+#endif
+            };
             this.SessionID = 0;
 
             if (!UseExternalSessionClient && UserAgent != null)
@@ -348,6 +354,7 @@ namespace Hi3Helper.Http
             {
                 if (this.IsFileMode && this.StreamOutput != null) this.StreamOutput.Dispose();
                 if (this.StreamInput != null) this.StreamInput.Dispose();
+                if (this.IsUseExternalSession) this.SessionClient.Dispose();
             }
             catch (Exception ex)
             {
@@ -367,6 +374,7 @@ namespace Hi3Helper.Http
         internal string PathOutput;
 
         // Boolean Properties
+        internal bool IsUseExternalSession;
         internal bool IsLastSession;
         internal bool IsFileMode;
         internal bool IsDisposed;

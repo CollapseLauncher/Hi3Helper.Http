@@ -25,12 +25,18 @@ namespace Hi3Helper.Http
                 AllowAutoRedirect = true,
                 UseCookies = true,
                 MaxConnectionsPerServer = ConnectionMax,
-                AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None
+                AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None,
             };
 
             this._client = new HttpClient(this._handler)
-            { Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec) }
-            ;
+            {
+                Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
+#if NET7_0_OR_GREATER
+                ,
+                DefaultRequestVersion = HttpVersion.Version30,
+                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+#endif
+            };
 
             if (this._clientUserAgent != null)
                 this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
@@ -51,8 +57,14 @@ namespace Hi3Helper.Http
             };
 
             this._client = new HttpClient(this._handler)
-            { Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec) }
-            ;
+            {
+                Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
+#if NET7_0_OR_GREATER
+                ,
+                DefaultRequestVersion = HttpVersion.Version30,
+                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+#endif
+            };
         }
 
         public HttpClient GetHttpClient() => this._client;
