@@ -36,7 +36,7 @@ namespace Hi3Helper.Http
                 catch (Exception ex)
                 {
                     PushLog($"An error has occurred on session ID: {session.SessionID}. The session will retry to re-establish the connection...\r\nException: {ex}", DownloadLogSeverity.Warning);
-                    (bool, Exception) retryStatus = await session.TryReinitializeRequest();
+                    Tuple<bool, Exception> retryStatus = await session.TryReinitializeRequest();
                     if (retryStatus.Item1 && retryStatus.Item2 == null) continue;
 
                     AllowDispose = true;

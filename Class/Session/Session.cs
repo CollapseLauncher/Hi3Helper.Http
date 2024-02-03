@@ -271,7 +271,7 @@ namespace Hi3Helper.Http
 #if NETCOREAPP
         internal async ValueTask<(bool, Exception)> TryReinitializeRequest()
 #else
-        internal async Task<(bool, Exception)> TryReinitializeRequest()
+        internal async Task<Tuple<bool, Exception>> TryReinitializeRequest()
 #endif
         {
             try
@@ -283,12 +283,12 @@ namespace Hi3Helper.Http
                     this.StreamInput.Dispose();
 #endif
 
-                return (await TryGetHttpRequest(), null);
+                return new Tuple<bool, Exception>(await TryGetHttpRequest(), null);
             }
             catch (Exception ex)
             {
                 Http.PushLog($"Failed while reinitialize session ID: {this.SessionID}\r\n{ex}", DownloadLogSeverity.Error);
-                return (false, ex);
+                return new Tuple<bool, Exception>(false, ex);
             }
         }
 
