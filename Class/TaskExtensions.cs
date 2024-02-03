@@ -62,6 +62,9 @@ namespace Hi3Helper.Http
 
         private static async Task<T> ThrowExceptionAfterTimeout<T>(int timeout, Task mainTask, CancellationToken token = default)
         {
+            if (token.IsCancellationRequested)
+                throw new OperationCanceledException();
+
             int timeoutMs = timeout * 1000;
             await Task.Delay(timeoutMs, token);
             if (!(mainTask.IsCompleted ||
