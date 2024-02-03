@@ -11,9 +11,9 @@ namespace Hi3Helper.Http
     public sealed partial class Http
     {
 #if NETCOREAPP
-        private async ValueTask<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false)
+        private async ValueTask<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false, CancellationToken Token = default)
 #else
-        private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false)
+        private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false, CancellationToken Token = default)
 #endif
         {
             this.SizeAttribute.SizeTotalToDownload = 0;
@@ -23,7 +23,7 @@ namespace Hi3Helper.Http
             this.DownloadState = DownloadState.WaitingOnSession;
 
             Session session = new Session(this.PathURL, this.PathOutput, _Stream,
-                this.ConnectionToken, IsFileMode, this._handler,
+                Token, IsFileMode, this._handler,
                 OffsetStart, OffsetEnd, this.PathOverwrite, this._clientUserAgent, true, IgnoreOutStreamLength);
             session.SessionClient = this._client;
 
@@ -89,7 +89,7 @@ namespace Hi3Helper.Http
                     endOffset = currentThread + 1 == sessionThread ? remoteLength - 1 : (startOffset + sliceSize - 1);
                     session = new Session(
                         inputUrl, sessionOutPath, null,
-                        this.ConnectionToken, true, this._handler,
+                        token, true, this._handler,
                         startOffset, endOffset, this.PathOverwrite,
                         this._clientUserAgent, false)
                     {
@@ -185,22 +185,6 @@ namespace Hi3Helper.Http
             return new Session(
                 Input.PathURL, Input.PathOutput, null,
                 Token, true, this._handler,
-                ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
-                ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart,
-                ForceOverwrite || this.PathOverwrite, this._clientUserAgent
-                )
-            {
-                IsLastSession = Input.IsLastSession,
-            };
-        }
-
-        private Session ReinitializeSession(Session Input, bool ForceOverwrite = false,
-            long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
-        {
-            Input?.Dispose();
-            return new Session(
-                this.PathURL, Input.PathOutput, null,
-                this.ConnectionToken, true, this._handler,
                 ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
                 ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart,
                 ForceOverwrite || this.PathOverwrite, this._clientUserAgent

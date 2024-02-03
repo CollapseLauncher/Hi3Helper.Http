@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
     public sealed partial class Http
     {
-        public async Task Merge()
+        public async Task Merge(CancellationToken token)
         {
             if (this.DownloadState != DownloadState.FinishedNeedMerge)
             {
@@ -28,7 +29,7 @@ namespace Hi3Helper.Http
                     string chunkPath = this.PathOutput + string.Format(PathSessionPrefix, GetHashNumber(this.ConnectionSessions, t));
                     using (FileStream os = new FileStream(chunkPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                     {
-                        await IOReadWrite(os, fs, this.ConnectionToken);
+                        await IOReadWrite(os, fs, token);
                     }
                 }
             }

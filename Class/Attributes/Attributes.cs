@@ -24,8 +24,6 @@ namespace Hi3Helper.Http
         private const byte ConnectionSessionsMax = 8;
         // Sessions count
         private byte ConnectionSessions;
-        // Connection Token for Cancellation
-        private CancellationToken ConnectionToken;
 
         // Max Retry Count
         private int RetryMax = TaskExtensions.DefaultRetryAttempt;
