@@ -48,7 +48,13 @@ namespace Hi3Helper.Http
             throw new TimeoutException($"The operation for task ID: {lastTaskID} has timed out!");
         }
 
-        internal static async ValueTask<T> TimeoutAfter<T>(this Task<T> task, CancellationToken token = default, int timeout = DefaultTimeoutSec)
+        internal static async
+#if NETCOREAPP
+            ValueTask<T>
+#else
+            Task<T>
+#endif
+            TimeoutAfter<T>(this Task<T> task, CancellationToken token = default, int timeout = DefaultTimeoutSec)
         {
             Task<T> completedTask = await Task.WhenAny(task, ThrowExceptionAfterTimeout<T>(timeout, task, token));
             return await completedTask;
