@@ -21,7 +21,8 @@ namespace Hi3Helper.Http
 #if NETCOREAPP
             await GetMultisessionTasks(URL, Output, ConnectionSessions, ThreadToken).TaskWhenAll(ThreadToken, ConnectionSessions);
 #else
-            await Task.WhenAll(GetMultisessionTasks(URL, Output, ConnectionSessions, ThreadToken));
+            Task[] parallelTasks = await GetMultisessionTasks(URL, Output, ConnectionSessions, ThreadToken);
+            await Task.WhenAll(parallelTasks);
 #endif
 
             this.DownloadState = DownloadState.FinishedNeedMerge;
