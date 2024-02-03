@@ -269,7 +269,7 @@ namespace Hi3Helper.Http
         }
 
 #if NETCOREAPP
-        internal async ValueTask<(bool, Exception)> TryReinitializeRequest()
+        internal async ValueTask<Tuple<bool, Exception>> TryReinitializeRequest()
 #else
         internal async Task<Tuple<bool, Exception>> TryReinitializeRequest()
 #endif

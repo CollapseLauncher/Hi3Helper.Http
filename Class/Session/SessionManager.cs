@@ -247,7 +247,7 @@ namespace Hi3Helper.Http
         }
 
 #if NETCOREAPP
-        public async ValueTask<(int, bool)> GetURLStatus(string URL, CancellationToken Token)
+        public async ValueTask<Tuple<int, bool>> GetURLStatus(string URL, CancellationToken Token)
 #else
         public async Task<Tuple<int, bool>> GetURLStatus(string URL, CancellationToken Token)
 #endif
