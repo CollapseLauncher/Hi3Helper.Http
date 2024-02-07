@@ -79,7 +79,7 @@ namespace Hi3Helper.Http
             this.PathOutput = Output;
             this.PathOverwrite = Overwrite;
 
-            await SessionTaskRunnerContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, true, null));
+            await SessionTaskRunnerContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, true, null, false, ThreadToken));
 
             this.DownloadState = DownloadState.Finished;
         }
@@ -92,7 +92,7 @@ namespace Hi3Helper.Http
 
             this.PathURL = URL;
 
-            await SessionTaskRunnerContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream, IgnoreOutStreamLength));
+            await SessionTaskRunnerContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream, IgnoreOutStreamLength, ThreadToken));
             this.DownloadState = DownloadState.Finished;
         }
 
