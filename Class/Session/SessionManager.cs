@@ -23,11 +23,11 @@ namespace Hi3Helper.Http
             this.DownloadState = DownloadState.WaitingOnSession;
 
             Session session = new Session(this.PathURL, this.PathOutput, _Stream,
-                Token, IsFileMode, this._handler,
-                OffsetStart, OffsetEnd, this.PathOverwrite, this._clientUserAgent, true, IgnoreOutStreamLength);
+                IsFileMode, this._handler, OffsetStart, OffsetEnd, this.PathOverwrite,
+                this._clientUserAgent, true, IgnoreOutStreamLength);
             session.SessionClient = this._client;
 
-            if (!await session.TryGetHttpRequest())
+            if (!await session.TryGetHttpRequest(Token))
             {
 #if NETCOREAPP
                 await session.DisposeAsync();
@@ -46,7 +46,7 @@ namespace Hi3Helper.Http
 
         private async
 #if NETCOREAPP
-            IAsyncEnumerable<Task>
+            IAsyncEnumerable<Session>
 #else
             Task<Task[]>
 #endif
@@ -89,9 +89,8 @@ namespace Hi3Helper.Http
                     endOffset = currentThread + 1 == sessionThread ? remoteLength - 1 : (startOffset + sliceSize - 1);
                     session = new Session(
                         inputUrl, sessionOutPath, null,
-                        token, true, this._handler,
-                        startOffset, endOffset, this.PathOverwrite,
-                        this._clientUserAgent, false)
+                        true, this._handler, startOffset, endOffset,
+                        this.PathOverwrite, this._clientUserAgent, false)
                     {
                         IsLastSession = currentThread + 1 == this.ConnectionSessions,
                         SessionID = sessionId
@@ -114,7 +113,7 @@ namespace Hi3Helper.Http
                     this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
                     bool isRequestSuccess = true;
                     if ((session.StreamOutputSize == (endOffset - lastStartOffset) + 1)
-                     || (!(isRequestSuccess = await session.TryGetHttpRequest()) && (int)session.StreamInput._statusCode == 413))
+                     || (!(isRequestSuccess = await session.TryGetHttpRequest(token)) && (int)session.StreamInput._statusCode == 413))
                     {
                         PushLog($"Session ID: {sessionId} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Warning);
                         isInitSucceed = false;
@@ -153,7 +152,7 @@ namespace Hi3Helper.Http
 
 #if NETCOREAPP
                 PushLog($"Session: {currentThread + 1}/{sessionThread} has been started for the URL: {inputUrl}", DownloadLogSeverity.Info);
-                if (isInitSucceed) yield return SessionTaskRunnerContainer(session);
+                if (isInitSucceed) yield return session;
 #endif
             }
 
@@ -184,8 +183,7 @@ namespace Hi3Helper.Http
 #endif
             return new Session(
                 Input.PathURL, Input.PathOutput, null,
-                Token, true, this._handler,
-                ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
+                true, this._handler, ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
                 ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart,
                 ForceOverwrite || this.PathOverwrite, this._clientUserAgent
                 )

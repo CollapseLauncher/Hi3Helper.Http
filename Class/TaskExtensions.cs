@@ -10,17 +10,6 @@ namespace Hi3Helper.Http
         internal const int DefaultTimeoutSec = 10;
         internal const int DefaultRetryAttempt = 5;
 
-#if NETCOREAPP
-        internal static async ValueTask TaskWhenAll(this IAsyncEnumerable<Task> tasks, CancellationToken token, int taskCount)
-        {
-            ParallelOptions parallelOptions = new ParallelOptions { CancellationToken = token, MaxDegreeOfParallelism = taskCount };
-            await Parallel.ForEachAsync(tasks, parallelOptions, async (task, _) =>
-            {
-                await task;
-            });
-        }
-#endif
-
         internal static async Task<T> RetryTimeoutAfter<T>(Func<Task<T>> taskFunction, CancellationToken token = default, int timeout = DefaultTimeoutSec, int retryAttempt = DefaultRetryAttempt)
         {
             int retryTotal = retryAttempt;

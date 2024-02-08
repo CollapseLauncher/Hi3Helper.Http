@@ -213,7 +213,7 @@ namespace Hi3Helper.Http
 #endif
     {
         internal Session(string PathURL, string PathOutput, Stream SOutput,
-            CancellationToken SToken, bool IsFileMode, HttpClientHandler ClientHandler,
+            bool IsFileMode, HttpClientHandler ClientHandler,
             long? OffsetStart = null, long? OffsetEnd = null,
             bool Overwrite = false, string UserAgent = null,
             bool UseExternalSessionClient = false, bool IgnoreOutStreamLength = false)
@@ -222,7 +222,6 @@ namespace Hi3Helper.Http
             this.PathURL = PathURL;
             this.PathOutput = PathOutput;
             this.StreamOutput = SOutput;
-            this.SessionToken = SToken;
             this.IsFileMode = IsFileMode;
             this.IsDisposed = false;
             this.IsUseExternalSession = UseExternalSessionClient;
@@ -269,9 +268,9 @@ namespace Hi3Helper.Http
         }
 
 #if NETCOREAPP
-        internal async ValueTask<Tuple<bool, Exception>> TryReinitializeRequest()
+        internal async ValueTask<Tuple<bool, Exception>> TryReinitializeRequest(CancellationToken token)
 #else
-        internal async Task<Tuple<bool, Exception>> TryReinitializeRequest()
+        internal async Task<Tuple<bool, Exception>> TryReinitializeRequest(CancellationToken token)
 #endif
         {
             try
@@ -283,7 +282,7 @@ namespace Hi3Helper.Http
                     this.StreamInput.Dispose();
 #endif
 
-                return new Tuple<bool, Exception>(await TryGetHttpRequest(), null);
+                return new Tuple<bool, Exception>(await TryGetHttpRequest(token), null);
             }
             catch (Exception ex)
             {
@@ -298,13 +297,13 @@ namespace Hi3Helper.Http
 #else
         Task<bool>
 #endif
-        TryGetHttpRequest()
+        TryGetHttpRequest(CancellationToken token)
         {
             if (IsExistingFileSizeValid())
             {
                 this.StreamInput = await TaskExtensions.RetryTimeoutAfter(
-                    async () => await HttpResponseInputStream.CreateStreamAsync(this.SessionClient, this.PathURL, this.OffsetStart, this.OffsetEnd, this.SessionToken),
-                    this.SessionToken
+                    async () => await HttpResponseInputStream.CreateStreamAsync(this.SessionClient, this.PathURL, this.OffsetStart, this.OffsetEnd, token),
+                    token
                     );
                 return this.StreamInput != null;
             }
@@ -381,7 +380,6 @@ namespace Hi3Helper.Http
 
         // Session Properties
         internal HttpClient SessionClient;
-        internal CancellationToken SessionToken;
         internal DownloadState SessionState;
         internal int SessionRetryAttempt { get; set; }
         internal long SessionID;

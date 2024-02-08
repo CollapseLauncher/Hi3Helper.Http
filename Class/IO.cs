@@ -62,7 +62,7 @@ namespace Hi3Helper.Http
 #else
             Task
 #endif
-            IOReadWriteSession(Session Input)
+            IOReadWriteSession(Session Input, CancellationToken Token)
         {
             DownloadEvent Event = new DownloadEvent();
             int Read;
@@ -70,17 +70,17 @@ namespace Hi3Helper.Http
 
             // Read Stream into Buffer
             while ((Read = await Input.StreamInput
-                .ReadAsync(Buffer, 0, _bufferSize, Input.SessionToken)
-                .TimeoutAfter(Input.SessionToken)
+                .ReadAsync(Buffer, 0, _bufferSize, Token)
+                .TimeoutAfter(Token)
                 ) > 0)
             {
                 // Write Buffer to the output Stream
 #if NETCOREAPP
-                Input.SessionToken.ThrowIfCancellationRequested();
+                Token.ThrowIfCancellationRequested();
                 Input.StreamOutput.Write(Buffer, 0, Read);
 #else
                 await Input.StreamOutput
-                    .WriteAsync(Buffer, 0, Read, Input.SessionToken);
+                    .WriteAsync(Buffer, 0, Read, Token);
 #endif
                 // Increment as last OffsetStart adjusted
                 Input.OffsetStart += Read;
