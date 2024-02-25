@@ -8,18 +8,19 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    internal class HttpResponseInputStream : Stream
+    public class HttpResponseInputStream : Stream
     {
         private protected HttpRequestMessage _networkRequest;
         private protected HttpResponseMessage _networkResponse;
         private protected Stream _networkStream;
         private protected long _networkLength;
         private protected long _currentPosition = 0;
-        internal protected HttpStatusCode _statusCode;
-        internal protected bool _isSuccessStatusCode;
+        public HttpStatusCode _statusCode;
+        public bool _isSuccessStatusCode;
 
-        internal static async Task<HttpResponseInputStream> CreateStreamAsync(HttpClient client, string url, long? startOffset, long? endOffset, CancellationToken token)
+        public static async Task<HttpResponseInputStream> CreateStreamAsync(HttpClient client, string url, long? startOffset, long? endOffset, CancellationToken token)
         {
+            startOffset ??= 0;
             HttpResponseInputStream httpResponseInputStream = new HttpResponseInputStream();
             httpResponseInputStream._networkRequest = new HttpRequestMessage()
             {
