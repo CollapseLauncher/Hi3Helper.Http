@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Net.Http;
-using System.Threading;
 
 namespace Hi3Helper.Http
 {
