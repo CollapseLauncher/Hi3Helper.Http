@@ -13,10 +13,13 @@ namespace Hi3Helper.Http
         {
             int retryTotal = retryAttempt;
             int lastTaskID = 0;
+            Exception lastException = null;
+
             while (retryTotal > 0)
             {
                 try
                 {
+                    lastException = null;
                     Task<T> taskDelegated = taskFunction();
                     lastTaskID = taskDelegated.Id;
                     Task<T> completedTask = await Task.WhenAny(taskDelegated, ThrowExceptionAfterTimeout<T>(timeout, taskDelegated, token));
@@ -25,14 +28,17 @@ namespace Hi3Helper.Http
                 }
                 catch (TaskCanceledException) { throw; }
                 catch (OperationCanceledException) { throw; }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    lastException = ex;
                     string msg = $"The operation for task ID: {lastTaskID} has timed out! Retrying attempt left: {retryTotal--}";
                     Http.PushLog(msg, DownloadLogSeverity.Warning);
                     await Task.Delay(1000); // Wait 1s interval before retrying
                     continue;
                 }
             }
+
+            if (lastException != null) throw lastException;
             throw new TimeoutException($"The operation for task ID: {lastTaskID} has timed out!");
         }
 

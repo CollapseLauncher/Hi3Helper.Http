@@ -27,6 +27,9 @@ namespace Hi3Helper.Http
                 RequestUri = new Uri(url),
                 Method = HttpMethod.Get
             };
+
+            token.ThrowIfCancellationRequested();
+
             httpResponseInputStream._networkRequest.Headers.Range = new RangeHeaderValue(startOffset, endOffset);
             httpResponseInputStream._networkResponse = await client
                 .SendAsync(httpResponseInputStream._networkRequest, HttpCompletionOption.ResponseHeadersRead, token);
@@ -240,7 +243,7 @@ namespace Hi3Helper.Http
 
             if (!UseExternalSessionClient && UserAgent != null)
             {
-                this.SessionClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+                this.SessionClient?.DefaultRequestHeaders?.UserAgent?.ParseAdd(UserAgent);
             }
 
             // If the OutStream is explicitly defined, use OutStream instead and set to IsFileMode == false.
@@ -260,7 +263,7 @@ namespace Hi3Helper.Http
         }
 
         // Seek the StreamOutput to the end of file
-        internal void SeekStreamOutputToEnd() => this.StreamOutput.Seek(0, SeekOrigin.End);
+        internal void SeekStreamOutputToEnd() => this.StreamOutput?.Seek(0, SeekOrigin.End);
 
         private void AdjustOffsets(long? Start, long? End, bool IgnoreOutStreamLength = false)
         {
@@ -352,9 +355,11 @@ namespace Hi3Helper.Http
 
             try
             {
-                if (this.IsFileMode && this.StreamOutput != null) this.StreamOutput.Dispose();
-                if (this.StreamInput != null) this.StreamInput.Dispose();
-                if (this.IsUseExternalSession) this.SessionClient.Dispose();
+                if (this.IsFileMode)
+                    this.StreamOutput?.Dispose();
+
+                this.StreamInput?.Dispose();
+                if (this.IsUseExternalSession) this.SessionClient?.Dispose();
             }
             catch (Exception ex)
             {
@@ -379,15 +384,17 @@ namespace Hi3Helper.Http
         internal bool IsFileMode;
         internal bool IsDisposed;
 
+#nullable enable
         // Session Properties
-        internal HttpClient SessionClient;
+        internal HttpClient? SessionClient;
         internal DownloadState SessionState;
         internal int SessionRetryAttempt { get; set; }
         internal long SessionID;
 
         // Stream Properties
-        internal HttpResponseInputStream StreamInput;
-        internal Stream StreamOutput;
+        internal HttpResponseInputStream? StreamInput;
+        internal Stream? StreamOutput;
         internal long StreamOutputSize => (this.StreamOutput?.CanWrite ?? false) || (this.StreamOutput?.CanRead ?? false) ? this.StreamOutput.Length : 0;
+#nullable restore
     }
 }

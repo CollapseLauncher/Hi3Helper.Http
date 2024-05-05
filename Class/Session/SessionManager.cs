@@ -22,6 +22,8 @@ namespace Hi3Helper.Http
 
             this.DownloadState = DownloadState.WaitingOnSession;
 
+            Token.ThrowIfCancellationRequested();
+
             Session session = new Session(this.PathURL, this.PathOutput, _Stream,
                 IsFileMode, this._handler, OffsetStart, OffsetEnd, this.PathOverwrite,
                 this._clientUserAgent, true, IgnoreOutStreamLength);
