@@ -18,9 +18,9 @@ namespace Hi3Helper.Http
         private const int _bufferSize = 64 << 10;
 
         // Max allowed Connections for HttpClient instance
-        private const byte ConnectionMax = 16;
+        private const byte ConnectionMax = 64;
         // Max allowed Sessions for HttpClient instance (in Multi-session mode)
-        private const byte ConnectionSessionsMax = 8;
+        private const byte ConnectionSessionsMax = 16;
         // Sessions count
         private byte ConnectionSessions;
 
