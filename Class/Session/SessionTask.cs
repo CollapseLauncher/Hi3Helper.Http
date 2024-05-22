@@ -23,31 +23,24 @@ namespace Hi3Helper.Http
                 await SessionTaskRunnerContainer(session, innerToken);
             });
 #else
-            using (CancellationTokenSource actionToken = new CancellationTokenSource())
+            ActionBlock<Session> actionBlock = new ActionBlock<Session>(
+             async session =>
+             {
+                 await SessionTaskRunnerContainer(session, parallelOptions.CancellationToken);
+             },
+             new ExecutionDataflowBlockOptions
+             {
+                 MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
+                 CancellationToken = parallelOptions.CancellationToken
+             });
+
+            await foreach (Session session in sessions)
             {
-                using (CancellationTokenSource linkedToken = CancellationTokenSource
-                          .CreateLinkedTokenSource(actionToken.Token, parallelOptions.CancellationToken))
-                {
-                    ActionBlock<Session> actionBlock = new ActionBlock<Session>(
-                     async session =>
-                     {
-                         await SessionTaskRunnerContainer(session, linkedToken.Token);
-                     },
-                     new ExecutionDataflowBlockOptions
-                     {
-                         MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
-                         CancellationToken = linkedToken.Token
-                     });
-
-                    await foreach (Session session in sessions)
-                    {
-                        await actionBlock.SendAsync(session, linkedToken.Token);
-                    }
-
-                    actionBlock.Complete();
-                    await actionBlock.Completion;
-                }
+                await actionBlock.SendAsync(session, parallelOptions.CancellationToken);
             }
+
+            actionBlock.Complete();
+            await actionBlock.Completion;
 #endif
         }
 
