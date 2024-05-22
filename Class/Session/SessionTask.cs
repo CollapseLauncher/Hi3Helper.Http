@@ -49,6 +49,7 @@ namespace Hi3Helper.Http
             if (session == null) return;
             DownloadEvent Event = new DownloadEvent();
 
+            CancellationTokenSource innerTimeoutToken = null, cooperatedToken = null;
             while (true)
             {
                 bool AllowDispose = false;
@@ -57,8 +58,8 @@ namespace Hi3Helper.Http
                     this.DownloadState = DownloadState.Downloading;
                     session.SessionState = DownloadState.Downloading;
 
-                    CancellationTokenSource innerTimeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
-                    CancellationTokenSource cooperatedToken = CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
+                    innerTimeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
+                    cooperatedToken = CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
 
                     int Read;
                     byte[] Buffer = new byte[_bufferSize];
@@ -127,6 +128,10 @@ namespace Hi3Helper.Http
                     AllowDispose = true;
                     this.DownloadState = DownloadState.FailedDownloading;
                     session.SessionState = DownloadState.FailedDownloading;
+
+                    if (ex is TaskCanceledException && !token.IsCancellationRequested)
+                        throw new TimeoutException($"Request for session ID: {session.SessionID} has timed out!", ex);
+
                     throw retryStatus.Item2 != null ? retryStatus.Item2 : ex;
                 }
                 finally
