@@ -118,14 +118,7 @@ namespace Hi3Helper.Http
                     AllowDispose = true;
                     return;
                 }
-                catch (TaskCanceledException)
-                {
-                    this.DownloadState = DownloadState.CancelledDownloading;
-                    session.SessionState = DownloadState.CancelledDownloading;
-                    AllowDispose = true;
-                    throw;
-                }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
                     this.DownloadState = DownloadState.CancelledDownloading;
                     session.SessionState = DownloadState.CancelledDownloading;
