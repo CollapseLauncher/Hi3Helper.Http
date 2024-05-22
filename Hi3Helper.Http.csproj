@@ -3,9 +3,15 @@
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
 		<Platforms>x64</Platforms>
+		<LangVersion>8.0</LangVersion>
 		<Configurations>Debug;Release</Configurations>
+		<Nullable>disable</Nullable>
 		<DebugType>portable</DebugType>
 		<IsTrimmable>True</IsTrimmable>
+		<IsAotCompatible>True</IsAotCompatible>
+		<Version>1.5.0</Version>
+		<AssemblyVersion>1.5.0</AssemblyVersion>
+		<AssemblyName>Hi3Helper.Http</AssemblyName>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

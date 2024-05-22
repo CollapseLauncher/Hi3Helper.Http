@@ -30,7 +30,7 @@ namespace Hi3Helper.Http
             this._client = new HttpClient(this._handler)
             {
                 Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-#if NET7_0_OR_GREATER
+#if NET6_0_OR_GREATER
                 ,
                 DefaultRequestVersion = HttpVersion.Version30,
                 DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
@@ -58,7 +58,7 @@ namespace Hi3Helper.Http
             this._client = new HttpClient(this._handler)
             {
                 Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-#if NET7_0_OR_GREATER
+#if NET6_0_OR_GREATER
                 ,
                 DefaultRequestVersion = HttpVersion.Version30,
                 DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower

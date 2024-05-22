@@ -20,7 +20,9 @@ namespace Hi3Helper.Http
 
         public static async Task<HttpResponseInputStream> CreateStreamAsync(HttpClient client, string url, long? startOffset, long? endOffset, CancellationToken token)
         {
-            startOffset ??= 0;
+            if (startOffset == null)
+                startOffset = 0;
+
             HttpResponseInputStream httpResponseInputStream = new HttpResponseInputStream();
             httpResponseInputStream._networkRequest = new HttpRequestMessage()
             {
@@ -40,7 +42,7 @@ namespace Hi3Helper.Http
             {
                 httpResponseInputStream._networkLength = httpResponseInputStream._networkResponse.Content.Headers.ContentLength ?? 0;
                 httpResponseInputStream._networkStream = await httpResponseInputStream._networkResponse.Content
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
                     .ReadAsStreamAsync(token);
 #else
                     .ReadAsStreamAsync();
@@ -50,7 +52,7 @@ namespace Hi3Helper.Http
 
             if ((int)httpResponseInputStream._statusCode == 416)
             {
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
                 await httpResponseInputStream.DisposeAsync();
 #else
                 httpResponseInputStream.Dispose();
@@ -64,89 +66,39 @@ namespace Hi3Helper.Http
         ~HttpResponseInputStream() => Dispose();
 
 
-#if NETCOREAPP
-        public int ReadUntilFull(Span<byte> buffer)
+#if NET6_0_OR_GREATER
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            int totalRead = 0;
-            while (totalRead < buffer.Length)
-            {
-                int read = _networkStream.Read(buffer.Slice(totalRead));
-                if (read == 0) return totalRead;
-
-                totalRead += read;
-                _currentPosition += read;
-            }
-            return totalRead;
+            int read = await _networkStream.ReadAsync(buffer, cancellationToken);
+            _currentPosition += read;
+            return read;
         }
 
-        public async ValueTask<int> ReadUntilFullAsync(Memory<byte> buffer, CancellationToken token)
+        public override int Read(Span<byte> buffer)
         {
-            int totalRead = 0;
-            while (totalRead < buffer.Length)
-            {
-                int read = await _networkStream.ReadAsync(buffer.Slice(totalRead), token);
-                if (read == 0) return totalRead;
-
-                totalRead += read;
-                _currentPosition += read;
-            }
-            return totalRead;
+            int read = _networkStream.Read(buffer);
+            _currentPosition += read;
+            return read;
         }
-
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => await ReadUntilFullAsync(buffer, cancellationToken);
-        public override int Read(Span<byte> buffer) => ReadUntilFull(buffer);
 
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
 #endif
 
-        private async
-#if NETCOREAPP
-            ValueTask<int>
-#else
-            Task<int>
-#endif
-            ReadUntilFullAsync(byte[] buffer, int offset, int count, CancellationToken token)
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
         {
-            int totalRead = 0;
-            while (offset < count)
-            {
-                int read = await _networkStream
-#if NETCOREAPP
-                    .ReadAsync(buffer.AsMemory(offset), token);
-#else
-                    .ReadAsync(buffer, offset, count - offset, token);
-#endif
-                if (read == 0) return totalRead;
-
-                totalRead += read;
-                offset += read;
-                _currentPosition += read;
-            }
-            return totalRead;
+            int read = await _networkStream.ReadAsync(buffer, offset, count, cancellationToken);
+            _currentPosition += read;
+            return read;
         }
 
-        private int ReadUntilFull(byte[] buffer, int offset, int count)
+        public override int Read(byte[] buffer, int offset, int count)
         {
-            int totalRead = 0;
-            while (offset < count)
-            {
-#if NETCOREAPP
-                int read = _networkStream.Read(buffer.AsSpan(offset));
-#else
-                int read = _networkStream.Read(buffer, offset, count);
-#endif
-                if (read == 0) return totalRead;
-
-                totalRead += read;
-                offset += read;
-                _currentPosition += read;
-            }
-            return totalRead;
+            int read = _networkStream.Read(buffer, offset, count);
+            _currentPosition += read;
+            return read;
         }
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) => await ReadUntilFullAsync(buffer, offset, count, cancellationToken);
-        public override int Read(byte[] buffer, int offset, int count) => ReadUntilFull(buffer, offset, count);
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException();
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
@@ -197,7 +149,7 @@ namespace Hi3Helper.Http
             GC.SuppressFinalize(this);
         }
 
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
         public override async ValueTask DisposeAsync()
         {
             _networkRequest?.Dispose();
@@ -212,7 +164,7 @@ namespace Hi3Helper.Http
     }
 
     internal sealed class Session : IDisposable
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
         , IAsyncDisposable
 #endif
     {
@@ -233,7 +185,7 @@ namespace Hi3Helper.Http
             this.SessionClient = UseExternalSessionClient ? null : new HttpClient(ClientHandler)
             {
                 Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-#if NET7_0_OR_GREATER
+#if NET6_0_OR_GREATER
                 ,
                 DefaultRequestVersion = HttpVersion.Version30,
                 DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
@@ -271,7 +223,7 @@ namespace Hi3Helper.Http
             this.OffsetEnd = End;
         }
 
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
         internal async ValueTask<Tuple<bool, Exception>> TryReinitializeRequest(CancellationToken token)
 #else
         internal async Task<Tuple<bool, Exception>> TryReinitializeRequest(CancellationToken token)
@@ -280,7 +232,7 @@ namespace Hi3Helper.Http
             try
             {
                 if (this.StreamInput != null)
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
                     await this.StreamInput.DisposeAsync();
 #else
                     this.StreamInput.Dispose();
@@ -305,10 +257,11 @@ namespace Hi3Helper.Http
         {
             if (IsExistingFileSizeValid())
             {
-                this.StreamInput = await TaskExtensions.RetryTimeoutAfter(
-                    async () => await HttpResponseInputStream.CreateStreamAsync(this.SessionClient, this.PathURL, this.OffsetStart, this.OffsetEnd, token),
-                    token
-                    );
+                ActionTimeoutValueTaskCallback<HttpResponseInputStream> createStreamCallback =
+                    new ActionTimeoutValueTaskCallback<HttpResponseInputStream>(async (innerToken) =>
+                    await HttpResponseInputStream.CreateStreamAsync(this.SessionClient, this.PathURL, this.OffsetStart, this.OffsetEnd, innerToken));
+
+                this.StreamInput = await TaskExtensions.WaitForRetryAsync(() => createStreamCallback, fromToken: token);
                 return this.StreamInput != null;
             }
 
@@ -329,7 +282,7 @@ namespace Hi3Helper.Http
             Dispose();
         }
 
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
         public async ValueTask DisposeAsync()
         {
             if (this.IsDisposed) return;
@@ -384,17 +337,15 @@ namespace Hi3Helper.Http
         internal bool IsFileMode;
         internal bool IsDisposed;
 
-#nullable enable
         // Session Properties
-        internal HttpClient? SessionClient;
+        internal HttpClient SessionClient;
         internal DownloadState SessionState;
         internal int SessionRetryAttempt { get; set; }
         internal long SessionID;
 
         // Stream Properties
-        internal HttpResponseInputStream? StreamInput;
-        internal Stream? StreamOutput;
+        internal HttpResponseInputStream StreamInput;
+        internal Stream StreamOutput;
         internal long StreamOutputSize => (this.StreamOutput?.CanWrite ?? false) || (this.StreamOutput?.CanRead ?? false) ? this.StreamOutput.Length : 0;
-#nullable restore
     }
 }

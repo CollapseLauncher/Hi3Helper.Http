@@ -4,71 +4,100 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
+    internal delegate
+#if NET6_0_OR_GREATER
+        ValueTask<TResult>
+#else
+        Task<TResult>
+#endif
+        ActionTimeoutValueTaskCallback<TResult>(CancellationToken token);
+
+    internal delegate void ActionOnTimeOutRetry(int retryAttemptCount, int retryAttemptTotal, int timeOutSecond,
+                                                int timeOutStep);
+
     internal static class TaskExtensions
     {
         internal const int DefaultTimeoutSec = 10;
         internal const int DefaultRetryAttempt = 5;
 
-        internal static async Task<T> RetryTimeoutAfter<T>(Func<Task<T>> taskFunction, CancellationToken token = default, int timeout = DefaultTimeoutSec, int retryAttempt = DefaultRetryAttempt)
+        internal static async
+#if NET6_0_OR_GREATER
+            ValueTask<TResult>
+#else
+            Task<TResult>
+#endif
+            WaitForRetryAsync<TResult>(Func<ActionTimeoutValueTaskCallback<TResult>> funcCallback, int? timeout = null,
+                                       int? timeoutStep = null, int? retryAttempt = null,
+                                       ActionOnTimeOutRetry actionOnRetry = null, CancellationToken fromToken = default)
         {
-            int retryTotal = retryAttempt;
-            int lastTaskID = 0;
-            Exception lastException = null;
-
-            while (retryTotal > 0)
+            if (timeout == null)
             {
+                timeout = DefaultTimeoutSec;
+            }
+
+            if (retryAttempt == null)
+            {
+                retryAttempt = DefaultRetryAttempt;
+            }
+
+            if (timeoutStep == null)
+            {
+                timeoutStep = 0;
+            }
+
+            int retryAttemptCurrent = 1;
+            while (retryAttemptCurrent < retryAttempt)
+            {
+                fromToken.ThrowIfCancellationRequested();
+                CancellationTokenSource innerCancellationToken = null;
+                CancellationTokenSource consolidatedToken = null;
+
                 try
                 {
-                    lastException = null;
-                    Task<T> taskDelegated = taskFunction();
-                    lastTaskID = taskDelegated.Id;
-                    Task<T> completedTask = await Task.WhenAny(taskDelegated, ThrowExceptionAfterTimeout<T>(timeout, taskDelegated, token));
-                    if (completedTask == taskDelegated)
-                        return await taskDelegated;
+                    innerCancellationToken =
+                        new CancellationTokenSource(TimeSpan.FromSeconds(timeout ?? DefaultTimeoutSec));
+                    consolidatedToken =
+                        CancellationTokenSource.CreateLinkedTokenSource(innerCancellationToken.Token, fromToken);
+
+                    ActionTimeoutValueTaskCallback<TResult> delegateCallback = funcCallback();
+                    return await delegateCallback(consolidatedToken.Token);
                 }
-                catch (TaskCanceledException) { throw; }
-                catch (OperationCanceledException) { throw; }
+                catch (TaskCanceledException)
+                {
+                    throw;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
-                    lastException = ex;
-                    string msg = $"The operation for task ID: {lastTaskID} has timed out! Retrying attempt left: {retryTotal--}";
-                    Http.PushLog(msg, DownloadLogSeverity.Warning);
-                    await Task.Delay(1000); // Wait 1s interval before retrying
-                    continue;
+                    actionOnRetry?.Invoke(retryAttemptCurrent, retryAttempt ?? 0, timeout ?? 0, timeoutStep ?? 0);
+
+                    if (ex is TimeoutException)
+                    {
+                        string msg =
+                            $"The operation has timed out! Retrying attempt left: {retryAttemptCurrent}/{retryAttempt}";
+                        Http.PushLog(msg, DownloadLogSeverity.Warning);
+                    }
+                    else
+                    {
+                        string msg =
+                            $"The operation has thrown an exception! Retrying attempt left: {retryAttemptCurrent}/{retryAttempt}\r\n{ex}";
+                        Http.PushLog(msg, DownloadLogSeverity.Error);
+                    }
+
+                    retryAttemptCurrent++;
+                    timeout += timeoutStep;
+                }
+                finally
+                {
+                    innerCancellationToken?.Dispose();
+                    consolidatedToken?.Dispose();
                 }
             }
 
-            if (lastException != null) throw lastException;
-            throw new TimeoutException($"The operation for task ID: {lastTaskID} has timed out!");
-        }
-
-        internal static async
-#if NETCOREAPP
-            ValueTask<T>
-#else
-            Task<T>
-#endif
-            TimeoutAfter<T>(this Task<T> task, CancellationToken token = default, int timeout = DefaultTimeoutSec)
-        {
-            Task<T> completedTask = await Task.WhenAny(task, ThrowExceptionAfterTimeout<T>(timeout, task, token));
-            return await completedTask;
-        }
-
-        private static async Task<T> ThrowExceptionAfterTimeout<T>(int timeout, Task mainTask, CancellationToken token = default)
-        {
-            if (token.IsCancellationRequested)
-                throw new OperationCanceledException();
-
-            int timeoutMs = timeout * 1000;
-            await Task.Delay(timeoutMs, token);
-            if (!(mainTask.IsCompleted ||
-#if NETCOREAPP
-                mainTask.IsCompletedSuccessfully ||
-#endif
-                mainTask.IsCanceled || mainTask.IsFaulted || mainTask.Exception != null))
-                throw new TimeoutException($"The operation for task has timed out!");
-
-            return default;
+            throw new TimeoutException("The operation has timed out!");
         }
     }
 }

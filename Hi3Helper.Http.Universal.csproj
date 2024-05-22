@@ -2,10 +2,16 @@
 
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
-		<Platforms>AnyCPU</Platforms>
+		<Platforms>x64</Platforms>
+		<LangVersion>8.0</LangVersion>
 		<Configurations>Debug;Release</Configurations>
+		<Nullable>disable</Nullable>
 		<DebugType>portable</DebugType>
 		<IsTrimmable>True</IsTrimmable>
+		<IsAotCompatible>True</IsAotCompatible>
+		<Version>1.5.0</Version>
+		<AssemblyVersion>1.5.0</AssemblyVersion>
+		<AssemblyName>Hi3Helper.Http</AssemblyName>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -20,6 +26,12 @@
 		<Compile Remove="Test\**" />
 		<EmbeddedResource Remove="Test\**" />
 		<None Remove="Test\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="System.Net.Http" Version="*" />
+		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="*" />
+		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="*" />
 	</ItemGroup>
 
 </Project>

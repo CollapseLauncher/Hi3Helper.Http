@@ -10,7 +10,7 @@ namespace Hi3Helper.Http
 {
     public sealed partial class Http
     {
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
         private async ValueTask<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false, CancellationToken Token = default)
 #else
         private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false, CancellationToken Token = default)
@@ -31,7 +31,7 @@ namespace Hi3Helper.Http
 
             if (!await session.TryGetHttpRequest(Token))
             {
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
                 await session.DisposeAsync();
 #else
                 session.Dispose();
@@ -47,15 +47,9 @@ namespace Hi3Helper.Http
         }
 
         private async
-#if NETCOREAPP
             IAsyncEnumerable<Session>
-#else
-            Task<Task[]>
-#endif
             GetMultisessionTasks(string inputUrl, string outputPath, int sessionThread,
-#if NETCOREAPP
             [EnumeratorCancellation]
-#endif
             CancellationToken token)
         {
             this.SizeAttribute.SizeTotalToDownload = 0;
@@ -70,10 +64,6 @@ namespace Hi3Helper.Http
 
             this.SizeAttribute.SizeTotalToDownload = remoteLength;
             long sliceSize = (long)Math.Ceiling((double)remoteLength / sessionThread);
-
-#if !NETCOREAPP
-            Task[] returnTask = new Task[sessionThread];
-#endif
 
             for (
                 long startOffset = 0, endOffset = 0, currentThread = 0;
@@ -105,7 +95,7 @@ namespace Hi3Helper.Http
                     if (session.IsExistingFileOversized(lastStartOffset, endOffset))
                     {
                         session =
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
                             await
 #endif
                             ReinitializeSession(session, token, true, lastStartOffset, endOffset);
@@ -126,9 +116,6 @@ namespace Hi3Helper.Http
                         throw new HttpRequestException($"Error has occurred while requesting HTTP response to {inputUrl} with status code: {(int)session.StreamInput._statusCode} ({session.StreamInput._statusCode})");
 
                     session.SeekStreamOutputToEnd();
-#if !NETCOREAPP
-                    returnTask[currentThread] = SessionTaskRunnerContainer(session);
-#endif
                 }
                 catch (Exception ex)
                 {
@@ -142,25 +129,18 @@ namespace Hi3Helper.Http
                 {
                     if (!isInitSucceed && session != null)
                     {
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
                         await session.DisposeAsync();
 #else
                         session.Dispose();
-                        returnTask[currentThread] = Task.CompletedTask;
 #endif
                         PushLog($"Session has been disposed during initialization!", DownloadLogSeverity.Error);
                     }
                 }
 
-#if NETCOREAPP
                 PushLog($"Session: {currentThread + 1}/{sessionThread} has been started for the URL: {inputUrl}", DownloadLogSeverity.Info);
                 if (isInitSucceed) yield return session;
-#endif
             }
-
-#if !NETCOREAPP
-            return returnTask;
-#endif
         }
 
         [Obsolete("This method has no use anymore. Please consider to not calling this method as this will be removed in the next changes.")]
@@ -169,7 +149,7 @@ namespace Hi3Helper.Http
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
         private
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
             async ValueTask<Session>
 #else
             Session
@@ -178,7 +158,7 @@ namespace Hi3Helper.Http
             bool ForceOverwrite = false, long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
         {
             if (Input == null) throw new NullReferenceException("Input session cannot be null while reinitialization is requested!");
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
             await Input.DisposeAsync();
 #else
             Input.Dispose();
@@ -246,7 +226,7 @@ namespace Hi3Helper.Http
             return Ret;
         }
 
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
         public async ValueTask<Tuple<int, bool>> GetURLStatus(string URL, CancellationToken Token)
 #else
         public async Task<Tuple<int, bool>> GetURLStatus(string URL, CancellationToken Token)
@@ -258,7 +238,7 @@ namespace Hi3Helper.Http
             }
         }
 
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
         public async ValueTask<long> GetContentLengthNonNull(string URL, CancellationToken Token)
 #else
         public async Task<long> GetContentLengthNonNull(string URL, CancellationToken Token)
@@ -273,7 +253,7 @@ namespace Hi3Helper.Http
             }
         }
 
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
         public async ValueTask<long?> TryGetContentLength(string URL, CancellationToken Token)
 #else
         public async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
@@ -298,7 +278,7 @@ namespace Hi3Helper.Http
             }
         }
 
-#if NETCOREAPP
+#if NET6_0_OR_GREATER
         private async ValueTask<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
 #else
         private async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())

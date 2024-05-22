@@ -17,12 +17,7 @@ namespace Hi3Helper.Http
             if (ConnectionSessions > ConnectionSessionsMax)
                 throw new HttpHelperAllowedSessionsMaxed($"You've maxed allowed Connection Sessions ({ConnectionSessions} sessions have been set and only <= {ConnectionSessionsMax} sessions allowed)");
 
-#if NETCOREAPP
             await TaskWhenAllSession(GetMultisessionTasks(URL, Output, ConnectionSessions, ThreadToken), ThreadToken, ConnectionSessions);
-#else
-            Task[] parallelTasks = await GetMultisessionTasks(URL, Output, ConnectionSessions, ThreadToken);
-            await Task.WhenAll(parallelTasks);
-#endif
 
             this.DownloadState = DownloadState.FinishedNeedMerge;
         }

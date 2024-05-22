@@ -1,6 +1,6 @@
 ﻿namespace Hi3Helper.Http
 {
-    internal sealed class AttributesSize
+    internal struct AttributesSize
     {
         public long SizeTotalToDownload;
         public long SizeDownloaded;
