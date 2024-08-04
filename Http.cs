@@ -10,7 +10,8 @@ namespace Hi3Helper.Http
 {
     public sealed partial class Http : IDisposable
     {
-        public Http(bool IgnoreCompress = true, byte RetryMax = 5, short RetryInterval = 1000, string UserAgent = null)
+        public Http(bool IgnoreCompress = true, byte RetryMax = 5, short RetryInterval = 1000, string UserAgent = null,
+            HttpClient? customHttpClient = null)
         {
             this.RetryMax = RetryMax;
             this.RetryInterval = RetryInterval;
@@ -19,6 +20,10 @@ namespace Hi3Helper.Http
             this.SizeAttribute = new AttributesSize();
             this._clientUserAgent = UserAgent;
             this._ignoreHttpCompression = IgnoreCompress;
+
+            if (customHttpClient != null)
+                this._client = customHttpClient;
+
             this._handler = new HttpClientHandler
             {
                 AllowAutoRedirect = true,
@@ -41,11 +46,42 @@ namespace Hi3Helper.Http
                 this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
         }
 
+
         public Http()
         {
             this.DownloadState = DownloadState.Idle;
             this.SessionsStopwatch = Stopwatch.StartNew();
             this.SizeAttribute = new AttributesSize();
+
+            this._ignoreHttpCompression = true;
+            this._handler = new HttpClientHandler()
+            {
+                AllowAutoRedirect = true,
+                UseCookies = true,
+                MaxConnectionsPerServer = ConnectionMax,
+                AutomaticDecompression = DecompressionMethods.None
+            };
+
+            this._client = new HttpClient(this._handler)
+            {
+                Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
+#if NET6_0_OR_GREATER
+                ,
+                DefaultRequestVersion = HttpVersion.Version30,
+                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+#endif
+            };
+        }
+
+        public Http(HttpClient? customHttpClient = null)
+        {
+            this.DownloadState = DownloadState.Idle;
+            this.SessionsStopwatch = Stopwatch.StartNew();
+            this.SizeAttribute = new AttributesSize();
+
+            if (customHttpClient != null)
+                this._client = customHttpClient;
+
             this._ignoreHttpCompression = true;
             this._handler = new HttpClientHandler()
             {

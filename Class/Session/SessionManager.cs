@@ -174,7 +174,7 @@ namespace Hi3Helper.Http
             };
         }
 
-        public void DeleteMultisessionFiles(string Path, byte Sessions)
+        public static void DeleteMultisessionFiles(string Path, byte Sessions)
         {
             string SessionFilePath;
             string SessionFilePathLegacy;
@@ -201,7 +201,7 @@ namespace Hi3Helper.Http
             }
         }
 
-        public long CalculateExistingMultisessionFilesWithExpctdSize(string Path, byte Sessions, long ExpectedSize)
+        public static long CalculateExistingMultisessionFilesWithExpctdSize(string Path, byte Sessions, long ExpectedSize)
         {
             long Ret = 0;
             string SessionFilePath;
