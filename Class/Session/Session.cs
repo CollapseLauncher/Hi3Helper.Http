@@ -14,7 +14,7 @@ namespace Hi3Helper.Http
         private protected HttpResponseMessage _networkResponse;
         private protected Stream _networkStream;
         private protected long _networkLength;
-        private protected long _currentPosition = 0;
+        private protected long _currentPosition;
         public HttpStatusCode _statusCode;
         public bool _isSuccessStatusCode;
 
@@ -168,12 +168,13 @@ namespace Hi3Helper.Http
         , IAsyncDisposable
 #endif
     {
-        internal Session(string PathURL, string PathOutput, Stream SOutput,
-            bool IsFileMode, HttpClientHandler ClientHandler,
-            long? OffsetStart = null, long? OffsetEnd = null,
-            bool Overwrite = false, string UserAgent = null,
-            bool UseExternalSessionClient = false, HttpClient? ExternalSessionClient = null,
-            bool IgnoreOutStreamLength = false)
+        #nullable enable
+        internal Session(string PathURL,                          string            PathOutput, Stream SOutput,
+            bool                IsFileMode,                       HttpClientHandler ClientHandler,
+            long?               OffsetStart              = null,  long?             OffsetEnd             = null,
+            bool                Overwrite                = false, string?           UserAgent             = null,
+            bool                UseExternalSessionClient = false, HttpClient?       ExternalSessionClient = null,
+            bool                IgnoreOutStreamLength    = false)
         {
             // Initialize Properties
             this.PathURL = PathURL;
@@ -196,7 +197,7 @@ namespace Hi3Helper.Http
 
             if (!UseExternalSessionClient && UserAgent != null)
             {
-                this.SessionClient?.DefaultRequestHeaders?.UserAgent?.ParseAdd(UserAgent);
+                this.SessionClient?.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
             }
 
             // If the OutStream is explicitly defined, use OutStream instead and set to IsFileMode == false.
@@ -214,6 +215,7 @@ namespace Hi3Helper.Http
 
             AdjustOffsets(OffsetStart, OffsetEnd, IgnoreOutStreamLength);
         }
+        #nullable restore
 
         // Seek the StreamOutput to the end of file
         internal void SeekStreamOutputToEnd() => this.StreamOutput?.Seek(0, SeekOrigin.End);
@@ -259,8 +261,9 @@ namespace Hi3Helper.Http
             if (IsExistingFileSizeValid())
             {
                 ActionTimeoutValueTaskCallback<HttpResponseInputStream> createStreamCallback =
-                    new ActionTimeoutValueTaskCallback<HttpResponseInputStream>(async (innerToken) =>
-                    await HttpResponseInputStream.CreateStreamAsync(this.SessionClient, this.PathURL, this.OffsetStart, this.OffsetEnd, innerToken));
+                    async (innerToken) =>
+                        await HttpResponseInputStream.CreateStreamAsync(this.SessionClient, this.PathURL,
+                                                                        this.OffsetStart, this.OffsetEnd, innerToken);
 
                 this.StreamInput = await TaskExtensions.WaitForRetryAsync(() => createStreamCallback, fromToken: token);
                 return this.StreamInput != null;
@@ -269,7 +272,7 @@ namespace Hi3Helper.Http
             return false;
         }
 
-        internal bool IsExistingFileOversized(long OffsetStart, long OffsetEnd) => this.StreamOutputSize > OffsetEnd + 1 - OffsetStart;
+        internal bool IsExistingFileOversized(long offsetStart, long offsetEnd) => this.StreamOutputSize > offsetEnd + 1 - offsetStart;
 
         private bool IsExistingFileSizeValid() =>
             !((this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart < 0

@@ -10,8 +10,9 @@ namespace Hi3Helper.Http
 {
     public sealed partial class Http : IDisposable
     {
-        public Http(bool IgnoreCompress = true, byte RetryMax = 5, short RetryInterval = 1000, string UserAgent = null,
-            HttpClient? customHttpClient = null)
+        #nullable enable
+        public Http(bool IgnoreCompress = true, byte RetryMax = 5, short RetryInterval = 1000, string? UserAgent = null,
+                    HttpClient? customHttpClient = null)
         {
             this.RetryMax = RetryMax;
             this.RetryInterval = RetryInterval;
@@ -48,6 +49,7 @@ namespace Hi3Helper.Http
             if (this._clientUserAgent != null)
                 this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
         }
+        #nullable restore
 
 
         public Http()
@@ -76,6 +78,7 @@ namespace Hi3Helper.Http
             };
         }
 
+        #nullable enable
         public Http(HttpClient? customHttpClient = null)
         {
             this.DownloadState = DownloadState.Idle;
@@ -107,6 +110,7 @@ namespace Hi3Helper.Http
 #endif
             };
         }
+        #nullable restore
 
         public HttpClient GetHttpClient() => this._client;
 
