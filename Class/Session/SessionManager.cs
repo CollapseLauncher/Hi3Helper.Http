@@ -26,7 +26,7 @@ namespace Hi3Helper.Http
 
             Session session = new Session(this.PathURL, this.PathOutput, _Stream,
                 IsFileMode, this._handler, OffsetStart, OffsetEnd, this.PathOverwrite,
-                this._clientUserAgent, true, IgnoreOutStreamLength);
+                this._clientUserAgent, true, this._client, IgnoreOutStreamLength);
             session.SessionClient = this._client;
 
             if (!await session.TryGetHttpRequest(Token))
@@ -82,7 +82,8 @@ namespace Hi3Helper.Http
                     session = new Session(
                         inputUrl, sessionOutPath, null,
                         true, this._handler, startOffset, endOffset,
-                        this.PathOverwrite, this._clientUserAgent, false)
+                        this.PathOverwrite, this._clientUserAgent, true,
+                        this._client)
                     {
                         IsLastSession = currentThread + 1 == this.ConnectionSessions,
                         SessionID = sessionId
@@ -167,7 +168,8 @@ namespace Hi3Helper.Http
                 Input.PathURL, Input.PathOutput, null,
                 true, this._handler, ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
                 ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart,
-                ForceOverwrite || this.PathOverwrite, this._clientUserAgent
+                ForceOverwrite || this.PathOverwrite, this._clientUserAgent,
+                true, this._client
                 )
             {
                 IsLastSession = Input.IsLastSession,

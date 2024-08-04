@@ -22,7 +22,10 @@ namespace Hi3Helper.Http
             this._ignoreHttpCompression = IgnoreCompress;
 
             if (customHttpClient != null)
+            {
                 this._client = customHttpClient;
+                return;
+            }
 
             this._handler = new HttpClientHandler
             {
@@ -80,7 +83,10 @@ namespace Hi3Helper.Http
             this.SizeAttribute = new AttributesSize();
 
             if (customHttpClient != null)
+            {
                 this._client = customHttpClient;
+                return;
+            }
 
             this._ignoreHttpCompression = true;
             this._handler = new HttpClientHandler()

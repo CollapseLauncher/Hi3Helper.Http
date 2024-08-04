@@ -172,7 +172,8 @@ namespace Hi3Helper.Http
             bool IsFileMode, HttpClientHandler ClientHandler,
             long? OffsetStart = null, long? OffsetEnd = null,
             bool Overwrite = false, string UserAgent = null,
-            bool UseExternalSessionClient = false, bool IgnoreOutStreamLength = false)
+            bool UseExternalSessionClient = false, HttpClient? ExternalSessionClient = null,
+            bool IgnoreOutStreamLength = false)
         {
             // Initialize Properties
             this.PathURL = PathURL;
@@ -182,7 +183,7 @@ namespace Hi3Helper.Http
             this.IsDisposed = false;
             this.IsUseExternalSession = UseExternalSessionClient;
             this.SessionState = DownloadState.Idle;
-            this.SessionClient = UseExternalSessionClient ? null : new HttpClient(ClientHandler)
+            this.SessionClient = UseExternalSessionClient ? ExternalSessionClient : new HttpClient(ClientHandler)
             {
                 Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
 #if NET6_0_OR_GREATER
