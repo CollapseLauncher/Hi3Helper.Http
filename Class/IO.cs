@@ -53,5 +53,28 @@ namespace Hi3Helper.Http
                 this.UpdateProgress(Event);
             }
         }
+
+        internal static async ValueTask<FileStream> NaivelyOpenFileStreamAsync(FileInfo info, FileMode fileMode, FileAccess fileAccess, FileShare fileShare)
+        {
+            const int MaxTry = 10;
+            int currentTry = 1;
+            while (true)
+            {
+                try
+                {
+                    return info.Open(fileMode, fileAccess, fileShare);
+                }
+                catch
+                {
+                    if (currentTry <= MaxTry)
+                    {
+                        PushLog($"Failed while trying to open: {info.FullName}. Retry attempt: {++currentTry} / {MaxTry}", DownloadLogSeverity.Warning);
+                        await Task.Delay(50); // Adding 50ms delay
+                        continue;
+                    }
+                    throw; // Throw this MFs
+                }
+            }
+        }
     }
 }

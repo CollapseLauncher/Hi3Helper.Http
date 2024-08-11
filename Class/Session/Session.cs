@@ -169,18 +169,14 @@ namespace Hi3Helper.Http
 #endif
     {
         #nullable enable
-        internal Session(string PathURL,                          string            PathOutput, Stream SOutput,
-            bool                IsFileMode,                       HttpClientHandler ClientHandler,
+        internal Session(string PathURL,                          HttpClientHandler ClientHandler,
             long?               OffsetStart              = null,  long?             OffsetEnd             = null,
-            bool                Overwrite                = false, string?           UserAgent             = null,
+            string?             UserAgent                = null,
             bool                UseExternalSessionClient = false, HttpClient?       ExternalSessionClient = null,
             bool                IgnoreOutStreamLength    = false)
         {
             // Initialize Properties
             this.PathURL = PathURL;
-            this.PathOutput = PathOutput;
-            this.StreamOutput = SOutput;
-            this.IsFileMode = IsFileMode;
             this.IsDisposed = false;
             this.IsUseExternalSession = UseExternalSessionClient;
             this.SessionState = DownloadState.Idle;
@@ -200,25 +196,32 @@ namespace Hi3Helper.Http
                 this.SessionClient?.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
             }
 
-            // If the OutStream is explicitly defined, use OutStream instead and set to IsFileMode == false.
-            if (!(this.IsFileMode = SOutput == null))
-            {
-                this.StreamOutput = SOutput;
-            }
-            // Else, use file and set IsFileMode == true.
-            else
-            {
-                this.StreamOutput = Overwrite ?
-                      new FileStream(this.PathOutput, FileMode.Create, FileAccess.Write)
-                    : new FileStream(this.PathOutput, FileMode.OpenOrCreate, FileAccess.Write);
-            }
-
             AdjustOffsets(OffsetStart, OffsetEnd, IgnoreOutStreamLength);
         }
         #nullable restore
 
         // Seek the StreamOutput to the end of file
         internal void SeekStreamOutputToEnd() => this.StreamOutput?.Seek(0, SeekOrigin.End);
+
+        internal async Task AssignOutputStreamFromFile(bool isOverwrite, string filePath)
+        {
+            this.IsFileMode = true;
+            FileInfo fileInfo = new FileInfo(filePath);
+            if (isOverwrite)
+                this.StreamOutput = await Http.NaivelyOpenFileStreamAsync(fileInfo, FileMode.Create, FileAccess.Write, FileShare.Write);
+            else
+            {
+                this.StreamOutput = await Http.NaivelyOpenFileStreamAsync(fileInfo, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write);
+                SeekStreamOutputToEnd();
+            }
+        }
+
+        internal void AssignOutputStreamFromStream(Stream stream)
+        {
+            ArgumentNullException.ThrowIfNull(stream);
+            this.StreamOutput = stream;
+            this.IsFileMode = false;
+        }
 
         private void AdjustOffsets(long? Start, long? End, bool IgnoreOutStreamLength = false)
         {
@@ -333,7 +336,6 @@ namespace Hi3Helper.Http
 
         // Path Properties
         internal string PathURL;
-        internal string PathOutput;
 
         // Boolean Properties
         internal bool IsUseExternalSession;

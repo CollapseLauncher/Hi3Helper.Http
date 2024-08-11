@@ -11,9 +11,9 @@ namespace Hi3Helper.Http
     public sealed partial class Http
     {
 #if NET6_0_OR_GREATER
-        private async ValueTask<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false, CancellationToken Token = default)
+        private async ValueTask<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, string PathOutput = null, bool IsOverwrite = false, Stream _Stream = null, bool IgnoreOutStreamLength = false, CancellationToken Token = default)
 #else
-        private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, bool IsFileMode = true, Stream _Stream = null, bool IgnoreOutStreamLength = false, CancellationToken Token = default)
+        private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, string PathOutput = null, bool IsOverwrite = false, Stream _Stream = null, bool IgnoreOutStreamLength = false, CancellationToken Token = default)
 #endif
         {
             this.SizeAttribute.SizeTotalToDownload = 0;
@@ -24,10 +24,18 @@ namespace Hi3Helper.Http
 
             Token.ThrowIfCancellationRequested();
 
-            Session session = new Session(this.PathURL, this.PathOutput, _Stream,
-                IsFileMode, this._handler, OffsetStart, OffsetEnd, this.PathOverwrite,
+            Session session = new Session(this.PathURL,
+                this._handler, OffsetStart, OffsetEnd,
                 this._clientUserAgent, true, this._client, IgnoreOutStreamLength);
-            session.SessionClient = this._client;
+                session.SessionClient = this._client;
+
+            if (string.IsNullOrEmpty(PathOutput) && _Stream == null)
+                throw new ArgumentNullException(nameof(PathOutput), $"You cannot put PathOutput and _Stream argument both on null!");
+
+            if (_Stream == null)
+                await session.AssignOutputStreamFromFile(IsOverwrite, PathOutput);
+            else
+                session.AssignOutputStreamFromStream(_Stream);
 
             if (!await session.TryGetHttpRequest(Token))
             {
@@ -48,7 +56,7 @@ namespace Hi3Helper.Http
 
         private async
             IAsyncEnumerable<Session>
-            GetMultisessionTasks(string inputUrl, string outputPath, int sessionThread,
+            GetMultisessionTasks(string inputUrl, string outputPath, int sessionThread, bool isOverwrite,
             [EnumeratorCancellation]
             CancellationToken token)
         {
@@ -76,14 +84,13 @@ namespace Hi3Helper.Http
                 try
                 {
                     long sessionId = GetHashNumber(sessionThread, currentThread);
-                    string sessionOutPath = outputPath + string.Format(PathSessionPrefix, sessionId);
+                    string sessionOutPathOld = outputPath + string.Format(PathSessionPrefix, sessionId);
+                    string sessionOutPathNew = outputPath + string.Format(".{0:000}", currentThread + 1);
 
                     endOffset = currentThread + 1 == sessionThread ? remoteLength - 1 : (startOffset + sliceSize - 1);
                     session = new Session(
-                        inputUrl, sessionOutPath, null,
-                        true, this._handler, startOffset, endOffset,
-                        this.PathOverwrite, this._clientUserAgent, true,
-                        this._client)
+                        inputUrl, this._handler, startOffset, endOffset,
+                        this._clientUserAgent, true, this._client)
                     {
                         IsLastSession = currentThread + 1 == this.ConnectionSessions,
                         SessionID = sessionId
@@ -92,6 +99,8 @@ namespace Hi3Helper.Http
 
                     long lastStartOffset = startOffset;
                     startOffset += sliceSize;
+                    string toOutputPath = File.Exists(sessionOutPathOld) ? sessionOutPathOld : sessionOutPathNew;
+                    await session.AssignOutputStreamFromFile(isOverwrite, toOutputPath);
 
                     if (session.IsExistingFileOversized(lastStartOffset, endOffset))
                     {
@@ -100,6 +109,8 @@ namespace Hi3Helper.Http
                             await
 #endif
                             ReinitializeSession(session, token, true, lastStartOffset, endOffset);
+
+                        await session.AssignOutputStreamFromFile(true, toOutputPath);
                         PushLog($"Session ID: {sessionId} output file has been re-created due to the size being oversized!", DownloadLogSeverity.Warning);
                     }
 
@@ -165,10 +176,8 @@ namespace Hi3Helper.Http
             Input.Dispose();
 #endif
             return new Session(
-                Input.PathURL, Input.PathOutput, null,
-                true, this._handler, ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
-                ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart,
-                ForceOverwrite || this.PathOverwrite, this._clientUserAgent,
+                Input.PathURL, this._handler, ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
+                ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart, this._clientUserAgent,
                 true, this._client
                 )
             {

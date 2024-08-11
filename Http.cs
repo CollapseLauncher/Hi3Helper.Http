@@ -124,20 +124,21 @@ namespace Hi3Helper.Http
             this.PathOutput = Output;
             this.PathOverwrite = Overwrite;
 
-            await SessionTaskRunnerContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, true, null, false, ThreadToken), ThreadToken);
+            await SessionTaskRunnerContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, Output, Overwrite, null, false, ThreadToken), ThreadToken);
 
             this.DownloadState = DownloadState.Finished;
         }
 
         public async Task Download(string URL, Stream Outstream,
             long? OffsetStart = null, long? OffsetEnd = null,
-            CancellationToken ThreadToken = new CancellationToken(), bool IgnoreOutStreamLength = false)
+            CancellationToken ThreadToken = new CancellationToken(),
+            bool IgnoreOutStreamLength = false)
         {
             ResetState();
 
             this.PathURL = URL;
 
-            await SessionTaskRunnerContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, false, Outstream, IgnoreOutStreamLength, ThreadToken), ThreadToken);
+            await SessionTaskRunnerContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, null, false, Outstream, IgnoreOutStreamLength, ThreadToken), ThreadToken);
             this.DownloadState = DownloadState.Finished;
         }
 
