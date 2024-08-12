@@ -191,8 +191,8 @@ namespace Hi3Helper.Http
             string SessionFilePathLegacy;
             for (int t = 0; t < Sessions; t++)
             {
-                SessionFilePath = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
-                SessionFilePathLegacy = Path + string.Format(".{0:000}", t + 1);
+                SessionFilePath = Path + string.Format(".{0:000}", t + 1);
+                SessionFilePathLegacy = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
                 try
                 {
                     FileInfo fileInfo = new FileInfo(SessionFilePath);
@@ -216,6 +216,7 @@ namespace Hi3Helper.Http
         {
             long Ret = 0;
             string SessionFilePath;
+            string SessionFilePathLegacy;
             FileInfo parentFile = new FileInfo(Path);
             if (parentFile.Exists)
             {
@@ -225,11 +226,14 @@ namespace Hi3Helper.Http
 
             for (int t = 0; t < Sessions; t++)
             {
-                SessionFilePath = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
+                SessionFilePath = Path + string.Format(".{0:000}", t + 1);
+                SessionFilePathLegacy = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
                 try
                 {
                     FileInfo fileInfo = new FileInfo(SessionFilePath);
+                    FileInfo fileInfoLegacy = new FileInfo(SessionFilePathLegacy);
                     if (fileInfo.Exists) Ret += fileInfo.Length;
+                    else if (fileInfoLegacy.Exists) Ret += fileInfoLegacy.Length;
                 }
                 catch { }
             }

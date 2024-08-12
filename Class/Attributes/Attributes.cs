@@ -45,8 +45,9 @@ namespace Hi3Helper.Http
         // Check for status of Dispose
         #pragma warning disable CS0414 // Field is assigned but its value is never used
         private bool IsDisposed = false;
-        #pragma warning restore CS0414 // Field is assigned but its value is never used
+#pragma warning restore CS0414 // Field is assigned but its value is never used
 
+        [Obsolete("The file order should've now been in-order rather than randomized with this GetHashNumber method. Use .00x extenstion instead!")]
         public static long GetHashNumber(long num1, long num2, long s1 = 69420, long s2 = 87654) => (s1 * num1) ^ (s2 * num2);
 
         private void ResetState() => this.SessionsStopwatch.Restart();

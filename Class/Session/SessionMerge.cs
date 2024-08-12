@@ -27,7 +27,8 @@ namespace Hi3Helper.Http
                 for (int t = 0; t < this.ConnectionSessions; t++)
                 {
                     string chunkPath = this.PathOutput + string.Format(PathSessionPrefix, GetHashNumber(this.ConnectionSessions, t));
-                    using (FileStream os = new FileStream(chunkPath, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
+                    string chunkPathNew = this.PathOutput + string.Format(".{0:000}", t + 1);
+                    using (FileStream os = new FileStream(File.Exists(chunkPath) ? chunkPath : chunkPathNew, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                     {
                         await IOReadWrite(os, fs, token);
                     }
