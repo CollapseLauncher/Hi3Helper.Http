@@ -33,9 +33,9 @@ namespace Hi3Helper.Http
                 throw new ArgumentNullException(nameof(PathOutput), $"You cannot put PathOutput and _Stream argument both on null!");
 
             if (_Stream == null)
-                await session.AssignOutputStreamFromFile(IsOverwrite, PathOutput);
+                await session.AssignOutputStreamFromFile(IsOverwrite, PathOutput, IgnoreOutStreamLength);
             else
-                session.AssignOutputStreamFromStream(_Stream);
+                session.AssignOutputStreamFromStream(_Stream, IgnoreOutStreamLength);
 
             if (!await session.TryGetHttpRequest(Token))
             {
@@ -48,7 +48,7 @@ namespace Hi3Helper.Http
             }
 
             if ((int)session.StreamInput._statusCode == 416) return null;
-            this.SizeAttribute.SizeTotalToDownload = session.StreamInput.Length;
+            this.SizeAttribute.SizeTotalToDownload = session.IsFileMode ? session.StreamInput.Length + session.StreamOutputSize : session.StreamInput.Length;
             this.SizeAttribute.SizeDownloaded = session.StreamOutputSize;
 
             return session;
@@ -100,7 +100,7 @@ namespace Hi3Helper.Http
                     long lastStartOffset = startOffset;
                     startOffset += sliceSize;
                     string toOutputPath = File.Exists(sessionOutPathOld) ? sessionOutPathOld : sessionOutPathNew;
-                    await session.AssignOutputStreamFromFile(isOverwrite, toOutputPath);
+                    await session.AssignOutputStreamFromFile(isOverwrite, toOutputPath, false);
 
                     if (session.IsExistingFileOversized(lastStartOffset, endOffset))
                     {
@@ -110,7 +110,7 @@ namespace Hi3Helper.Http
 #endif
                             ReinitializeSession(session, token, true, lastStartOffset, endOffset);
 
-                        await session.AssignOutputStreamFromFile(true, toOutputPath);
+                        await session.AssignOutputStreamFromFile(true, toOutputPath, false);
                         PushLog($"Session ID: {sessionId} output file has been re-created due to the size being oversized!", DownloadLogSeverity.Warning);
                     }
 
@@ -126,8 +126,6 @@ namespace Hi3Helper.Http
 
                     if (!isRequestSuccess)
                         throw new HttpRequestException($"Error has occurred while requesting HTTP response to {inputUrl} with status code: {(int)session.StreamInput._statusCode} ({session.StreamInput._statusCode})");
-
-                    session.SeekStreamOutputToEnd();
                 }
                 catch (Exception ex)
                 {
@@ -152,6 +150,8 @@ namespace Hi3Helper.Http
 
                 PushLog($"Session: {currentThread + 1}/{sessionThread} has been started for the URL: {inputUrl}", DownloadLogSeverity.Info);
                 if (isInitSucceed) yield return session;
+                if (session.StreamOutputSize > sliceSize)
+                    throw new Exception();
             }
         }
 
