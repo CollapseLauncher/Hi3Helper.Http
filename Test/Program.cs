@@ -1,5 +1,9 @@
 ﻿using Hi3Helper.Http;
 using System;
+using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -7,14 +11,12 @@ namespace Test
 {
     internal class Program
     {
-        static string URL = "https://d2wztyirwsuyyo.cloudfront.net/ptpublic/bh3_global/20221206102501_KIc60hdTxKT9HG9O/BH3_v6.2.0_277a0ec45b1d.7z";
+        static string URL = "https://autopatchos.zenlesszonezero.com/pclauncher/nap_global/audio_ja-jp_1.0.1_1.1.0_hdiff_icFimTTzuCqPhGgs.zip";
         static string Output = @".\Testing.diff";
         static string Output2 = @"C:\Users\neon-nyan\AppData\LocalLow\CollapseLauncher\GameFolder\Hi3TW\Games\BH3_v5.9.0_cba771e4ca76.7z.001";
         static string Output3 = @"C:\Users\neon-nyan\AppData\LocalLow\CollapseLauncher\GameFolder\Hi3TW\Games\BH3_v5.9.0_cba771e4ca76.7z.dummy";
         static string Output4 = @"C:\Users\neon-nyan\Downloads\bin\YuanShen_2.8.54_beta.zip";
-        static Http Client;
-        static SimpleChecksum sh64 = new();
-        static CancellationTokenSource TokenSource;
+
         static async Task Main()
         {
             #region testing
@@ -96,13 +98,18 @@ namespace Test
             {
                 try
                 {
-                    using (Client = new(true))
+                    using (HttpClientHandler handler = new HttpClientHandler())
+                    using (HttpClient client = new HttpClient(handler, false))
+                    using (MemoryStream stream = new MemoryStream())
+                    using (BrotliStream encStream = new BrotliStream(stream, CompressionLevel.Fastest))
                     {
-                        TokenSource = new CancellationTokenSource();
-                        Client.DownloadProgress += Client_DownloadProgress;
-                        WaitAndCancel();
-                        await Client.Download(URL, Output, 4, false, TokenSource.Token);
-                        Client.DownloadProgress -= Client_DownloadProgress;
+                        sw = Stopwatch.StartNew();
+                        lastDownloaded = 0;
+                        DownloadClient downloader = DownloadClient.CreateInstance(client);
+                        DownloadClient.SetSharedDownloadSpeedLimit(1 << 20);
+                        // await downloader.DownloadAsync(URL, Output, false, null, null, DownloadProgressDelegateAsync, 4, 8 << 20);
+
+                        await downloader.DownloadAsync(URL, encStream, false, DownloadProgressDelegateAsync, null, null);
                     }
                 }
                 catch (OperationCanceledException)
@@ -112,20 +119,45 @@ namespace Test
             }
         }
 
+        private static Stopwatch sw = Stopwatch.StartNew();
+        private static long lastDownloaded = 0;
+
+        private static void DownloadProgressDelegateAsync(int size, DownloadProgress bytesProgress)
+        {
+            lastDownloaded += size;
+            double speed = lastDownloaded / sw.Elapsed.TotalSeconds;
+            double unNan = (bytesProgress.BytesTotal - bytesProgress.BytesDownloaded) / speed;
+            unNan = double.IsNaN(unNan) || double.IsInfinity(unNan) ? 0 : unNan;
+            TimeSpan timeLeft = checked(TimeSpan.FromSeconds(unNan));
+            const string format = "Read: {0:0.00} -> {1}% ({6}/s) {2} / {3} (in bytes: {4} / {5}) ({7})";
+            string toWrite = string.Format(format,
+                size,
+                Math.Round((double)bytesProgress.BytesDownloaded / bytesProgress.BytesTotal * 100, 2),
+                SummarizeSizeSimple(bytesProgress.BytesDownloaded),
+                SummarizeSizeSimple(bytesProgress.BytesTotal),
+                bytesProgress.BytesDownloaded,
+                bytesProgress.BytesTotal,
+                SummarizeSizeSimple(speed),
+                string.Format("{0:%h}h{0:%m}m{0:%s}s left", timeLeft)
+                );
+
+            int spaceToWrite = Math.Max(0, toWrite.Length - Console.CursorLeft - 1);
+            toWrite += new string(' ', spaceToWrite) + '\r';
+            Console.Write(toWrite);
+        }
+
+        public static string[] SizeSuffixes = { "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
+
+        public static string SummarizeSizeSimple(double value, int decimalPlaces = 2)
+        {
+            byte mag = (byte)Math.Log(value, 1000);
+
+            return string.Format("{0} {1}", Math.Round(value / (1L << (mag * 10)), decimalPlaces), SizeSuffixes[mag]);
+        }
+
         private static async void WaitAndCancel()
         {
             await Task.Delay(250);
-            TokenSource.Cancel();
-        }
-
-        private static void Client_DownloadLog(object? sender, DownloadLogEvent e)
-        {
-            Console.WriteLine(e.Message);
-        }
-
-        private static void Client_DownloadProgress(object? sender, DownloadEvent e)
-        {
-            Console.Write($"\r{e.ProgressPercentage}% {e.SizeDownloaded} - {e.SizeToBeDownloaded}");
         }
 
         public static string BytesToHex(byte[] bytes) => BitConverter.ToString(bytes).Replace("-", string.Empty);

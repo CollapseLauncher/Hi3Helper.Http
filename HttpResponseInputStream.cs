@@ -1,0 +1,218 @@
+﻿using System;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Hi3Helper.Http
+{
+    internal class HttpResponseInputStream : Stream
+    {
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+        private protected HttpRequestMessage _networkRequest;
+        private protected HttpResponseMessage _networkResponse;
+        private protected Stream _networkStream;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+
+        private protected long _networkLength;
+        private protected long _currentPosition = 0;
+        public HttpStatusCode _statusCode;
+        public bool _isSuccessStatusCode;
+
+        public static async Task<HttpResponseInputStream?> CreateStreamAsync(
+            HttpClient client,
+            string url,
+            long? startOffset,
+            long? endOffset,
+            TimeSpan? timeoutInterval,
+            TimeSpan? retryInterval,
+            int? retryCount,
+            CancellationToken token)
+            => await CreateStreamAsync(client, new Uri(url), startOffset, endOffset, timeoutInterval, retryInterval, retryCount, token);
+
+        public static async Task<HttpResponseInputStream?> CreateStreamAsync(
+            HttpClient client,
+            Uri url,
+            long? startOffset,
+            long? endOffset,
+            TimeSpan? timeoutInterval,
+            TimeSpan? retryInterval,
+            int? retryCount,
+            CancellationToken token)
+        {
+            if (startOffset == null)
+                startOffset = 0;
+
+            int currentRetry = 0;
+            retryCount ??= 5;
+            timeoutInterval ??= TimeSpan.FromSeconds(10);
+            retryInterval ??= TimeSpan.FromSeconds(1);
+
+            CancellationTokenSource? timeoutToken = null;
+            CancellationTokenSource? coopToken = null;
+        Start:
+            try
+            {
+                timeoutToken = new CancellationTokenSource(timeoutInterval.Value);
+                coopToken = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken.Token, token);
+
+                HttpResponseInputStream httpResponseInputStream = new HttpResponseInputStream();
+                httpResponseInputStream._networkRequest = new HttpRequestMessage()
+                {
+                    RequestUri = url,
+                    Method = HttpMethod.Get
+                };
+
+                token.ThrowIfCancellationRequested();
+
+                httpResponseInputStream._networkRequest.Headers.Range = new RangeHeaderValue(startOffset, endOffset);
+                httpResponseInputStream._networkResponse = await client
+                    .SendAsync(httpResponseInputStream._networkRequest, HttpCompletionOption.ResponseHeadersRead, coopToken.Token);
+
+                httpResponseInputStream._statusCode = httpResponseInputStream._networkResponse.StatusCode;
+                httpResponseInputStream._isSuccessStatusCode = httpResponseInputStream._networkResponse.IsSuccessStatusCode;
+                if (httpResponseInputStream._isSuccessStatusCode)
+                {
+                    httpResponseInputStream._networkLength = httpResponseInputStream._networkResponse.Content.Headers.ContentLength ?? 0;
+                    httpResponseInputStream._networkStream = await httpResponseInputStream._networkResponse.Content
+#if NET6_0_OR_GREATER
+                        .ReadAsStreamAsync(token);
+#else
+                        .ReadAsStreamAsync();
+#endif
+                    return httpResponseInputStream;
+                }
+
+                if ((int)httpResponseInputStream._statusCode == 416)
+                {
+#if NET6_0_OR_GREATER
+                    await httpResponseInputStream.DisposeAsync();
+#else
+                    httpResponseInputStream.Dispose();
+#endif
+                    return null;
+                }
+
+                throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", httpResponseInputStream._networkResponse.StatusCode, url));
+            }
+            catch (TaskCanceledException) when (token.IsCancellationRequested) { throw; }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+            catch (HttpRequestException) { throw; }
+            catch (Exception)
+            {
+                currentRetry++;
+                if (currentRetry > retryCount)
+                    throw;
+
+                await Task.Delay(retryInterval.Value);
+                goto Start;
+            }
+            finally
+            {
+                timeoutToken?.Dispose();
+                coopToken?.Dispose();
+            }
+        }
+
+        ~HttpResponseInputStream() => Dispose();
+
+
+#if NET6_0_OR_GREATER
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            int read = await _networkStream.ReadAsync(buffer, cancellationToken);
+            _currentPosition += read;
+            return read;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            int read = _networkStream.Read(buffer);
+            _currentPosition += read;
+            return read;
+        }
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
+#endif
+
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
+        {
+            int read = await _networkStream.ReadAsync(buffer, offset, count, cancellationToken);
+            _currentPosition += read;
+            return read;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            int read = _networkStream.Read(buffer, offset, count);
+            _currentPosition += read;
+            return read;
+        }
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override bool CanRead
+        {
+            get { return true; }
+        }
+
+        public override bool CanSeek
+        {
+            get { return false; }
+        }
+
+        public override bool CanWrite
+        {
+            get { return false; }
+        }
+
+        public override void Flush()
+        {
+            _networkStream.Flush();
+        }
+
+        public override long Length
+        {
+            get { return _networkLength; }
+        }
+
+        public override long Position
+        {
+            get { return _currentPosition; }
+            set { throw new NotSupportedException(); }
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (disposing)
+            {
+                _networkRequest?.Dispose();
+                _networkResponse?.Dispose();
+                _networkStream?.Dispose();
+            }
+
+            GC.SuppressFinalize(this);
+        }
+
+#if NET6_0_OR_GREATER
+        public override async ValueTask DisposeAsync()
+        {
+            _networkRequest?.Dispose();
+            _networkResponse?.Dispose();
+            if (_networkStream != null)
+                await _networkStream.DisposeAsync();
+
+            await base.DisposeAsync();
+            GC.SuppressFinalize(this);
+        }
+#endif
+    }
+}
