@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
+// ReSharper disable UnusedMember.Global
 
 namespace Hi3Helper.Http
 {
@@ -23,11 +21,14 @@ namespace Hi3Helper.Http
             Message = message;
             Severity = severity;
         }
-        
+
         // Download Progress Event Handler
         public static event EventHandler<LogEvent>? DownloadEvent;
 
         // Push log to listener
-        public static void PushLog(string message, DownloadLogSeverity severity) => DownloadEvent?.Invoke(null, new LogEvent(message, severity));
+        public static void PushLog(string message, DownloadLogSeverity severity)
+        {
+            DownloadEvent?.Invoke(null, new LogEvent(message, severity));
+        }
     }
 }

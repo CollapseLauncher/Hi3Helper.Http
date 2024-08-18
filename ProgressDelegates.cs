@@ -28,7 +28,7 @@ namespace Hi3Helper.Http
         /// <summary>
         /// Increment the current <seealso cref="BytesDownloaded"/> field.
         /// </summary>
-        /// <param name="size">How much bytes to increment the <seealso cref="BytesDownloaded"/> field.</param>
+        /// <param name="size">How many bytes to increment the <seealso cref="BytesDownloaded"/> field.</param>
         public void AdvanceBytesDownloaded(long size)
             => Interlocked.Add(ref BytesDownloaded, size);
 

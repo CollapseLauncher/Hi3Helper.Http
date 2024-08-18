@@ -6,6 +6,13 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
+// ReSharper disable InconsistentNaming
+// ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
+// ReSharper disable UnusedMember.Global
+// ReSharper disable ConvertToUsingDeclaration
+// ReSharper disable IdentifierTypo
+// ReSharper disable ArrangeObjectCreationWhenTypeEvident
+
 namespace Hi3Helper.Http
 {
     internal class HttpResponseInputStream : Stream
@@ -17,7 +24,7 @@ namespace Hi3Helper.Http
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
         private protected long _networkLength;
-        private protected long _currentPosition = 0;
+        private protected long _currentPosition;
         public HttpStatusCode _statusCode;
         public bool _isSuccessStatusCode;
 
@@ -30,7 +37,10 @@ namespace Hi3Helper.Http
             TimeSpan? retryInterval,
             int? retryCount,
             CancellationToken token)
-            => await CreateStreamAsync(client, new Uri(url), startOffset, endOffset, timeoutInterval, retryInterval, retryCount, token);
+        {
+            return await CreateStreamAsync(client, new Uri(url), startOffset, endOffset, timeoutInterval, retryInterval,
+                retryCount, token);
+        }
 
         public static async Task<HttpResponseInputStream?> CreateStreamAsync(
             HttpClient client,
@@ -42,8 +52,7 @@ namespace Hi3Helper.Http
             int? retryCount,
             CancellationToken token)
         {
-            if (startOffset == null)
-                startOffset = 0;
+            startOffset ??= 0;
 
             int currentRetry = 0;
             retryCount ??= 5;
@@ -52,14 +61,14 @@ namespace Hi3Helper.Http
 
             CancellationTokenSource? timeoutToken = null;
             CancellationTokenSource? coopToken = null;
-        Start:
+            Start:
             try
             {
                 timeoutToken = new CancellationTokenSource(timeoutInterval.Value);
                 coopToken = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken.Token, token);
 
                 HttpResponseInputStream httpResponseInputStream = new HttpResponseInputStream();
-                httpResponseInputStream._networkRequest = new HttpRequestMessage()
+                httpResponseInputStream._networkRequest = new HttpRequestMessage
                 {
                     RequestUri = url,
                     Method = HttpMethod.Get
@@ -69,13 +78,16 @@ namespace Hi3Helper.Http
 
                 httpResponseInputStream._networkRequest.Headers.Range = new RangeHeaderValue(startOffset, endOffset);
                 httpResponseInputStream._networkResponse = await client
-                    .SendAsync(httpResponseInputStream._networkRequest, HttpCompletionOption.ResponseHeadersRead, coopToken.Token);
+                    .SendAsync(httpResponseInputStream._networkRequest, HttpCompletionOption.ResponseHeadersRead,
+                        coopToken.Token);
 
                 httpResponseInputStream._statusCode = httpResponseInputStream._networkResponse.StatusCode;
-                httpResponseInputStream._isSuccessStatusCode = httpResponseInputStream._networkResponse.IsSuccessStatusCode;
+                httpResponseInputStream._isSuccessStatusCode =
+                    httpResponseInputStream._networkResponse.IsSuccessStatusCode;
                 if (httpResponseInputStream._isSuccessStatusCode)
                 {
-                    httpResponseInputStream._networkLength = httpResponseInputStream._networkResponse.Content.Headers.ContentLength ?? 0;
+                    httpResponseInputStream._networkLength =
+                        httpResponseInputStream._networkResponse.Content.Headers.ContentLength ?? 0;
                     httpResponseInputStream._networkStream = await httpResponseInputStream._networkResponse.Content
 #if NET6_0_OR_GREATER
                         .ReadAsStreamAsync(token);
@@ -85,28 +97,41 @@ namespace Hi3Helper.Http
                     return httpResponseInputStream;
                 }
 
-                if ((int)httpResponseInputStream._statusCode == 416)
+                if ((int)httpResponseInputStream._statusCode != 416)
                 {
-#if NET6_0_OR_GREATER
-                    await httpResponseInputStream.DisposeAsync();
-#else
-                    httpResponseInputStream.Dispose();
-#endif
-                    return null;
+                    throw new HttpRequestException(string.Format(
+                        "HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}",
+                        httpResponseInputStream._networkResponse.StatusCode, url));
                 }
 
-                throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", httpResponseInputStream._networkResponse.StatusCode, url));
+#if NET6_0_OR_GREATER
+                await httpResponseInputStream.DisposeAsync();
+#else
+                httpResponseInputStream.Dispose();
+#endif
+                return null;
             }
-            catch (TaskCanceledException) when (token.IsCancellationRequested) { throw; }
-            catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-            catch (HttpRequestException) { throw; }
+            catch (TaskCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (HttpRequestException)
+            {
+                throw;
+            }
             catch (Exception)
             {
                 currentRetry++;
                 if (currentRetry > retryCount)
+                {
                     throw;
+                }
 
-                await Task.Delay(retryInterval.Value);
+                await Task.Delay(retryInterval.Value, token);
                 goto Start;
             }
             finally
@@ -116,11 +141,15 @@ namespace Hi3Helper.Http
             }
         }
 
-        ~HttpResponseInputStream() => Dispose();
+        ~HttpResponseInputStream()
+        {
+            Dispose();
+        }
 
 
 #if NET6_0_OR_GREATER
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
         {
             int read = await _networkStream.ReadAsync(buffer, cancellationToken);
             _currentPosition += read;
@@ -134,11 +163,19 @@ namespace Hi3Helper.Http
             return read;
         }
 
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            throw new NotSupportedException();
+        }
 #endif
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count,
+            CancellationToken cancellationToken)
         {
             int read = await _networkStream.ReadAsync(buffer, offset, count, cancellationToken);
             _currentPosition += read;
@@ -152,51 +189,53 @@ namespace Hi3Helper.Http
             return read;
         }
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException();
-        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-        public override bool CanRead
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            get { return true; }
+            throw new NotSupportedException();
         }
 
-        public override bool CanSeek
+        public override void Write(byte[] buffer, int offset, int count)
         {
-            get { return false; }
+            throw new NotSupportedException();
         }
 
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
 
         public override void Flush()
         {
             _networkStream.Flush();
         }
 
-        public override long Length
-        {
-            get { return _networkLength; }
-        }
+        public override long Length => _networkLength;
 
         public override long Position
         {
-            get { return _currentPosition; }
-            set { throw new NotSupportedException(); }
+            get => _currentPosition;
+            set => throw new NotSupportedException();
         }
 
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-        public override void SetLength(long value) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException();
+        }
 
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
             if (disposing)
             {
-                _networkRequest?.Dispose();
-                _networkResponse?.Dispose();
-                _networkStream?.Dispose();
+                _networkRequest.Dispose();
+                _networkResponse.Dispose();
+                _networkStream.Dispose();
             }
 
             GC.SuppressFinalize(this);
@@ -205,10 +244,9 @@ namespace Hi3Helper.Http
 #if NET6_0_OR_GREATER
         public override async ValueTask DisposeAsync()
         {
-            _networkRequest?.Dispose();
-            _networkResponse?.Dispose();
-            if (_networkStream != null)
-                await _networkStream.DisposeAsync();
+            _networkRequest.Dispose();
+            _networkResponse.Dispose();
+            await _networkStream.DisposeAsync();
 
             await base.DisposeAsync();
             GC.SuppressFinalize(this);

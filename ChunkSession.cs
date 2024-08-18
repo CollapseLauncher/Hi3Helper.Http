@@ -7,6 +7,8 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
+// ReSharper disable ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+
 namespace Hi3Helper.Http
 {
     internal class ChunkSession
@@ -25,28 +27,32 @@ namespace Hi3Helper.Http
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             // Get the file size from the URL
-            long contentLength = await url.GetUrlContentLengthAsync(client, retryMaxAttempt, retryAttemptInterval, timeoutInterval, cancellationToken);
+            long contentLength = await url.GetUrlContentLengthAsync(client, retryMaxAttempt, retryAttemptInterval,
+                timeoutInterval, cancellationToken);
 
             // Set the length to the progress
             downloadProgress.SetBytesTotal(contentLength);
 
             // Get the last session metadata info
-            Metadata currentSessionMetadata = await Metadata.ReadLastMetadataAsync(url, outputFilePath, contentLength, cancellationToken);
+            Metadata currentSessionMetadata =
+                await Metadata.ReadLastMetadataAsync(url, outputFilePath, contentLength, cancellationToken);
 
             // Enumerate previous chunks inside the metadata first
             FileInfo outputFileInfo = new FileInfo(outputFilePath);
 
             // If the file overflow, then delete the file and start from scratch
             if ((outputFileInfo.Exists && outputFileInfo.Length > contentLength)
-              || outputFileInfo.Exists && overwrite)
+                || (outputFileInfo.Exists && overwrite))
+            {
                 outputFileInfo.Delete();
+            }
 
             // If the completed flag is set, the ranges are empty, the output file exist with the length is equal,
             // then return from enumerating. Or if the ranges list is empty, return
             if ((currentSessionMetadata.Ranges?.Count == 0
-              && outputFileInfo.Exists
-              && outputFileInfo.Length == contentLength)
-              || currentSessionMetadata.Ranges == null)
+                 && outputFileInfo.Exists
+                 && outputFileInfo.Length == contentLength)
+                || currentSessionMetadata.Ranges == null)
             {
                 downloadProgress.AdvanceBytesDownloaded(contentLength);
                 progressDelegateAsync?.Invoke(0, downloadProgress);
@@ -54,11 +60,11 @@ namespace Hi3Helper.Http
             }
 
             // Enumerate last ranges
-            long startLenAdvanced = 0;
-            long endLenAdvanced = 0;
-            long lastEndOffset = currentSessionMetadata.Ranges.Count > 0 ? currentSessionMetadata.Ranges.Max(x => x.End) + 1 : 0;
+            long lastEndOffset = currentSessionMetadata.Ranges.Count > 0
+                ? currentSessionMetadata.Ranges.Max(x => x?.End ?? 0) + 1
+                : 0;
 
-            // If the metadata is not exist but it has an uncompleted file with size > DefaultSessionChunkSize,
+            // If the metadata is not exist, but it has an uncompleted file with size > DefaultSessionChunkSize,
             // then try to resume the download and advance the lastEndOffset from the file last position.
             if (currentSessionMetadata.Ranges.Count == 0
                 && outputFileInfo.Exists
@@ -73,21 +79,29 @@ namespace Hi3Helper.Http
             // the position based on metadata.
             else if (outputFileInfo.Exists)
             {
-                ChunkRange lastRange = new ChunkRange { };
-                foreach (ChunkRange range in currentSessionMetadata.Ranges)
+                ChunkRange lastRange = new ChunkRange();
+                foreach (ChunkRange? range in currentSessionMetadata.Ranges)
                 {
+                    if (range == null)
+                    {
+                        continue;
+                    }
+
                     long toAdd = range.Start - lastRange.End;
                     downloadProgress.AdvanceBytesDownloaded(toAdd);
                     progressDelegateAsync?.Invoke(0, downloadProgress);
-                    startLenAdvanced += toAdd;
 
-                    endLenAdvanced = range.End;
                     lastRange = range;
                 }
 
-                List<ChunkRange> lastRangeList = new(currentSessionMetadata.Ranges);
-                foreach (ChunkRange range in lastRangeList)
+                List<ChunkRange?> lastRangeList = new(currentSessionMetadata.Ranges);
+                foreach (ChunkRange? range in lastRangeList)
                 {
+                    if (range == null)
+                    {
+                        continue;
+                    }
+
                     yield return new ChunkSession
                     {
                         CurrentHttpClient = client,
@@ -127,8 +141,6 @@ namespace Hi3Helper.Http
                 currentSessionMetadata.PushRange(chunkSession.CurrentPositions);
                 yield return chunkSession;
             }
-
-            yield break;
         }
 
         internal static async ValueTask<(ChunkSession, HttpResponseInputStream)?> CreateSingleSessionAsync(
@@ -140,15 +152,18 @@ namespace Hi3Helper.Http
             TimeSpan retryAttemptInterval,
             TimeSpan timeoutInterval,
             CancellationToken cancellationToken
-            )
+        )
         {
             // Create network stream
             HttpResponseInputStream? networkStream = await HttpResponseInputStream
-                .CreateStreamAsync(client, url, offsetStart, offsetEnd, timeoutInterval, retryAttemptInterval, retryMaxAttempt, cancellationToken);
+                .CreateStreamAsync(client, url, offsetStart, offsetEnd, timeoutInterval, retryAttemptInterval,
+                    retryMaxAttempt, cancellationToken);
 
             // If the network stream is null (due to StatusCode 416), then return null
             if (networkStream == null)
+            {
                 return null;
+            }
 
             // Create the session without metadata
             ChunkSession session = new ChunkSession
@@ -169,12 +184,11 @@ namespace Hi3Helper.Http
         }
 
 #nullable disable
-        internal ChunkRange CurrentPositions { get; private set; }
+        internal ChunkRange CurrentPositions { get; private init; }
         internal Metadata CurrentMetadata { get; private set; }
         internal HttpClient CurrentHttpClient { get; private set; }
         internal int RetryMaxAttempt { get; private set; }
         internal TimeSpan RetryAttemptInterval { get; private set; }
         internal TimeSpan TimeoutAfterInterval { get; private set; }
-#nullable restore
     }
 }

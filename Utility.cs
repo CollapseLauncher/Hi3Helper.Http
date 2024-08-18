@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+// ReSharper disable UnusedMember.Global
 
 namespace Hi3Helper.Http
 {
@@ -50,7 +51,7 @@ namespace Hi3Helper.Http
                 if (currentRetry > retryCount)
                     throw;
 
-                await Task.Delay(retryInterval);
+                await Task.Delay(retryInterval, token);
                 goto Start;
             }
             finally
