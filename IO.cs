@@ -31,9 +31,8 @@ namespace Hi3Helper.Http
 
             CalculateBps();
 
-            StartWrite:
-            byte[] buffer = ArrayPool<byte>.Shared.Rent(16 << 10);
-
+        StartWrite:
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(32 << 10);
             CancellationTokenSource? timeoutToken = null;
             CancellationTokenSource? coopToken = null;
 
@@ -62,13 +61,13 @@ namespace Hi3Helper.Http
                     fileStream.SetLength(session.CurrentPositions.Start + 1);
                 }
 
-                timeoutToken = new CancellationTokenSource(session.TimeoutAfterInterval);
-                coopToken = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken.Token, token);
-
                 if (fileStream.CanSeek)
                 {
                     fileStream.Seek(session.CurrentPositions.Start, SeekOrigin.Begin);
                 }
+
+                timeoutToken = new CancellationTokenSource(session.TimeoutAfterInterval);
+                coopToken = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken.Token, token);
 
                 int read;
                 while ((read = await networkStream!.ReadAsync(buffer, coopToken.Token)) > 0)
