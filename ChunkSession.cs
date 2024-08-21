@@ -33,6 +33,7 @@ namespace Hi3Helper.Http
             // Set the length to the progress
             downloadProgress.SetBytesTotal(contentLength);
 
+        StartEnumerate:
             // Get the last session metadata info
             Metadata currentSessionMetadata =
                 await Metadata.ReadLastMetadataAsync(url, outputFilePath, contentLength, cancellationToken);
@@ -40,11 +41,19 @@ namespace Hi3Helper.Http
             // Enumerate previous chunks inside the metadata first
             FileInfo outputFileInfo = new FileInfo(outputFilePath);
 
-            // If the file overflow, then delete the file and start from scratch
+            // If the overwrite is toggled and the file exist, delete them.
+            // Or if the file overflow, then delete the file and start from scratch
             if ((outputFileInfo.Exists && outputFileInfo.Length > contentLength)
-                || (outputFileInfo.Exists && overwrite))
+              || outputFileInfo.Exists && overwrite)
             {
+                outputFileInfo.IsReadOnly = false;
                 outputFileInfo.Delete();
+                outputFileInfo.Refresh();
+
+                if (File.Exists(currentSessionMetadata.MetadataFilePath))
+                    File.Delete(currentSessionMetadata.MetadataFilePath);
+
+                goto StartEnumerate;
             }
 
             // If the completed flag is set, the ranges are empty, the output file exist with the length is equal,
