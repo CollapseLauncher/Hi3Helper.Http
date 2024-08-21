@@ -199,9 +199,8 @@ namespace Hi3Helper.Http
                                progressDelegateAsync,
                                RetryCountMax,
                                RetryAttemptInterval,
-                               TimeoutAfterInterval,
-                               cancelToken
-                           ))
+                               TimeoutAfterInterval
+                           ).WithCancellation(cancelToken))
             {
                 await actionBlock.SendAsync(session, cancelToken);
             }
