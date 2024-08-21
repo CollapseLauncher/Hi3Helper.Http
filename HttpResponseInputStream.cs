@@ -230,12 +230,11 @@ namespace Hi3Helper.Http
 
         protected override void Dispose(bool disposing)
         {
-            base.Dispose(disposing);
             if (disposing)
             {
-                _networkRequest.Dispose();
-                _networkResponse.Dispose();
-                _networkStream.Dispose();
+                _networkRequest?.Dispose();
+                _networkResponse?.Dispose();
+                _networkStream?.Dispose();
             }
 
             GC.SuppressFinalize(this);
@@ -244,11 +243,11 @@ namespace Hi3Helper.Http
 #if NET6_0_OR_GREATER
         public override async ValueTask DisposeAsync()
         {
-            _networkRequest.Dispose();
-            _networkResponse.Dispose();
-            await _networkStream.DisposeAsync();
+            _networkRequest?.Dispose();
+            _networkResponse?.Dispose();
+            if (_networkStream != null)
+                await _networkStream.DisposeAsync();
 
-            await base.DisposeAsync();
             GC.SuppressFinalize(this);
         }
 #endif
