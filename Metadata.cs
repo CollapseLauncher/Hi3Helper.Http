@@ -40,7 +40,8 @@ namespace Hi3Helper.Http
                         Url = url,
                         OutputFilePath = outputFilePath,
                         TargetToCompleteSize = targetToDownloadSize,
-                        IsCompleted = true
+                        IsCompleted = true,
+                        MetadataFilePath = metadataFilePath
                     };
                 }
 
