@@ -169,8 +169,6 @@ namespace Hi3Helper.Http
                     await using (FileStream stream = new FileStream(chunk.CurrentMetadata?.OutputFilePath!,
                                      FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write))
                     {
-                        Console.WriteLine($"{chunk.CurrentPositions.Start} -> {chunk.CurrentPositions.End}");
-
                         if (chunk.CurrentMetadata == null)
                         {
                             throw new NullReferenceException("chunk.CurrentMetadata reference is null");
