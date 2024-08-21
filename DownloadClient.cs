@@ -174,6 +174,7 @@ namespace Hi3Helper.Http
                             throw new NullReferenceException("chunk.CurrentMetadata reference is null");
                         }
 
+                        await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
                         await IO.WriteStreamToFileChunkSessionAsync(chunk, maxConnectionSessions, null, false, stream,
                             downloadProgressStruct, progressDelegateAsync, cancelToken);
 
