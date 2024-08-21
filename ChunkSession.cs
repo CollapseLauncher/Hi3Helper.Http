@@ -24,7 +24,7 @@ namespace Hi3Helper.Http
             int retryMaxAttempt,
             TimeSpan retryAttemptInterval,
             TimeSpan timeoutInterval,
-            [EnumeratorCancellation] CancellationToken cancellationToken)
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             // Get the file size from the URL
             long contentLength = await url.GetUrlContentLengthAsync(client, retryMaxAttempt, retryAttemptInterval,
