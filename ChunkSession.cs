@@ -182,6 +182,11 @@ namespace Hi3Helper.Http
                     Start = offsetStart ?? 0,
                     End = networkStream.Length
                 },
+                CurrentMetadata = new Metadata
+                {
+                    TargetToCompleteSize = networkStream.Length,
+                    Url = url
+                },
                 CurrentHttpClient = client,
                 RetryMaxAttempt = retryMaxAttempt,
                 RetryAttemptInterval = retryAttemptInterval,
