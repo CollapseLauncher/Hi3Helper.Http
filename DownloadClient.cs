@@ -318,6 +318,12 @@ namespace Hi3Helper.Http
                 cancelToken);
         }
 
+        /// <summary>
+        /// Get the current <seealso cref="HttpClient"/> instance used by the <seealso cref="DownloadClient"/>
+        /// </summary>
+        /// <returns>The current <seealso cref="HttpClient"/> instance used by the <seealso cref="DownloadClient"/></returns>
+        public HttpClient GetHttpClient() => CurrentHttpClientInstance;
+
         public void Dispose()
         {
             FinalizeDispose();
