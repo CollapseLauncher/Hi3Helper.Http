@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
-    internal class HttpResponseInputStream : Stream
+    public class HttpResponseInputStream : Stream
     {
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         private protected HttpRequestMessage _networkRequest;
