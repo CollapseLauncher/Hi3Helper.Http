@@ -29,14 +29,14 @@ namespace Hi3Helper.Http
         /// Increment the current <seealso cref="BytesDownloaded"/> field.
         /// </summary>
         /// <param name="size">How many bytes to increment the <seealso cref="BytesDownloaded"/> field.</param>
-        public void AdvanceBytesDownloaded(long size)
+        internal void AdvanceBytesDownloaded(long size)
             => Interlocked.Add(ref BytesDownloaded, size);
 
         /// <summary>
         /// Set the value of <seealso cref="BytesTotal"/> field.
         /// </summary>
         /// <param name="size">Value to be set to <seealso cref="BytesTotal"/> field.</param>
-        public void SetBytesTotal(long size)
+        internal void SetBytesTotal(long size)
             => BytesTotal = size;
     }
 }
