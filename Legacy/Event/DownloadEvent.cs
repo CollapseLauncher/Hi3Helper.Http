@@ -23,11 +23,11 @@ namespace Hi3Helper.Http.Legacy
             this.State = state;
         }
 
-        public long SizeDownloaded { get; private set; }
-        public long SizeToBeDownloaded { get; private set; }
+        public long SizeDownloaded { get; set; }
+        public long SizeToBeDownloaded { get; set; }
         public double ProgressPercentage => Math.Round((SizeDownloaded / (double)SizeToBeDownloaded) * 100, 2);
-        public long Read { get; private set; }
-        public long Speed { get; private set; }
+        public long Read { get; set; }
+        public long Speed { get; set; }
         public TimeSpan TimeLeft => checked(TimeSpan.FromSeconds((SizeToBeDownloaded - SizeDownloaded) / UnZeroed(Speed)));
         private long UnZeroed(long Input) => Math.Max(Input, 1);
         public DownloadState State { get; set; }
