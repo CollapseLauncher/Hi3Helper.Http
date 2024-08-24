@@ -31,18 +31,24 @@ namespace Hi3Helper.Http
         private HttpClient CurrentHttpClientInstance { get; init; }
 
 
-        internal static event EventHandler<int>? DownloadSpeedLimitChanged;
+        internal static event EventHandler<long>? DownloadSpeedLimitChanged;
 
-        private static int _downloadSpeedLimitBase = -1;
+        private static long _downloadSpeedLimitBase = -1;
 
         /// <summary>
         ///     Set the limit of the download speed shared across all instances.
         /// </summary>
-        internal static int DownloadSpeedLimitBase
+        internal static long DownloadSpeedLimitBase
         {
             get => _downloadSpeedLimitBase;
             set
             {
+                if (value <= 0)
+                {
+                    _downloadSpeedLimitBase = -1;
+                    DownloadSpeedLimitChanged?.Invoke(null, _downloadSpeedLimitBase);
+                    return;
+                }
                 _downloadSpeedLimitBase = Math.Max(MinimumDownloadSpeedLimit, value);
                 DownloadSpeedLimitChanged?.Invoke(null, _downloadSpeedLimitBase);
             }
@@ -72,7 +78,7 @@ namespace Hi3Helper.Http
         ///     The minimum size is: 262144 bytes (256 KiB/s). If the value is below the minimum limit, the speed will be set to
         ///     256 KiB
         /// </param>
-        public static void SetSharedDownloadSpeedLimit(int speedLimit = -1)
+        public static void SetSharedDownloadSpeedLimit(long speedLimit = -1)
         {
             DownloadSpeedLimitBase = speedLimit;
         }

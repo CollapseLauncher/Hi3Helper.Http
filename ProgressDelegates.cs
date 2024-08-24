@@ -12,7 +12,7 @@ namespace Hi3Helper.Http
     /// <summary>
     /// The class which consist the amount of data downloaded.
     /// </summary>
-    public struct DownloadProgress
+    public class DownloadProgress
     {
         /// <summary>
         /// The amount of data already downloaded.
@@ -36,6 +36,6 @@ namespace Hi3Helper.Http
         /// </summary>
         /// <param name="size">Value to be set to <seealso cref="BytesTotal"/> field.</param>
         internal void SetBytesTotal(long size)
-            => Interlocked.Exchange(ref BytesTotal, size);
+            => BytesTotal = size;
     }
 }

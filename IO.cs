@@ -141,7 +141,7 @@ namespace Hi3Helper.Http
                 bitPerUnit = 940 - (threadNum - 2) / (16 - 2) * 400;
             }
 
-            void DownloadClient_DownloadSpeedLimitChanged(object? sender, int e)
+            void DownloadClient_DownloadSpeedLimitChanged(object? sender, long e)
             {
                 CalculateBps();
             }
