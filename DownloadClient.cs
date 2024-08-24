@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -324,19 +325,53 @@ namespace Hi3Helper.Http
         /// <returns>The current <seealso cref="HttpClient"/> instance used by the <seealso cref="DownloadClient"/></returns>
         public HttpClient GetHttpClient() => CurrentHttpClientInstance;
 
-        public void Dispose()
-        {
-            FinalizeDispose();
-        }
+        /// <summary>
+        /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL.
+        /// </summary>
+        /// <param name="url">The URL to check</param>
+        /// <param name="cancelToken">The cancellation token</param>
+        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and a <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
+        public async ValueTask<(HttpStatusCode, bool)> GetURLStatus(string url, CancellationToken cancelToken)
+            => await GetURLStatus(CurrentHttpClientInstance, url, cancelToken);
 
-        private void FinalizeDispose()
-        {
-            GC.SuppressFinalize(this);
-        }
+        /// <summary>
+        /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL.
+        /// </summary>
+        /// <param name="url">The URL to check</param>
+        /// <param name="cancelToken">The cancellation token</param>
+        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and a <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
+        public async ValueTask<(HttpStatusCode, bool)> GetURLStatus(Uri url, CancellationToken cancelToken)
+            => await GetURLStatus(CurrentHttpClientInstance, url, cancelToken);
 
-        ~DownloadClient()
+        /// <summary>
+        /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL from a <seealso cref="HttpClient"/> instance.
+        /// </summary>
+        /// <param name="httpClient">The <seealso cref="HttpClient"/> instance to be used for URL checking</param>
+        /// <param name="url">The URL to check</param>
+        /// <param name="cancelToken">The cancellation token</param>
+        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and a <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
+        public static async ValueTask<(HttpStatusCode, bool)> GetURLStatus(HttpClient httpClient, string url, CancellationToken cancelToken)
+            => await GetURLStatus(httpClient, url.ToUri(), cancelToken);
+
+        /// <summary>
+        /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL from a <seealso cref="HttpClient"/> instance.
+        /// </summary>
+        /// <param name="httpClient">The <seealso cref="HttpClient"/> instance to be used for URL checking</param>
+        /// <param name="url">The URL to check</param>
+        /// <param name="cancelToken">The cancellation token</param>
+        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and a <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
+        public static async ValueTask<(HttpStatusCode, bool)> GetURLStatus(HttpClient httpClient, Uri url, CancellationToken cancelToken)
         {
-            Dispose();
+            using (HttpResponseMessage response = await httpClient.SendAsync(
+                new HttpRequestMessage()
+                {
+                    RequestUri = url
+                },
+                HttpCompletionOption.ResponseHeadersRead,
+                cancelToken))
+            {
+                return (response.StatusCode, response.IsSuccessStatusCode);
+            }
         }
     }
 }
