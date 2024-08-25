@@ -14,6 +14,8 @@ namespace Hi3Helper.Http
     {
         internal static async Task WriteStreamToFileChunkSessionAsync(
             ChunkSession session,
+            EventHandler<long>? speedLimitChangeEvent,
+            long downloadLimitBase,
             int threadSize,
             HttpResponseInputStream? networkStream,
             bool isNetworkStreamFromExternal,
@@ -23,6 +25,7 @@ namespace Hi3Helper.Http
             CancellationToken token)
         {
             long written = 0;
+            long thisInstanceDownloadLimitBase = downloadLimitBase;
             int currentRetry = 0;
             Stopwatch currentStopwatch = Stopwatch.StartNew();
 
@@ -43,7 +46,7 @@ namespace Hi3Helper.Http
                     session.CurrentMetadata.UpdateChunkRangesCountEvent += CurrentMetadata_UpdateChunkRangesCountEvent;
                 }
 
-                DownloadClient.DownloadSpeedLimitChanged += DownloadClient_DownloadSpeedLimitChanged;
+                speedLimitChangeEvent += DownloadClient_DownloadSpeedLimitChanged;
 
                 if (!isNetworkStreamFromExternal || (isNetworkStreamFromExternal && currentRetry > 0))
                 {
@@ -121,7 +124,7 @@ namespace Hi3Helper.Http
                 }
 
                 ArrayPool<byte>.Shared.Return(buffer);
-                DownloadClient.DownloadSpeedLimitChanged -= DownloadClient_DownloadSpeedLimitChanged;
+                speedLimitChangeEvent -= DownloadClient_DownloadSpeedLimitChanged;
 
                 if (session.CurrentMetadata != null)
                 {
@@ -136,13 +139,19 @@ namespace Hi3Helper.Http
 
             void CalculateBps()
             {
+                if (thisInstanceDownloadLimitBase <= 0)
+                    thisInstanceDownloadLimitBase = -1;
+                else
+                    thisInstanceDownloadLimitBase = Math.Max(DownloadClient.MinimumDownloadSpeedLimit, thisInstanceDownloadLimitBase);
+
                 double threadNum = Math.Min((double)threadSize, session.CurrentMetadata?.Ranges?.Count ?? 2);
-                maximumBytesPerSecond = DownloadClient.DownloadSpeedLimitBase / threadNum;
+                maximumBytesPerSecond = thisInstanceDownloadLimitBase / threadNum;
                 bitPerUnit = 940 - (threadNum - 2) / (16 - 2) * 400;
             }
 
             void DownloadClient_DownloadSpeedLimitChanged(object? sender, long e)
             {
+                Interlocked.Exchange(ref thisInstanceDownloadLimitBase, e);
                 CalculateBps();
             }
 

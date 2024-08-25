@@ -23,37 +23,12 @@ namespace Hi3Helper.Http
     {
         private const int DefaultConnectionSessions = 4;
         private const int DefaultRetryCountMax = 5;
-        private const int MinimumDownloadSpeedLimit = 256 << 10; // 262144 bytes/s (256 KiB/s)
+        internal const int MinimumDownloadSpeedLimit = 256 << 10; // 262144 bytes/s (256 KiB/s)
 
         private TimeSpan RetryAttemptInterval { get; init; }
         private int RetryCountMax { get; init; }
         private TimeSpan TimeoutAfterInterval { get; init; }
         private HttpClient CurrentHttpClientInstance { get; init; }
-
-
-        internal static event EventHandler<long>? DownloadSpeedLimitChanged;
-
-        private static long _downloadSpeedLimitBase = -1;
-
-        /// <summary>
-        ///     Set the limit of the download speed shared across all instances.
-        /// </summary>
-        internal static long DownloadSpeedLimitBase
-        {
-            get => _downloadSpeedLimitBase;
-            set
-            {
-                if (value <= 0)
-                {
-                    _downloadSpeedLimitBase = -1;
-                    DownloadSpeedLimitChanged?.Invoke(null, _downloadSpeedLimitBase);
-                    return;
-                }
-                _downloadSpeedLimitBase = Math.Max(MinimumDownloadSpeedLimit, value);
-                DownloadSpeedLimitChanged?.Invoke(null, _downloadSpeedLimitBase);
-            }
-        }
-
 
         private const int DefaultSessionChunkSize = 4 << 20; // 4 MiB for each chunk size
 
@@ -68,19 +43,6 @@ namespace Hi3Helper.Http
 
             RetryCountMax = retryCountMax;
             CurrentHttpClientInstance = httpClient;
-        }
-
-        /// <summary>
-        ///     <inheritdoc cref="DownloadSpeedLimitBase" />
-        /// </summary>
-        /// <param name="speedLimit">
-        ///     Set the limit of the speed. The default -1 (No limit).<br />
-        ///     The minimum size is: 262144 bytes (256 KiB/s). If the value is below the minimum limit, the speed will be set to
-        ///     256 KiB
-        /// </param>
-        public static void SetSharedDownloadSpeedLimit(long speedLimit = -1)
-        {
-            DownloadSpeedLimitBase = speedLimit;
         }
 
         /// <summary>
@@ -157,10 +119,17 @@ namespace Hi3Helper.Http
         ///     <paramref name="url" /> or <paramref name="fileOutputPath" /> is empty or only have
         ///     whitespaces.
         /// </exception>
-        public async Task DownloadAsync(string url, string fileOutputPath, bool useOverwrite = false,
-            long? offsetStart = null, long? offsetEnd = null, DownloadProgressDelegate? progressDelegateAsync = null,
+        public async Task DownloadAsync(
+            string url,
+            string fileOutputPath,
+            bool useOverwrite = false,
+            long? offsetStart = null,
+            long? offsetEnd = null,
+            DownloadProgressDelegate? progressDelegateAsync = null,
             int maxConnectionSessions = DefaultConnectionSessions,
             int sessionChunkSize = DefaultSessionChunkSize,
+            long initialDownloadSpeed = -1,
+            EventHandler<long>? downloadSpeedLimitEvent = null,
             CancellationToken cancelToken = default)
         {
             ArgumentException.ThrowIfNullOrEmpty(url, nameof(url));
@@ -182,8 +151,17 @@ namespace Hi3Helper.Http
                         }
 
                         await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
-                        await IO.WriteStreamToFileChunkSessionAsync(chunk, maxConnectionSessions, null, false, stream,
-                            downloadProgressStruct, progressDelegateAsync, cancelToken);
+                        await IO.WriteStreamToFileChunkSessionAsync(
+                            chunk,
+                            downloadSpeedLimitEvent,
+                            initialDownloadSpeed,
+                            maxConnectionSessions,
+                            null,
+                            false,
+                            stream,
+                            downloadProgressStruct,
+                            progressDelegateAsync,
+                            cancelToken);
 
                         chunk.CurrentMetadata.PopRange(chunk.CurrentPositions);
                         await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
@@ -258,9 +236,15 @@ namespace Hi3Helper.Http
         /// </param>
         /// <exception cref="ArgumentNullException"><paramref name="url" /> or <paramref name="outputStream" /> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="url" /> is empty or only have whitespaces.</exception>
-        public async Task DownloadAsync(string url, Stream outputStream,
-            bool allowContinue, DownloadProgressDelegate? progressDelegateAsync = null,
-            long? offsetStart = null, long? offsetEnd = null,
+        public async Task DownloadAsync(
+            string url,
+            Stream outputStream,
+            bool allowContinue,
+            DownloadProgressDelegate? progressDelegateAsync = null,
+            long? offsetStart = null,
+            long? offsetEnd = null,
+            long initialDownloadSpeed = -1,
+            EventHandler<long>? downloadSpeedLimitEvent = null,
             CancellationToken cancelToken = default)
         {
             ArgumentException.ThrowIfNullOrEmpty(url, nameof(url));
@@ -316,6 +300,8 @@ namespace Hi3Helper.Http
             // Start the download
             await IO.WriteStreamToFileChunkSessionAsync(
                 networkStream.Value.Item1,
+                downloadSpeedLimitEvent,
+                initialDownloadSpeed,
                 1,
                 networkStream.Value.Item2,
                 true,
