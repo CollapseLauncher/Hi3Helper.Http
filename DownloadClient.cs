@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -364,6 +365,80 @@ namespace Hi3Helper.Http
             {
                 return (response.StatusCode, response.IsSuccessStatusCode);
             }
+        }
+
+        public static async ValueTask<long> GetDownloadedFileSize(
+            Uri fileUrl,
+            HttpClient httpClient,
+            string filePath,
+            long expectedLength = 0,
+            int? retryCountMax = null,
+            TimeSpan? retryAttemptInterval = default,
+            TimeSpan? timeoutAfterInterval = default,
+            CancellationToken cancelToken = default)
+        {
+            retryCountMax ??= DefaultRetryCountMax;
+            retryAttemptInterval ??= TimeSpan.FromSeconds(1);
+            timeoutAfterInterval ??= TimeSpan.FromSeconds(10);
+
+            // Get the file size from the URL or expected value
+            long contentLength = expectedLength > 0 ? expectedLength : await fileUrl.GetUrlContentLengthAsync(httpClient, retryCountMax ?? DefaultRetryCountMax,
+                retryAttemptInterval.Value, timeoutAfterInterval.Value, cancelToken);
+
+            // Get the last session metadata info
+            Metadata currentSessionMetadata =
+                await Metadata.ReadLastMetadataAsync(null, filePath, 0, cancelToken);
+
+            FileInfo currentFileInfo = new FileInfo(filePath);
+            long currentLength = 0;
+
+            // If the completed flag is set, the ranges are empty, the output file exist with the length is equal,
+            // then return from enumerating. Or if the ranges list is empty, return
+            if ((currentSessionMetadata.Ranges?.Count == 0
+                 && currentFileInfo.Exists
+                 && currentFileInfo.Length == contentLength)
+                || currentSessionMetadata.Ranges == null)
+            {
+                currentLength += contentLength;
+                return currentLength;
+            }
+
+            // Enumerate last ranges
+            long lastEndOffset = currentSessionMetadata.Ranges.Count > 0
+                ? currentSessionMetadata.Ranges.Max(x => x?.End ?? 0) + 1
+                : 0;
+
+            // If the metadata is not exist, but it has an uncompleted file with size > DefaultSessionChunkSize,
+            // then try to resume the download and advance the lastEndOffset from the file last position.
+            if (currentSessionMetadata.Ranges.Count == 0
+                && currentFileInfo.Exists
+                && currentSessionMetadata.LastEndOffset <= currentFileInfo.Length)
+            {
+                currentLength += currentFileInfo.Length;
+            }
+            // Else if the file exist with size downloaded less than LastEndOffset, then continue
+            // the position based on metadata.
+            else if (currentFileInfo.Exists)
+            {
+                ChunkRange lastRange = new ChunkRange();
+                foreach (ChunkRange? range in currentSessionMetadata.Ranges)
+                {
+                    if (range == null)
+                    {
+                        continue;
+                    }
+
+                    long toAdd = range.Start - lastRange.End;
+                    currentLength += toAdd;
+
+                    lastRange = range;
+                }
+
+                return currentLength;
+            }
+
+            // Otherwise, return currentLength
+            return currentLength;
         }
     }
 }

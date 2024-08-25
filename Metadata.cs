@@ -26,7 +26,7 @@ namespace Hi3Helper.Http
 
         internal event EventHandler<bool>? UpdateChunkRangesCountEvent;
 
-        internal static async ValueTask<Metadata> ReadLastMetadataAsync(Uri url, string outputFilePath,
+        internal static async ValueTask<Metadata> ReadLastMetadataAsync(Uri? url, string outputFilePath,
             long targetToDownloadSize, CancellationToken token)
         {
             string metadataFilePath = outputFilePath + MetadataExtension;
