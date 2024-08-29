@@ -102,6 +102,9 @@ namespace Hi3Helper.Http
         ///     The delegate callback to process the download progress information.<br /><br />
         ///     Default: <c>null</c>
         /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
         /// <param name="maxConnectionSessions">
         ///     How much connection session to be started for the download process. If it's being set to less than or equal as 0,
         ///     then it will fall back to the default value: 4.<br /><br />
@@ -129,8 +132,7 @@ namespace Hi3Helper.Http
             DownloadProgressDelegate? progressDelegateAsync = null,
             int maxConnectionSessions = DefaultConnectionSessions,
             int sessionChunkSize = DefaultSessionChunkSize,
-            long initialDownloadSpeed = -1,
-            EventHandler<long>? downloadSpeedLimitEvent = null,
+            DownloadSpeedLimiter? downloadSpeedLimiter = null,
             CancellationToken cancelToken = default)
         {
             ArgumentException.ThrowIfNullOrEmpty(url, nameof(url));
@@ -154,8 +156,7 @@ namespace Hi3Helper.Http
                         await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
                         await IO.WriteStreamToFileChunkSessionAsync(
                             chunk,
-                            downloadSpeedLimitEvent,
-                            initialDownloadSpeed,
+                            downloadSpeedLimiter,
                             maxConnectionSessions,
                             null,
                             false,
@@ -231,6 +232,9 @@ namespace Hi3Helper.Http
         ///     The delegate callback to process the download progress information.<br /><br />
         ///     Default: <c>null</c>
         /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
         /// <param name="cancelToken">
         ///     Cancellation token. If not assigned, a cancellation token will not be assigned and the download becomes
         ///     non-cancellable.
@@ -244,8 +248,7 @@ namespace Hi3Helper.Http
             DownloadProgressDelegate? progressDelegateAsync = null,
             long? offsetStart = null,
             long? offsetEnd = null,
-            long initialDownloadSpeed = -1,
-            EventHandler<long>? downloadSpeedLimitEvent = null,
+            DownloadSpeedLimiter? downloadSpeedLimiter = null,
             CancellationToken cancelToken = default)
         {
             ArgumentException.ThrowIfNullOrEmpty(url, nameof(url));
@@ -301,8 +304,7 @@ namespace Hi3Helper.Http
             // Start the download
             await IO.WriteStreamToFileChunkSessionAsync(
                 networkStream.Value.Item1,
-                downloadSpeedLimitEvent,
-                initialDownloadSpeed,
+                downloadSpeedLimiter,
                 1,
                 networkStream.Value.Item2,
                 true,
@@ -367,6 +369,99 @@ namespace Hi3Helper.Http
             }
         }
 
+        /// <summary>
+        /// Get the total size of an existing downloaded file using the current instance of a <seealso cref="DownloadClient"/>.
+        /// </summary>
+        /// <param name="fileUrl">The URL of the file.</param>
+        /// <param name="filePath">The path of the existing download file.</param>
+        /// <param name="expectedLength">The expected value of the total size. If it's set to 0, then a GET HTTP routine will not be requested.</param>
+        /// <param name="cancelToken">The cancellation token for the routine.</param>
+        /// <returns>A size of a downloaded file.</returns>
+        /// <exception cref="InvalidOperationException">If <paramref name="expectedLength"/> is set to 0 and the current <seealso cref="HttpClient"/> of this <seealso cref="DownloadClient"/> is null.</exception>
+        public async ValueTask<long> GetDownloadedFileSize(
+            string fileUrl,
+            string filePath,
+            long expectedLength = 0,
+            CancellationToken cancelToken = default)
+            => await GetDownloadedFileSize(
+                fileUrl,
+                CurrentHttpClientInstance,
+                filePath,
+                expectedLength,
+                RetryCountMax,
+                RetryAttemptInterval,
+                TimeoutAfterInterval,
+                cancelToken);
+
+        /// <summary>
+        /// Get the total size of an existing downloaded file using the current instance of a <seealso cref="DownloadClient"/>.
+        /// </summary>
+        /// <param name="fileUrl">The URL of the file.</param>
+        /// <param name="filePath">The path of the existing download file.</param>
+        /// <param name="expectedLength">The expected value of the total size. If it's set to 0, then a GET HTTP routine will not be requested.</param>
+        /// <param name="cancelToken">The cancellation token for the routine.</param>
+        /// <returns>A size of a downloaded file.</returns>
+        /// <exception cref="InvalidOperationException">If <paramref name="expectedLength"/> is set to 0 and the current <seealso cref="HttpClient"/> of this <seealso cref="DownloadClient"/> is null.</exception>
+        public async ValueTask<long> GetDownloadedFileSize(
+            Uri fileUrl,
+            string filePath,
+            long expectedLength = 0,
+            CancellationToken cancelToken = default)
+            => await GetDownloadedFileSize(
+                fileUrl,
+                CurrentHttpClientInstance,
+                filePath,
+                expectedLength,
+                RetryCountMax,
+                RetryAttemptInterval,
+                TimeoutAfterInterval,
+                cancelToken);
+
+        /// <summary>
+        /// Get the total size of an existing downloaded file
+        /// </summary>
+        /// <param name="fileUrl">The URL of the file.</param>
+        /// <param name="httpClient"><seealso cref="HttpClient"/> instance to be used for checking the total size of the file if <paramref name="expectedLength"/> is 0.</param>
+        /// <param name="filePath">The path of the existing download file.</param>
+        /// <param name="expectedLength">The expected value of the total size. If it's set to 0, then a GET HTTP routine will not be requested.</param>
+        /// <param name="retryCountMax">An expected amount of time for retrying the check.</param>
+        /// <param name="retryAttemptInterval">How much time for delay to run before the next retry attempt.</param>
+        /// <param name="timeoutAfterInterval">How much time for a timeout to trigger for retrying a routine.</param>
+        /// <param name="cancelToken">The cancellation token for the routine.</param>
+        /// <returns>A size of a downloaded file.</returns>
+        /// <exception cref="InvalidOperationException">If <paramref name="httpClient"/> is null and <paramref name="expectedLength"/> is set to 0</exception>
+        public static async ValueTask<long> GetDownloadedFileSize(
+            string fileUrl,
+            HttpClient httpClient,
+            string filePath,
+            long expectedLength = 0,
+            int? retryCountMax = null,
+            TimeSpan? retryAttemptInterval = default,
+            TimeSpan? timeoutAfterInterval = default,
+            CancellationToken cancelToken = default)
+            => await GetDownloadedFileSize(
+                fileUrl.ToUri(),
+                httpClient,
+                filePath,
+                expectedLength,
+                retryCountMax,
+                retryAttemptInterval,
+                timeoutAfterInterval,
+                cancelToken);
+
+        /// <summary>
+        /// Get the total size of an existing downloaded file
+        /// </summary>
+        /// <param name="fileUrl">The URL of the file.</param>
+        /// <param name="httpClient"><seealso cref="HttpClient"/> instance to be used for checking the total size of the file if <paramref name="expectedLength"/> is 0.</param>
+        /// <param name="filePath">The path of the existing download file.</param>
+        /// <param name="expectedLength">The expected value of the total size. If it's set to 0, then a GET HTTP routine will not be requested.</param>
+        /// <param name="retryCountMax">An expected amount of time for retrying the check.</param>
+        /// <param name="retryAttemptInterval">How much time for delay to run before the next retry attempt.</param>
+        /// <param name="timeoutAfterInterval">How much time for a timeout to trigger for retrying a routine.</param>
+        /// <param name="cancelToken">The cancellation token for the routine.</param>
+        /// <returns>A size of a downloaded file.</returns>
+        /// <exception cref="InvalidOperationException">If <paramref name="httpClient"/> is null and <paramref name="expectedLength"/> is set to 0</exception>
         public static async ValueTask<long> GetDownloadedFileSize(
             Uri fileUrl,
             HttpClient httpClient,
@@ -377,12 +472,17 @@ namespace Hi3Helper.Http
             TimeSpan? timeoutAfterInterval = default,
             CancellationToken cancelToken = default)
         {
+            // Set default values
             retryCountMax ??= DefaultRetryCountMax;
             retryAttemptInterval ??= TimeSpan.FromSeconds(1);
             timeoutAfterInterval ??= TimeSpan.FromSeconds(10);
 
+            // Sanity check: Throw if httpClient is null while expectedLength param is 0
+            if (httpClient == null && expectedLength == 0)
+                throw new InvalidOperationException($"You cannot set {nameof(httpClient)} to null while {nameof(expectedLength)} is set to 0!");
+
             // Get the file size from the URL or expected value
-            long contentLength = expectedLength > 0 ? expectedLength : await fileUrl.GetUrlContentLengthAsync(httpClient, retryCountMax ?? DefaultRetryCountMax,
+            long contentLength = expectedLength > 0 ? expectedLength : await fileUrl.GetUrlContentLengthAsync(httpClient!, retryCountMax ?? DefaultRetryCountMax,
                 retryAttemptInterval.Value, timeoutAfterInterval.Value, cancelToken);
 
             // Get the last session metadata info

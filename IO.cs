@@ -14,8 +14,7 @@ namespace Hi3Helper.Http
     {
         internal static async Task WriteStreamToFileChunkSessionAsync(
             ChunkSession session,
-            EventHandler<long>? speedLimitChangeEvent,
-            long downloadLimitBase,
+            DownloadSpeedLimiter? downloadSpeedLimiter,
             int threadSize,
             HttpResponseInputStream? networkStream,
             bool isNetworkStreamFromExternal,
@@ -25,7 +24,7 @@ namespace Hi3Helper.Http
             CancellationToken token)
         {
             long written = 0;
-            long thisInstanceDownloadLimitBase = downloadLimitBase;
+            long thisInstanceDownloadLimitBase = downloadSpeedLimiter?.InitialRequestedSpeed ?? -1;
             int currentRetry = 0;
             Stopwatch currentStopwatch = Stopwatch.StartNew();
 
@@ -46,7 +45,10 @@ namespace Hi3Helper.Http
                     session.CurrentMetadata.UpdateChunkRangesCountEvent += CurrentMetadata_UpdateChunkRangesCountEvent;
                 }
 
-                speedLimitChangeEvent += DownloadClient_DownloadSpeedLimitChanged;
+                if (downloadSpeedLimiter != null)
+                {
+                    downloadSpeedLimiter.DownloadSpeedChangedEvent += DownloadClient_DownloadSpeedLimitChanged;
+                }
 
                 if (!isNetworkStreamFromExternal || (isNetworkStreamFromExternal && currentRetry > 0))
                 {
@@ -124,7 +126,11 @@ namespace Hi3Helper.Http
                 }
 
                 ArrayPool<byte>.Shared.Return(buffer);
-                speedLimitChangeEvent -= DownloadClient_DownloadSpeedLimitChanged;
+
+                if (downloadSpeedLimiter != null)
+                {
+                    downloadSpeedLimiter.DownloadSpeedChangedEvent -= DownloadClient_DownloadSpeedLimitChanged;
+                }
 
                 if (session.CurrentMetadata != null)
                 {
