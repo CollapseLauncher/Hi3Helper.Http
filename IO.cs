@@ -157,7 +157,7 @@ namespace Hi3Helper.Http
 
             void DownloadClient_DownloadSpeedLimitChanged(object? sender, long e)
             {
-                thisInstanceDownloadLimitBase = e;
+                thisInstanceDownloadLimitBase = e == 0 ? -1 : e;
                 CalculateBps();
             }
 

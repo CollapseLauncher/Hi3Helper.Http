@@ -36,6 +36,7 @@ namespace Hi3Helper.Http
         private void DownloadSpeedChangeListener(object? sender, long newRequestedSpeed)
         {
             DownloadSpeedChangedEvent?.Invoke(this, newRequestedSpeed);
+            InitialRequestedSpeed = newRequestedSpeed;
         }
     }
 }
