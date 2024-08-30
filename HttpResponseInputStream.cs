@@ -19,14 +19,14 @@ namespace Hi3Helper.Http
     {
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         private HttpRequestMessage _networkRequest;
-        private HttpResponseMessage _networkResponse;
+        private HttpResponseMessage? _networkResponse;
         private Stream _networkStream;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
-        private long           _networkLength;
-        private long           _currentPosition;
+        private long _networkLength;
+        private long _currentPosition;
         private HttpStatusCode _statusCode;
-        private bool           _isSuccessStatusCode;
+        private bool _isSuccessStatusCode;
 
         public static async Task<HttpResponseInputStream?> CreateStreamAsync(
             HttpClient client,
@@ -61,7 +61,7 @@ namespace Hi3Helper.Http
 
             CancellationTokenSource? timeoutToken = null;
             CancellationTokenSource? coopToken = null;
-            Start:
+        Start:
             try
             {
                 timeoutToken = new CancellationTokenSource(timeoutInterval.Value);
@@ -230,23 +230,23 @@ namespace Hi3Helper.Http
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            if (!disposing)
             {
-                _networkRequest.Dispose();
-                _networkResponse.Dispose();
-                _networkStream.Dispose();
+                return;
             }
 
-            GC.SuppressFinalize(this);
+            _networkRequest.Dispose();
+            _networkResponse?.Dispose();
+            _networkStream.Dispose();
         }
 
 #if NET6_0_OR_GREATER
         public override async ValueTask DisposeAsync()
         {
             _networkRequest.Dispose();
-            _networkResponse.Dispose();
+            _networkResponse?.Dispose();
             await _networkStream.DisposeAsync();
-            
+
             GC.SuppressFinalize(this);
         }
 #endif
