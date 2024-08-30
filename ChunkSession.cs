@@ -41,7 +41,7 @@ namespace Hi3Helper.Http
             // Enumerate previous chunks inside the metadata first
             FileInfo outputFileInfo = new FileInfo(outputFilePath);
 
-            // If the overwrite is toggled and the file exist, delete them.
+            // If overwrite is toggled and the file exist, delete them.
             // Or if the file overflow, then delete the file and start from scratch
             if ((outputFileInfo.Exists && outputFileInfo.Length > contentLength)
               || outputFileInfo.Exists && overwrite)

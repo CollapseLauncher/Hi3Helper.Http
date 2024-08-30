@@ -1,11 +1,11 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+// ReSharper disable MemberCanBePrivate.Global
 
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
 // ReSharper disable UnusedMember.Global
@@ -325,7 +325,7 @@ namespace Hi3Helper.Http
         /// </summary>
         /// <param name="url">The URL to check</param>
         /// <param name="cancelToken">The cancellation token</param>
-        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and a <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
+        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and an <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
         public async ValueTask<(HttpStatusCode, bool)> GetURLStatus(string url, CancellationToken cancelToken)
             => await GetURLStatus(CurrentHttpClientInstance, url, cancelToken);
 
@@ -334,27 +334,27 @@ namespace Hi3Helper.Http
         /// </summary>
         /// <param name="url">The URL to check</param>
         /// <param name="cancelToken">The cancellation token</param>
-        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and a <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
+        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and an <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
         public async ValueTask<(HttpStatusCode, bool)> GetURLStatus(Uri url, CancellationToken cancelToken)
             => await GetURLStatus(CurrentHttpClientInstance, url, cancelToken);
 
         /// <summary>
-        /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL from a <seealso cref="HttpClient"/> instance.
+        /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL from an <seealso cref="HttpClient"/> instance.
         /// </summary>
         /// <param name="httpClient">The <seealso cref="HttpClient"/> instance to be used for URL checking</param>
         /// <param name="url">The URL to check</param>
         /// <param name="cancelToken">The cancellation token</param>
-        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and a <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
+        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and an <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
         public static async ValueTask<(HttpStatusCode, bool)> GetURLStatus(HttpClient httpClient, string url, CancellationToken cancelToken)
             => await GetURLStatus(httpClient, url.ToUri(), cancelToken);
 
         /// <summary>
-        /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL from a <seealso cref="HttpClient"/> instance.
+        /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL from an <seealso cref="HttpClient"/> instance.
         /// </summary>
         /// <param name="httpClient">The <seealso cref="HttpClient"/> instance to be used for URL checking</param>
         /// <param name="url">The URL to check</param>
         /// <param name="cancelToken">The cancellation token</param>
-        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and a <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
+        /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and an <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
         public static async ValueTask<(HttpStatusCode, bool)> GetURLStatus(HttpClient httpClient, Uri url, CancellationToken cancelToken)
         {
             using (HttpResponseMessage response = await httpClient.SendAsync(
@@ -482,7 +482,7 @@ namespace Hi3Helper.Http
                 throw new InvalidOperationException($"You cannot set {nameof(httpClient)} to null while {nameof(expectedLength)} is set to 0!");
 
             // Get the file size from the URL or expected value
-            long contentLength = expectedLength > 0 ? expectedLength : await fileUrl.GetUrlContentLengthAsync(httpClient!, retryCountMax ?? DefaultRetryCountMax,
+            long contentLength = expectedLength > 0 ? expectedLength : await fileUrl.GetUrlContentLengthAsync(httpClient!, (int)retryCountMax,
                 retryAttemptInterval.Value, timeoutAfterInterval.Value, cancelToken);
 
             // Get the last session metadata info
@@ -504,9 +504,9 @@ namespace Hi3Helper.Http
             }
 
             // Enumerate last ranges
-            long lastEndOffset = currentSessionMetadata.Ranges.Count > 0
-                ? currentSessionMetadata.Ranges.Max(x => x?.End ?? 0) + 1
-                : 0;
+            // long lastEndOffset = currentSessionMetadata.Ranges.Count > 0
+            //     ? currentSessionMetadata.Ranges.Max(x => x?.End ?? 0) + 1
+            //     : 0;
 
             // If the metadata is not exist, but it has an uncompleted file with size > DefaultSessionChunkSize,
             // then try to resume the download and advance the lastEndOffset from the file last position.

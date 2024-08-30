@@ -1,4 +1,5 @@
 ﻿using System;
+// ReSharper disable UnusedType.Global
 
 namespace Hi3Helper.Http
 {
@@ -11,6 +12,7 @@ namespace Hi3Helper.Http
     public class DownloadSpeedLimiter
     {
         internal event EventHandler<long>? DownloadSpeedChangedEvent;
+        // ReSharper disable once MemberCanBePrivate.Global
         internal long? InitialRequestedSpeed { get; set; }
         private EventHandler<long>? InnerListener { get; set; }
 
@@ -30,8 +32,9 @@ namespace Hi3Helper.Http
         /// <summary>
         /// Get the listener for the parent event
         /// </summary>
-        /// <returns>The <seealso cref="EventHandler{long}"/> of the listener.</returns>
-        public EventHandler<long> GetListener() => InnerListener ??= new EventHandler<long>(DownloadSpeedChangeListener);
+        /// <returns>The EventHandler of the listener.</returns>
+        /// <seealso cref="EventHandler"/>
+        public EventHandler<long> GetListener() => InnerListener ??= DownloadSpeedChangeListener;
 
         private void DownloadSpeedChangeListener(object? sender, long newRequestedSpeed)
         {

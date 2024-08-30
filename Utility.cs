@@ -67,7 +67,7 @@ namespace Hi3Helper.Http
         {
             try
             {
-                long len = stream.Length;
+                _ = stream.Length;
                 return true;
             }
             catch { return false; }
