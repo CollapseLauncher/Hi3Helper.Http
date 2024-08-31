@@ -237,7 +237,7 @@ namespace Hi3Helper.Http
 
             _networkRequest.Dispose();
             _networkResponse?.Dispose();
-            _networkStream.Dispose();
+            _networkStream?.Dispose();
         }
 
 #if NET6_0_OR_GREATER
@@ -245,7 +245,8 @@ namespace Hi3Helper.Http
         {
             _networkRequest.Dispose();
             _networkResponse?.Dispose();
-            await _networkStream.DisposeAsync();
+            if (_networkStream != null)
+                await _networkStream.DisposeAsync();
 
             GC.SuppressFinalize(this);
         }
