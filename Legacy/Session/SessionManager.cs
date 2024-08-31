@@ -11,9 +11,15 @@ namespace Hi3Helper.Http.Legacy
     public sealed partial class Http
     {
 #if NET6_0_OR_GREATER
-        private async ValueTask<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, string PathOutput = null, bool IsOverwrite = false, Stream _Stream = null, bool IgnoreOutStreamLength = false, CancellationToken Token = default)
+        private async ValueTask<Session> InitializeSingleSession(long? offsetStart,
+                                                                 long? offsetEnd,
+                                                                 string? pathOutput = null,
+                                                                 bool isOverwrite = false,
+                                                                 Stream? stream = null,
+                                                                 bool ignoreOutStreamLength = false,
+                                                                 CancellationToken token = default)
 #else
-        private async Task<Session> InitializeSingleSession(long? OffsetStart, long? OffsetEnd, string PathOutput = null, bool IsOverwrite = false, Stream _Stream = null, bool IgnoreOutStreamLength = false, CancellationToken Token = default)
+        private async Task<Session> InitializeSingleSession(long? offsetStart, long? offsetEnd, string pathOutput = null, bool isOverwrite = false, Stream stream = null, bool ignoreOutStreamLength = false, CancellationToken token = default)
 #endif
         {
             this.SizeAttribute.SizeTotalToDownload = 0;
@@ -22,32 +28,32 @@ namespace Hi3Helper.Http.Legacy
 
             this.DownloadState = DownloadState.WaitingOnSession;
 
-            Token.ThrowIfCancellationRequested();
+            token.ThrowIfCancellationRequested();
 
             Session session = new Session(this.PathURL,
-                this._handler, OffsetStart, OffsetEnd,
-                this._clientUserAgent, true, this._client, IgnoreOutStreamLength);
+                this._handler, offsetStart, offsetEnd,
+                this._clientUserAgent, true, this._client, ignoreOutStreamLength);
                 session.SessionClient = this._client;
 
-            if (string.IsNullOrEmpty(PathOutput) && _Stream == null)
-                throw new ArgumentNullException(nameof(PathOutput), $"You cannot put PathOutput and _Stream argument both on null!");
+            if (string.IsNullOrEmpty(pathOutput) && stream == null)
+                throw new ArgumentNullException(nameof(pathOutput), $"You cannot put PathOutput and _Stream argument both on null!");
 
-            if (_Stream == null)
-                await session.AssignOutputStreamFromFile(IsOverwrite, PathOutput, IgnoreOutStreamLength);
+            if (stream == null)
+                await session.AssignOutputStreamFromFile(isOverwrite, pathOutput!, ignoreOutStreamLength);
             else
-                session.AssignOutputStreamFromStream(_Stream, IgnoreOutStreamLength);
+                session.AssignOutputStreamFromStream(stream, ignoreOutStreamLength);
 
-            if (!await session.TryGetHttpRequest(Token))
+            if (!await session.TryGetHttpRequest(token))
             {
 #if NET6_0_OR_GREATER
                 await session.DisposeAsync();
 #else
                 session.Dispose();
 #endif
-                return null;
+                throw new HttpRequestException();
             }
 
-            if ((int)session.StreamInput._statusCode == 416) return null;
+            if ((int)session.StreamInput._statusCode == 416) throw new HttpRequestException("Http session returned 416!");
             this.SizeAttribute.SizeTotalToDownload = session.IsFileMode ? session.StreamInput.Length + session.StreamOutputSize : session.StreamInput.Length;
             this.SizeAttribute.SizeDownloaded = session.StreamOutputSize;
 
@@ -80,7 +86,7 @@ namespace Hi3Helper.Http.Legacy
                 )
             {
                 bool isInitSucceed = true;
-                Session session = null;
+                Session session = null!;
                 try
                 {
                     long sessionId = GetHashNumber(sessionThread, currentThread);

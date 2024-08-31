@@ -10,13 +10,13 @@ namespace Hi3Helper.Http.Legacy
 {
     public class HttpResponseInputStream : Stream
     {
-        private protected HttpRequestMessage _networkRequest;
-        private protected HttpResponseMessage _networkResponse;
-        private protected Stream _networkStream;
-        private protected long _networkLength;
-        private protected long _currentPosition;
-        public HttpStatusCode _statusCode;
-        public bool _isSuccessStatusCode;
+        private protected HttpRequestMessage  _networkRequest  = null!;
+        private protected HttpResponseMessage _networkResponse = null!;
+        private protected Stream              _networkStream   = null!;
+        private protected long                _networkLength;
+        private protected long                _currentPosition;
+        public            HttpStatusCode      _statusCode;
+        public            bool                _isSuccessStatusCode;
 
         public static async Task<HttpResponseInputStream> CreateStreamAsync(HttpClient client, string url, long? startOffset, long? endOffset, CancellationToken token)
         {
@@ -57,7 +57,7 @@ namespace Hi3Helper.Http.Legacy
 #else
                 httpResponseInputStream.Dispose();
 #endif
-                return null;
+                throw new HttpRequestException("Http request returned 416!");
             }
 
             throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", httpResponseInputStream._networkResponse.StatusCode, url));
@@ -169,39 +169,48 @@ namespace Hi3Helper.Http.Legacy
 #endif
     {
         #nullable enable
-        internal Session(string PathURL,                          HttpClientHandler ClientHandler,
-            long?               OffsetStart              = null,  long?             OffsetEnd             = null,
-            string?             UserAgent                = null,
-            bool                UseExternalSessionClient = false, HttpClient?       ExternalSessionClient = null,
-            bool                IgnoreOutStreamLength    = false)
+        internal Session(string pathURL,
+                         HttpClientHandler clientHandler,
+                         long? offsetStart = null,
+                         long? offsetEnd = null, 
+                         string? userAgent = null, 
+                         bool useExternalSessionClient = false,
+                         HttpClient? externalSessionClient = null, 
+                         bool ignoreOutStreamLength = false)
         {
             // Initialize Properties
-            this.PathURL = PathURL;
+            this.PathURL = pathURL;
             this.IsDisposed = false;
-            this.IsUseExternalSession = UseExternalSessionClient;
+            this.IsUseExternalSession = useExternalSessionClient;
             this.SessionState = DownloadState.Idle;
-            this.SessionClient = UseExternalSessionClient ? ExternalSessionClient : new HttpClient(ClientHandler)
-            {
-                Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-#if NET6_0_OR_GREATER
-                ,
-                DefaultRequestVersion = HttpVersion.Version30,
-                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
-#endif
-            };
+            
+            if (useExternalSessionClient && externalSessionClient == null)
+                throw new HttpHelperSessionNotReady("External session is null!");
+            
+            this.SessionClient = useExternalSessionClient ? externalSessionClient! : 
+                new HttpClient(clientHandler)
+                {
+                    Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
+        #if NET6_0_OR_GREATER
+                    ,
+                    DefaultRequestVersion = HttpVersion.Version30,
+                    DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+        #endif
+                };
             this.SessionID = 0;
 
-            if (!UseExternalSessionClient && UserAgent != null)
+            if (!useExternalSessionClient && userAgent != null)
             {
-                this.SessionClient?.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+                this.SessionClient?.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
             }
 
-            this.OffsetStart = OffsetStart;
-            this.OffsetEnd = OffsetEnd;
+            this.OffsetStart = offsetStart;
+            this.OffsetEnd = offsetEnd;
         }
         #nullable restore
 
         // Seek the StreamOutput to the end of file
+        // ReSharper disable once MemberCanBePrivate.Global
         internal void SeekStreamOutputToEnd() => this.StreamOutput?.Seek(0, SeekOrigin.End);
 
         internal async Task AssignOutputStreamFromFile(bool isOverwrite, string filePath, bool IgnoreOutStreamLength)
@@ -249,7 +258,7 @@ namespace Hi3Helper.Http.Legacy
                     this.StreamInput.Dispose();
 #endif
 
-                return new Tuple<bool, Exception>(await TryGetHttpRequest(token), null);
+                return new Tuple<bool, Exception>(await TryGetHttpRequest(token), null!);
             }
             catch (Exception ex)
             {
@@ -349,14 +358,14 @@ namespace Hi3Helper.Http.Legacy
         internal bool IsDisposed;
 
         // Session Properties
-        internal HttpClient SessionClient;
+        internal HttpClient    SessionClient = null!;
         internal DownloadState SessionState;
-        internal int SessionRetryAttempt { get; set; }
-        internal long SessionID;
+        internal int           SessionRetryAttempt { get; set; }
+        internal long          SessionID;
 
         // Stream Properties
-        internal HttpResponseInputStream StreamInput;
-        internal Stream StreamOutput;
-        internal long StreamOutputSize => (this.StreamOutput?.CanWrite ?? false) || (this.StreamOutput?.CanRead ?? false) ? this.StreamOutput.Length : 0;
+        internal HttpResponseInputStream StreamInput  = null!;
+        internal Stream                  StreamOutput = null!;
+        internal long                    StreamOutputSize => (this.StreamOutput?.CanWrite ?? false) || (this.StreamOutput?.CanRead ?? false) ? this.StreamOutput.Length : 0;
     }
 }

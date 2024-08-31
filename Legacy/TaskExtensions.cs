@@ -28,29 +28,18 @@ namespace Hi3Helper.Http.Legacy
 #endif
             WaitForRetryAsync<TResult>(Func<ActionTimeoutValueTaskCallback<TResult>> funcCallback, int? timeout = null,
                                        int? timeoutStep = null, int? retryAttempt = null,
-                                       ActionOnTimeOutRetry actionOnRetry = null, CancellationToken fromToken = default)
+                                       ActionOnTimeOutRetry? actionOnRetry = null, CancellationToken fromToken = default)
         {
-            if (timeout == null)
-            {
-                timeout = DefaultTimeoutSec;
-            }
+            timeout      ??= DefaultTimeoutSec;
+            retryAttempt ??= DefaultRetryAttempt;
+            timeoutStep  ??= 0;
 
-            if (retryAttempt == null)
-            {
-                retryAttempt = DefaultRetryAttempt;
-            }
-
-            if (timeoutStep == null)
-            {
-                timeoutStep = 0;
-            }
-
-            int retryAttemptCurrent = 1;
+            var retryAttemptCurrent = 1;
             while (retryAttemptCurrent < retryAttempt)
             {
                 fromToken.ThrowIfCancellationRequested();
-                CancellationTokenSource innerCancellationToken = null;
-                CancellationTokenSource consolidatedToken = null;
+                CancellationTokenSource? innerCancellationToken = null;
+                CancellationTokenSource? consolidatedToken = null;
 
                 try
                 {
@@ -59,7 +48,7 @@ namespace Hi3Helper.Http.Legacy
                     consolidatedToken =
                         CancellationTokenSource.CreateLinkedTokenSource(innerCancellationToken.Token, fromToken);
 
-                    ActionTimeoutValueTaskCallback<TResult> delegateCallback = funcCallback();
+                    var delegateCallback = funcCallback();
                     return await delegateCallback(consolidatedToken.Token);
                 }
                 catch (TaskCanceledException)

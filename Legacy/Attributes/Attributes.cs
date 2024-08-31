@@ -9,11 +9,11 @@ namespace Hi3Helper.Http.Legacy
         // Inner HttpClient instance
         private HttpClient _client;
         // Inner HttpClient UserAgent string
-        private string _clientUserAgent;
+        private string _clientUserAgent = null!;
         // Inner HttpClient instance
         private bool _ignoreHttpCompression;
         // Inner HttpClient handler
-        private HttpClientHandler _handler;
+        private HttpClientHandler _handler = null!;
         // Inner Buffer size
         private const int _bufferSize = 64 << 10;
 
@@ -31,9 +31,9 @@ namespace Hi3Helper.Http.Legacy
         private Stopwatch SessionsStopwatch;
 
         // Path of the Download
-        private string PathURL;
-        private string PathOutput;
-        private bool PathOverwrite;
+        private       string PathURL    = null!;
+        private       string PathOutput = null!;
+        private       bool   PathOverwrite;
         private const string PathSessionPrefix = ".{0}";
 
         // Download Statistics

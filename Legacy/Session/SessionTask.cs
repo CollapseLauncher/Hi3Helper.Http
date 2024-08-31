@@ -49,7 +49,7 @@ namespace Hi3Helper.Http.Legacy
             if (session == null) return;
             DownloadEvent Event = new DownloadEvent();
 
-            CancellationTokenSource innerTimeoutToken = null, cooperatedToken = null;
+            CancellationTokenSource innerTimeoutToken, cooperatedToken;
             while (true)
             {
                 bool AllowDispose = false;

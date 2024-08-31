@@ -10,7 +10,6 @@ namespace Hi3Helper.Http.Legacy
 {
     public sealed partial class Http : IDisposable
     {
-#nullable enable
         public Http(bool IgnoreCompress = true, byte RetryMax = 5, short RetryInterval = 1000, string? UserAgent = null,
                     HttpClient? customHttpClient = null)
         {
@@ -19,7 +18,7 @@ namespace Hi3Helper.Http.Legacy
             this.DownloadState = DownloadState.Idle;
             this.SessionsStopwatch = Stopwatch.StartNew();
             this.SizeAttribute = new AttributesSize();
-            this._clientUserAgent = UserAgent;
+            this._clientUserAgent = UserAgent!;
             this._ignoreHttpCompression = IgnoreCompress;
 
             if (customHttpClient != null)
@@ -149,7 +148,7 @@ namespace Hi3Helper.Http.Legacy
 
         private void FinalizeDispose()
         {
-            this._handler = null;
+            this._handler = null!;
 
             this._client.Dispose();
             this.IsDisposed = true;
