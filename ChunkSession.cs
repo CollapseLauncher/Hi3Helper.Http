@@ -233,9 +233,9 @@ namespace Hi3Helper.Http
                     return;
                 }
 
-                // Find nearby previous start if start is more than bufferLen and start is more than nearby end,
+                // Start checking if start is more than nearby end,
                 // then start checking for the zero data
-                if (range.Start > bufferLen - 1 && range.Start > nearbyEnd)
+                if (range.Start > nearbyEnd)
                 {
                     // Get the da stream
                     using (FileStream fileStream = existingFileInfo.Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
@@ -250,7 +250,16 @@ namespace Hi3Helper.Http
 
                         // Clamp the value between length of buffer and fileStream length, subtract to
                         // the current start range, and to between 0.
-                        int toReadMin = (int)Math.Min(bufferLen, fileStream.Length);
+                        int toReadMin = 0;
+                        if (range.Start < bufferLen)
+                        {
+                            toReadMin = (int)range.Start;
+                        }
+                        else
+                        {
+                            toReadMin = (int)Math.Min(fileStream.Length, bufferLen);
+                        }
+
                         fileStream.Position = Math.Max(range.Start - toReadMin, 0);
 
                         // Read the stream to the given buffer length
