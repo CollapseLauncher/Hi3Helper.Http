@@ -34,9 +34,11 @@ namespace Hi3Helper.Http
             CalculateBps();
 
         StartWrite:
-            byte[] buffer = ArrayPool<byte>.Shared.Rent(32 << 10);
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(16 << 10);
             CancellationTokenSource? timeoutToken = null;
             CancellationTokenSource? coopToken = null;
+
+            int wri = 0;
 
             try
             {
@@ -48,6 +50,11 @@ namespace Hi3Helper.Http
                 if (downloadSpeedLimiter != null)
                 {
                     downloadSpeedLimiter.DownloadSpeedChangedEvent += DownloadClient_DownloadSpeedLimitChanged;
+                }
+
+                if (session.CurrentPositions.Start >= session.CurrentPositions.End)
+                {
+                    return;
                 }
 
                 if (!isNetworkStreamFromExternal || (isNetworkStreamFromExternal && currentRetry > 0))
@@ -63,7 +70,7 @@ namespace Hi3Helper.Http
 
                 if (fileStream.CanSeek && session.CurrentPositions.End + 1 > fileStream.Length)
                 {
-                    fileStream.SetLength(session.CurrentPositions.Start + 1);
+                    fileStream.SetLength(session.CurrentPositions.Start);
                 }
 
                 if (fileStream.CanSeek)
@@ -79,6 +86,7 @@ namespace Hi3Helper.Http
                 {
                     await fileStream.WriteAsync(buffer, 0, read, coopToken.Token);
                     written += read;
+                    wri += read;
                     session.CurrentPositions.AdvanceStartOffset(read);
                     session.CurrentMetadata?.UpdateLastEndOffset(session.CurrentPositions);
                     downloadProgress.AdvanceBytesDownloaded(read);

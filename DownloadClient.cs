@@ -165,6 +165,9 @@ namespace Hi3Helper.Http
                             progressDelegateAsync,
                             cancelToken);
 
+                        if (chunk.CurrentPositions.End - 1 > chunk.CurrentPositions.Start)
+                            throw new Exception();
+
                         chunk.CurrentMetadata.PopRange(chunk.CurrentPositions);
                         await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
                     }
@@ -485,19 +488,36 @@ namespace Hi3Helper.Http
             long contentLength = expectedLength > 0 ? expectedLength : await fileUrl.GetUrlContentLengthAsync(httpClient!, (int)retryCountMax,
                 retryAttemptInterval.Value, timeoutAfterInterval.Value, cancelToken);
 
-            // Get the last session metadata info
-            Metadata currentSessionMetadata =
-                await Metadata.ReadLastMetadataAsync(null, filePath, 0, cancelToken);
-
+            // Get current file info
             FileInfo currentFileInfo = new FileInfo(filePath);
+
+            // Get metadata file info
+            string metadataFilePath = currentFileInfo.FullName + Metadata.MetadataExtension;
+            FileInfo metadataFileInfo = new FileInfo(metadataFilePath);
+
+            // Get the last session metadata info
+            Metadata? currentSessionMetadata =
+                await Metadata.ReadLastMetadataAsync(null, currentFileInfo, metadataFileInfo, 0, cancelToken);
+
+            // Set the current length to 0;
             long currentLength = 0;
+
+            // SANITY CHECK: Metadata and file state check
+            if ((metadataFileInfo.Exists && metadataFileInfo.Length < 64 && currentFileInfo.Exists)
+             || (currentFileInfo.Exists && currentFileInfo.Length > contentLength)
+             || (metadataFileInfo.Exists && !currentFileInfo.Exists)
+             || ((currentSessionMetadata?.Ranges?.Count ?? 0) == 0 && (currentSessionMetadata?.IsCompleted ?? false)))
+            {
+                // Return 0 as uncompleted
+                return 0;
+            }
 
             // If the completed flag is set, the ranges are empty, the output file exist with the length is equal,
             // then return from enumerating. Or if the ranges list is empty, return
-            if ((currentSessionMetadata.Ranges?.Count == 0
+            if ((currentSessionMetadata?.Ranges?.Count == 0
                  && currentFileInfo.Exists
                  && currentFileInfo.Length == contentLength)
-                || currentSessionMetadata.Ranges == null)
+                || currentSessionMetadata?.Ranges == null)
             {
                 currentLength += contentLength;
                 return currentLength;

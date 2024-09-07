@@ -84,32 +84,31 @@ namespace Hi3Helper.Http
                 httpResponseInputStream._statusCode = httpResponseInputStream._networkResponse.StatusCode;
                 httpResponseInputStream._isSuccessStatusCode =
                     httpResponseInputStream._networkResponse.IsSuccessStatusCode;
-                if (httpResponseInputStream._isSuccessStatusCode)
+
+                if ((int)httpResponseInputStream._statusCode == 416)
                 {
-                    httpResponseInputStream._networkLength =
-                        httpResponseInputStream._networkResponse.Content.Headers.ContentLength ?? 0;
-                    httpResponseInputStream._networkStream = await httpResponseInputStream._networkResponse.Content
-#if NET6_0_OR_GREATER
-                        .ReadAsStreamAsync(token);
-#else
-                        .ReadAsStreamAsync();
-#endif
-                    return httpResponseInputStream;
+                    return null;
                 }
 
-                if ((int)httpResponseInputStream._statusCode != 416)
+                if (!httpResponseInputStream._isSuccessStatusCode)
                 {
-                    throw new HttpRequestException(string.Format(
-                        "HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}",
-                        httpResponseInputStream._networkResponse.StatusCode, url));
+#if NET6_0_OR_GREATER
+                    await httpResponseInputStream.DisposeAsync();
+#else
+                    httpResponseInputStream.Dispose();
+#endif
+                    throw new HttpRequestException($"The url {url} returns an unsuccessful status code: {httpResponseInputStream._networkResponse.StatusCode} ({(int)httpResponseInputStream._networkResponse.StatusCode})");
                 }
 
+                httpResponseInputStream._networkLength =
+                    httpResponseInputStream._networkResponse.Content.Headers.ContentLength ?? 0;
+                httpResponseInputStream._networkStream = await httpResponseInputStream._networkResponse.Content
 #if NET6_0_OR_GREATER
-                await httpResponseInputStream.DisposeAsync();
+                    .ReadAsStreamAsync(token);
 #else
-                httpResponseInputStream.Dispose();
+                    .ReadAsStreamAsync();
 #endif
-                return null;
+                return httpResponseInputStream;
             }
             catch (TaskCanceledException) when (token.IsCancellationRequested)
             {

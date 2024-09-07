@@ -12,7 +12,7 @@ namespace Hi3Helper.Http
 {
     internal class Metadata
     {
-        private const string MetadataExtension = ".collapseMeta";
+        internal const string MetadataExtension = ".collapseMeta";
 
         public Uri? Url { get; set; }
         public string? MetadataFilePath { get; set; }
@@ -26,76 +26,72 @@ namespace Hi3Helper.Http
 
         internal event EventHandler<bool>? UpdateChunkRangesCountEvent;
 
-        internal static async ValueTask<Metadata> ReadLastMetadataAsync(Uri? url, string outputFilePath,
-            long targetToDownloadSize, CancellationToken token)
+        internal static async ValueTask<Metadata?> ReadLastMetadataAsync(Uri? url, FileInfo outputFilePath,
+            FileInfo metadataFilePath, long targetToDownloadSize, CancellationToken token)
         {
-            string metadataFilePath = outputFilePath + MetadataExtension;
-            if (!File.Exists(metadataFilePath))
+            try
             {
-                FileInfo existingOutputFile = new FileInfo(outputFilePath);
-                if (existingOutputFile.Exists && existingOutputFile.Length == targetToDownloadSize)
+                if (!metadataFilePath.Exists)
                 {
-                    return new Metadata
+                    if (outputFilePath.Exists && outputFilePath.Length == targetToDownloadSize)
                     {
-                        Url = url,
-                        OutputFilePath = outputFilePath,
-                        TargetToCompleteSize = targetToDownloadSize,
-                        IsCompleted = true,
-                        MetadataFilePath = metadataFilePath
-                    };
+                        return null;
+                    }
+
+                    throw new InvalidDataException();
                 }
 
+                await using (FileStream metadataStream = metadataFilePath.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    if (metadataStream.Length < 64)
+                    {
+                        throw new InvalidDataException();
+                    }
+
+                    Metadata? lastMetadata =
+                        await JsonSerializer.DeserializeAsync(metadataStream, MetadataJsonContext.Default.Metadata, token);
+
+                    if (lastMetadata == null
+                        || lastMetadata.Url == null
+                        || lastMetadata.Ranges?.Count == 0
+                        || string.IsNullOrEmpty(lastMetadata.OutputFilePath))
+                    {
+                        throw new InvalidDataException();
+                    }
+
+                    lastMetadata.MetadataFilePath = metadataFilePath.FullName;
+                    lastMetadata.Ranges?.Sort((x, y) =>
+                    {
+                        // If the source is null, then return -1 (less than)
+                        if (x == null || y == null)
+                        {
+                            return -1;
+                        }
+
+                        // Compare based on Start
+                        int startComparison = x.Start.CompareTo(y.Start);
+                        return startComparison != 0
+                            ? startComparison
+                            :
+                            // If Start is equal, compare based on End
+                            x.End.CompareTo(y.End);
+                    });
+                    lastMetadata.Ranges?.RemoveAll(x => x == null);
+                    return lastMetadata;
+                }
+            }
+            catch (Exception)
+            {
+                // Invalid state, then return an empty metadata file
                 return new Metadata
                 {
                     Url = url,
-                    OutputFilePath = outputFilePath,
+                    OutputFilePath = outputFilePath.FullName,
                     TargetToCompleteSize = targetToDownloadSize,
                     IsCompleted = false,
                     Ranges = new List<ChunkRange?>(),
-                    MetadataFilePath = metadataFilePath
+                    MetadataFilePath = metadataFilePath.FullName
                 };
-            }
-
-            await using (FileStream metadataStream =
-                         new FileStream(metadataFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            {
-                Metadata? lastMetadata =
-                    await JsonSerializer.DeserializeAsync(metadataStream, MetadataJsonContext.Default.Metadata, token);
-                if (lastMetadata == null
-                    || lastMetadata.Url == null
-                    || lastMetadata.Ranges?.Count == 0
-                    || string.IsNullOrEmpty(lastMetadata.OutputFilePath))
-                {
-                    return new Metadata
-                    {
-                        Url = url,
-                        OutputFilePath = outputFilePath,
-                        TargetToCompleteSize = targetToDownloadSize,
-                        IsCompleted = false,
-                        Ranges = new List<ChunkRange?>(),
-                        MetadataFilePath = metadataFilePath
-                    };
-                }
-
-                lastMetadata.MetadataFilePath = metadataFilePath;
-                lastMetadata.Ranges?.Sort((x, y) =>
-                {
-                    // If the source is null, then return -1 (less than)
-                    if (x == null || y == null)
-                    {
-                        return -1;
-                    }
-
-                    // Compare based on Start
-                    int startComparison = x.Start.CompareTo(y.Start);
-                    return startComparison != 0
-                        ? startComparison
-                        :
-                        // If Start is equal, compare based on End
-                        x.End.CompareTo(y.End);
-                });
-                lastMetadata.Ranges?.RemoveAll(x => x == null);
-                return lastMetadata;
             }
         }
 

@@ -33,35 +33,66 @@ namespace Hi3Helper.Http
             // Set the length to the progress
             downloadProgress.SetBytesTotal(contentLength);
 
-        StartEnumerate:
-            // Get the last session metadata info
-            Metadata currentSessionMetadata =
-                await Metadata.ReadLastMetadataAsync(url, outputFilePath, contentLength, cancellationToken);
-
             // Enumerate previous chunks inside the metadata first
             FileInfo outputFileInfo = new FileInfo(outputFilePath);
 
+            // Enumerate previous chunks inside the metadata first
+            string metadataFilePath = outputFileInfo.FullName + Metadata.MetadataExtension;
+            FileInfo metadataFileInfo = new FileInfo(metadataFilePath);
+
+        StartEnumerate:
+            // Get the last session metadata info
+            Metadata? currentSessionMetadata =
+                await Metadata.ReadLastMetadataAsync(url, outputFileInfo, metadataFileInfo,
+                contentLength, cancellationToken);
+
+            // null as per completed status
+            if (currentSessionMetadata == null)
+            {
+                downloadProgress.AdvanceBytesDownloaded(contentLength);
+                progressDelegateAsync?.Invoke(0, downloadProgress);
+                yield break;
+            }
+
+            // SANITY CHECK: Metadata and file state check
+
             // If overwrite is toggled and the file exist, delete them.
             // Or if the file overflow, then delete the file and start from scratch
-            if ((outputFileInfo.Exists && outputFileInfo.Length > contentLength)
-              || outputFileInfo.Exists && overwrite)
+            if ((outputFileInfo.Exists && overwrite)
+             || (outputFileInfo.Exists && outputFileInfo.Length > contentLength)
+             || (metadataFileInfo.Exists && metadataFileInfo.Length < 64 && outputFileInfo.Exists)
+             || (metadataFileInfo.Exists && !outputFileInfo.Exists)
+             || ((currentSessionMetadata?.Ranges?.Count ?? 0) == 0 && (currentSessionMetadata?.IsCompleted ?? false)))
             {
-                outputFileInfo.IsReadOnly = false;
-                outputFileInfo.Delete();
+                // Remove the redundant metadata file and refresh
+                metadataFileInfo.Refresh();
+                if (metadataFileInfo.Exists)
+                {
+                    metadataFileInfo.IsReadOnly = false;
+                    metadataFileInfo.Delete();
+                    metadataFileInfo.Refresh();
+                }
+
+                // If the current file info exist while the metadata is in invalid state,
+                // then remove the file.
                 outputFileInfo.Refresh();
+                if (outputFileInfo.Exists)
+                {
+                    outputFileInfo.IsReadOnly = false;
+                    outputFileInfo.Delete();
+                    outputFileInfo.Refresh();
+                }
 
-                if (File.Exists(currentSessionMetadata.MetadataFilePath))
-                    File.Delete(currentSessionMetadata.MetadataFilePath);
-
+                // Go start over
                 goto StartEnumerate;
             }
 
             // If the completed flag is set, the ranges are empty, the output file exist with the length is equal,
             // then return from enumerating. Or if the ranges list is empty, return
-            if ((currentSessionMetadata.Ranges?.Count == 0
+            if ((currentSessionMetadata?.Ranges?.Count == 0
                  && outputFileInfo.Exists
                  && outputFileInfo.Length == contentLength)
-                || currentSessionMetadata.Ranges == null)
+                || currentSessionMetadata?.Ranges == null)
             {
                 downloadProgress.AdvanceBytesDownloaded(contentLength);
                 progressDelegateAsync?.Invoke(0, downloadProgress);
@@ -89,27 +120,22 @@ namespace Hi3Helper.Http
             else if (outputFileInfo.Exists)
             {
                 ChunkRange lastRange = new ChunkRange();
-                foreach (ChunkRange? range in currentSessionMetadata.Ranges)
+                List<ChunkRange?> copyOfExistingRanges = new List<ChunkRange?>(currentSessionMetadata.Ranges);
+                foreach (ChunkRange? range in copyOfExistingRanges)
                 {
+                    // If range somehow return a null or the outputFileInfo.Length is less than range.Start and range.End,
+                    // or if the file does not exist, then skip
                     if (range == null)
                     {
                         continue;
                     }
 
                     long toAdd = range.Start - lastRange.End;
+
                     downloadProgress.AdvanceBytesDownloaded(toAdd);
                     progressDelegateAsync?.Invoke(0, downloadProgress);
 
                     lastRange = range;
-                }
-
-                List<ChunkRange?> lastRangeList = new(currentSessionMetadata.Ranges);
-                foreach (ChunkRange? range in lastRangeList)
-                {
-                    if (range == null)
-                    {
-                        continue;
-                    }
 
                     yield return new ChunkSession
                     {
@@ -124,14 +150,15 @@ namespace Hi3Helper.Http
             }
 
             // Enumerate the chunk session information to process
-            long remainedSize = contentLength - 1 - lastEndOffset;
+            long remainedSize = contentLength - lastEndOffset;
             long lastStartOffset = lastEndOffset;
             while (remainedSize > 0)
             {
                 long startOffset = lastStartOffset;
-                long toAdvanceSize = Math.Min(remainedSize + 1, chunkSize);
-                long endOffset = startOffset + toAdvanceSize - 1;
-                lastStartOffset = endOffset + 1;
+                long toAdvanceSize = Math.Min(remainedSize, chunkSize);
+                long toAdvanceOffset = toAdvanceSize - 1;
+                long endOffset = startOffset + toAdvanceOffset;
+                lastStartOffset += toAdvanceSize;
                 remainedSize -= toAdvanceSize;
 
                 ChunkSession chunkSession = new ChunkSession
