@@ -32,7 +32,7 @@ namespace Test
             {
                 try
                 {
-                    using (HttpClientHandler handler = new HttpClientHandler() { MaxConnectionsPerServer = 2048 })
+                    using (SocketsHttpHandler handler = new SocketsHttpHandler() { MaxConnectionsPerServer = 2048 })
                     using (HttpClient client = new HttpClient(handler, false))
                     using (HttpRequestMessage pkgVersionRequestMessage = new HttpRequestMessage()
                     {
@@ -62,7 +62,7 @@ namespace Test
 
                             // DownloadClient.SetSharedDownloadSpeedLimit(1 << 20);
                             Console.WriteLine("Downloading: {0}", pkgVersion.remoteName);
-                            await downloader.DownloadAsync(fileUrl, outputPath, true, null, null, DownloadProgressDelegateAsync, Environment.ProcessorCount);
+                            await downloader.DownloadAsync(fileUrl, outputPath, false, null, null, DownloadProgressDelegateAsync, Environment.ProcessorCount);
 
                             byte[] remoteHash = Convert.FromHexString(pkgVersion.md5);
 
@@ -70,7 +70,7 @@ namespace Test
                             byte[] currentHash = await MD5.HashDataAsync(fileStream);
 
                             if (!currentHash.AsSpan().SequenceEqual(remoteHash))
-                                throw new Exception();
+                                throw new Exception($"{outputPath}");
                         });
                     }
                 }
