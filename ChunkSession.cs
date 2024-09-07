@@ -16,6 +16,10 @@ namespace Hi3Helper.Http
 {
     internal class ChunkSession
     {
+        // Initialize zero vectors as static
+        private static readonly Vector128<byte> Vector128Zero = Vector128<byte>.Zero;
+        private static readonly Vector256<byte> Vector256Zero = Vector256<byte>.Zero;
+
         internal static async IAsyncEnumerable<ChunkSession> EnumerateMultipleChunks(
             HttpClient client,
             Uri url,
@@ -229,10 +233,6 @@ namespace Hi3Helper.Http
                     return;
                 }
 
-                // Initialize zero vectors
-                Vector128<byte> vector128Zero = Vector128<byte>.Zero;
-                Vector256<byte> vector256Zero = Vector256<byte>.Zero;
-
                 // Find nearby previous start if start is more than bufferLen and start is more than nearby end,
                 // then start checking for the zero data
                 if (range.Start > bufferLen - 1 && range.Start > nearbyEnd)
@@ -279,7 +279,7 @@ namespace Hi3Helper.Http
                             }
 
                             // Read 32 bytes from last, check if all the values are zero with SIMD
-                            bool isVector256Zero = IsVector256Zero(bufferPtr, offset, vector256Zero);
+                            bool isVector256Zero = IsVector256Zero(bufferPtr, offset, Vector256Zero);
                             if (isVector256Zero)
                             {
                                 offset -= 32;
@@ -288,7 +288,7 @@ namespace Hi3Helper.Http
                             }
 
                             // Read 16 bytes from last, check if all the values are zero with SIMD
-                            bool isVector128Zero = IsVector128Zero(bufferPtr, offset, vector128Zero);
+                            bool isVector128Zero = IsVector128Zero(bufferPtr, offset, Vector128Zero);
                             if (isVector128Zero)
                             {
                                 offset -= 16;
