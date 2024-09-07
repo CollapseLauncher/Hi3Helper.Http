@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -130,6 +133,9 @@ namespace Hi3Helper.Http
                         continue;
                     }
 
+                    // Check for invalid zero data at start
+                    CheckInvalidZeroDataAtStart(range, outputFileInfo, copyOfExistingRanges);
+
                     long toAdd = range.Start - lastRange.End;
 
                     downloadProgress.AdvanceBytesDownloaded(toAdd);
@@ -177,6 +183,184 @@ namespace Hi3Helper.Http
                 currentSessionMetadata.PushRange(chunkSession.CurrentPositions);
                 yield return chunkSession;
             }
+        }
+
+        private static unsafe void CheckInvalidZeroDataAtStart(ChunkRange range, FileInfo existingFileInfo, List<ChunkRange?> listOfRanges)
+        {
+            // If the start is 0, then return
+            if (range.Start == 0)
+                return;
+
+            // Set the buffer to read to 4096 bytes
+            const int bufferLen = 4 << 10;
+            long nearbyEnd = -1;
+
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferLen);
+            try
+            {
+                // Try find nearby start
+                for (int i = 0; i < listOfRanges.Count - 2; i++)
+                {
+                    if (listOfRanges[i]?.Start != 0 && i == 0)
+                    {
+                        nearbyEnd = 0;
+                        break;
+                    }
+
+                    // If the previous start range is less than current start range and
+                    // the next start range is more than the current end range, then assign the nearby end.
+                    if (listOfRanges[i]?.End < range.Start && listOfRanges[i + 1]?.End == range.End)
+                    {
+                        nearbyEnd = listOfRanges[i]?.End ?? 0;
+                        break;
+                    }
+                }
+
+                // If the nearby end is more than or equal to the current start - 1, then return
+                if (nearbyEnd >= range.Start - 1)
+                {
+                    return;
+                }
+
+                // If the nearby end is equal to -1 (none) and the list of
+                // ranges count is more than 2, then return
+                if (nearbyEnd == -1 && listOfRanges.Count > 2)
+                {
+                    return;
+                }
+
+                // Initialize zero vectors
+                Vector128<byte> vector128Zero = Vector128<byte>.Zero;
+                Vector256<byte> vector256Zero = Vector256<byte>.Zero;
+
+                // Find nearby previous start if start is more than bufferLen and start is more than nearby end,
+                // then start checking for the zero data
+                if (range.Start > bufferLen - 1 && range.Start > nearbyEnd)
+                {
+                    // Get the da stream
+                    using (FileStream fileStream = existingFileInfo.Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
+                    {
+                    StartReadData:
+                        // If the current start range is less than nearby end, then increment and return.
+                        if (range.Start < nearbyEnd)
+                        {
+                            range.Start = nearbyEnd + 1;
+                            return;
+                        }
+
+                        // Clamp the value between length of buffer and fileStream length, subtract to
+                        // the current start range, and to between 0.
+                        int toReadMin = (int)Math.Min(bufferLen, fileStream.Length);
+                        fileStream.Position = Math.Max(range.Start - toReadMin, 0);
+
+                        // Read the stream to the given buffer length
+                        int read = fileStream.Read(buffer, 0, toReadMin);
+
+                        // Assign the offset as the read pos and init offset back value.
+                        int offset = read;
+                        int dataOffsetToBack = 0;
+
+                        // If file is EOF, then return
+                        if (read == 0)
+                        {
+                            return;
+                        }
+
+                        // UNSAFE: Assign buffer as pointer
+                        fixed (byte* bufferPtr = &buffer[0])
+                        {
+                        // Start zero bytes check
+                        StartZeroCheck:
+                            // If there is no offset left, then continue read another data
+                            if (offset == 0)
+                            {
+                                range.Start -= dataOffsetToBack;
+                                goto StartReadData;
+                            }
+
+                            // Read 32 bytes from last, check if all the values are zero with SIMD
+                            bool isVector256Zero = IsVector256Zero(bufferPtr, offset, vector256Zero);
+                            if (isVector256Zero)
+                            {
+                                offset -= 32;
+                                dataOffsetToBack += 32;
+                                goto StartZeroCheck;
+                            }
+
+                            // Read 16 bytes from last, check if all the values are zero with SIMD
+                            bool isVector128Zero = IsVector128Zero(bufferPtr, offset, vector128Zero);
+                            if (isVector128Zero)
+                            {
+                                offset -= 16;
+                                dataOffsetToBack += 16;
+                                goto StartZeroCheck;
+                            }
+
+                            // Read 8 bytes from last, check if all the values are zero
+                            bool isInt64Zero = *(long*)(bufferPtr + (offset - 8)) == 0;
+                            if (isInt64Zero)
+                            {
+                                offset -= 8;
+                                dataOffsetToBack += 8;
+                                goto StartZeroCheck;
+                            }
+
+                            // Read 4 bytes from last, check if all the values are zero
+                            bool isInt32Zero = *(int*)(bufferPtr + (offset - 4)) == 0;
+                            if (isInt32Zero)
+                            {
+                                offset -= 4;
+                                dataOffsetToBack += 4;
+                                goto StartZeroCheck;
+                            }
+
+                            // Read one byte from last, check if all the values are zero
+                            bool isInt8Zero = *(bufferPtr + (offset - 1)) == 0;
+                            if (isInt8Zero)
+                            {
+                                --offset;
+                                ++dataOffsetToBack;
+                                goto StartZeroCheck;
+                            }
+
+                            // If all the bytes are non-zero (clean), then subtract the current start range and return
+                            if (!isVector256Zero && !isVector128Zero && !isInt64Zero && !isInt32Zero && !isInt8Zero)
+                            {
+                                range.Start -= dataOffsetToBack;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+
+        private static unsafe bool IsVector128Zero(byte* bufferPtr, int offset, Vector128<byte> zero)
+        {
+            // If Sse2 is not supported (really?) or offset < 16 bytes, then return false
+            if (!Sse2.IsSupported || offset < 16)
+                return false;
+
+            Vector128<byte> dataAsVector128 = *(Vector128<byte>*)(bufferPtr + (offset - 16));
+            Vector128<byte> result = Sse2.CompareEqual(dataAsVector128, zero);
+            int mask = Sse2.MoveMask(result);
+            return mask == 0xFFFF; // In SSE2, 0xFFFF == all zero
+        }
+
+        private static unsafe bool IsVector256Zero(byte* bufferPtr, int offset, Vector256<byte> zero)
+        {
+            // If Avx2 is not supported or offset < 32 bytes, then return false
+            if (!Avx2.IsSupported || offset < 32)
+                return false;
+
+            Vector256<byte> dataAsVector256 = *(Vector256<byte>*)(bufferPtr + (offset - 32));
+            Vector256<byte> result = Avx2.CompareEqual(dataAsVector256, zero);
+            int mask = Avx2.MoveMask(result);
+            return mask == unchecked((int)0xFFFFFFFF); // In AVX, 0xFFFFFFFF == all zero
         }
 
         internal static async ValueTask<(ChunkSession, HttpResponseInputStream)?> CreateSingleSessionAsync(

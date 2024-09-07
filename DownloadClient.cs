@@ -146,7 +146,7 @@ namespace Hi3Helper.Http
             ActionBlock<ChunkSession> actionBlock = new ActionBlock<ChunkSession>(async chunk =>
                 {
                     await using (FileStream stream = new FileStream(chunk.CurrentMetadata?.OutputFilePath!,
-                                     FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write))
+                                     FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
                     {
                         if (chunk.CurrentMetadata == null)
                         {
