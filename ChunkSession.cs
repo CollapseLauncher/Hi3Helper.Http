@@ -53,8 +53,8 @@ namespace Hi3Helper.Http
                 await Metadata.ReadLastMetadataAsync(url, outputFileInfo, metadataFileInfo,
                 contentLength, cancellationToken);
 
-            // null as per completed status
-            if (currentSessionMetadata == null)
+            // null as per completed status and if it's not in overwrite
+            if (currentSessionMetadata == null && !overwrite)
             {
                 downloadProgress.AdvanceBytesDownloaded(contentLength);
                 progressDelegateAsync?.Invoke(0, downloadProgress);
