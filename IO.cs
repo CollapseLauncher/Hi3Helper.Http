@@ -52,7 +52,7 @@ namespace Hi3Helper.Http
                     downloadSpeedLimiter.DownloadSpeedChangedEvent += DownloadClient_DownloadSpeedLimitChanged;
                 }
 
-                if (session.CurrentPositions.Start >= session.CurrentPositions.End)
+                if (session.CurrentPositions.End != 0 && session.CurrentPositions.Start >= session.CurrentPositions.End)
                 {
                     return;
                 }
