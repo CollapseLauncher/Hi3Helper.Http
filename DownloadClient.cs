@@ -1,10 +1,13 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+#if !NET6_0_OR_GREATER
 using System.Threading.Tasks.Dataflow;
+#endif
 // ReSharper disable MemberCanBePrivate.Global
 
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
@@ -151,6 +154,8 @@ namespace Hi3Helper.Http
             };
 
             DownloadProgress downloadProgressStruct = new DownloadProgress();
+
+#if !NET6_0_OR_GREATER
             ActionBlock<ChunkSession> actionBlock = new ActionBlock<ChunkSession>(async chunk =>
             {
                 await PerformDownloadWriteDelegate(
@@ -192,6 +197,43 @@ namespace Hi3Helper.Http
             {
                 throw actionBlock.Completion.Exception;
             }
+#else
+            try
+            {
+                await Parallel.ForEachAsync(
+                    ChunkSession.EnumerateMultipleChunks(
+                                   CurrentHttpClientInstance,
+                                   uri,
+                                   fileOutputPath,
+                                   useOverwrite,
+                                   sessionChunkSize,
+                                   downloadProgressStruct,
+                                   progressDelegateAsync,
+                                   RetryCountMax,
+                                   RetryAttemptInterval,
+                                   TimeoutAfterInterval,
+                                   cancelToken
+                               ),
+                               new ParallelOptions
+                               {
+                                   CancellationToken = cancelToken,
+                                   MaxDegreeOfParallelism = maxConnectionSessions
+                               },
+                               async (chunk, coopCancelToken) =>
+                               await PerformDownloadWriteDelegate(
+                                   progressDelegateAsync,
+                                   maxConnectionSessions,
+                                   downloadSpeedLimiter,
+                                   chunk,
+                                   fileStreamOptions,
+                                   downloadProgressStruct,
+                                   coopCancelToken));
+            }
+            catch (AggregateException ex)
+            {
+                throw ex.Flatten().InnerExceptions.First();
+            }
+#endif
 
             Metadata.DeleteMetadataFile(fileOutputPath);
         }
