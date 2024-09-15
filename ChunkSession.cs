@@ -238,7 +238,13 @@ namespace Hi3Helper.Http
                 if (range.Start > nearbyEnd)
                 {
                     // Get the da stream
-                    using (FileStream fileStream = existingFileInfo.Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
+                    using (FileStream fileStream = existingFileInfo.Open(new FileStreamOptions
+                    {
+                        Mode = FileMode.OpenOrCreate,
+                        Access = FileAccess.ReadWrite,
+                        Share = FileShare.ReadWrite,
+                        Options = FileOptions.WriteThrough
+                    }))
                     {
                     StartReadData:
                         // If the current start range is less than nearby end, then increment and return.
