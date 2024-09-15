@@ -1,10 +1,13 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+#if !NET6_0_OR_GREATER
 using System.Threading.Tasks.Dataflow;
+#endif
 // ReSharper disable MemberCanBePrivate.Global
 
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
@@ -142,36 +145,28 @@ namespace Hi3Helper.Http
 
             Uri uri = url.ToUri();
 
+            FileStreamOptions fileStreamOptions = new FileStreamOptions
+            {
+                Mode = FileMode.OpenOrCreate,
+                Access = FileAccess.Write,
+                Share = FileShare.ReadWrite,
+                Options = FileOptions.WriteThrough
+            };
+
             DownloadProgress downloadProgressStruct = new DownloadProgress();
+
+#if !NET6_0_OR_GREATER
             ActionBlock<ChunkSession> actionBlock = new ActionBlock<ChunkSession>(async chunk =>
-                {
-                    await using (FileStream stream = new FileStream(chunk.CurrentMetadata?.OutputFilePath!,
-                                     FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
-                    {
-                        if (chunk.CurrentMetadata == null)
-                        {
-                            throw new NullReferenceException("chunk.CurrentMetadata reference is null");
-                        }
-
-                        await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
-                        await IO.WriteStreamToFileChunkSessionAsync(
-                            chunk,
-                            downloadSpeedLimiter,
-                            maxConnectionSessions,
-                            null,
-                            false,
-                            stream,
-                            downloadProgressStruct,
-                            progressDelegateAsync,
-                            cancelToken);
-
-                        if (chunk.CurrentPositions.End - 1 > chunk.CurrentPositions.Start)
-                            throw new Exception();
-
-                        chunk.CurrentMetadata.PopRange(chunk.CurrentPositions);
-                        await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
-                    }
-                },
+            {
+                await PerformDownloadWriteDelegate(
+                    progressDelegateAsync,
+                    maxConnectionSessions,
+                    downloadSpeedLimiter,
+                    chunk,
+                    fileStreamOptions,
+                    downloadProgressStruct,
+                    cancelToken);
+            },
                 new ExecutionDataflowBlockOptions
                 {
                     CancellationToken = cancelToken,
@@ -202,8 +197,81 @@ namespace Hi3Helper.Http
             {
                 throw actionBlock.Completion.Exception;
             }
+#else
+            try
+            {
+                await Parallel.ForEachAsync(
+                    ChunkSession.EnumerateMultipleChunks(
+                                   CurrentHttpClientInstance,
+                                   uri,
+                                   fileOutputPath,
+                                   useOverwrite,
+                                   sessionChunkSize,
+                                   downloadProgressStruct,
+                                   progressDelegateAsync,
+                                   RetryCountMax,
+                                   RetryAttemptInterval,
+                                   TimeoutAfterInterval,
+                                   cancelToken
+                               ),
+                               new ParallelOptions
+                               {
+                                   CancellationToken = cancelToken,
+                                   MaxDegreeOfParallelism = maxConnectionSessions
+                               },
+                               async (chunk, coopCancelToken) =>
+                               await PerformDownloadWriteDelegate(
+                                   progressDelegateAsync,
+                                   maxConnectionSessions,
+                                   downloadSpeedLimiter,
+                                   chunk,
+                                   fileStreamOptions,
+                                   downloadProgressStruct,
+                                   coopCancelToken));
+            }
+            catch (AggregateException ex)
+            {
+                throw ex.Flatten().InnerExceptions.First();
+            }
+#endif
 
             Metadata.DeleteMetadataFile(fileOutputPath);
+        }
+
+        private static async Task PerformDownloadWriteDelegate(
+            DownloadProgressDelegate? progressDelegateAsync,
+            int maxConnectionSessions,
+            DownloadSpeedLimiter? downloadSpeedLimiter,
+            ChunkSession chunk,
+            FileStreamOptions fileStreamOptions,
+            DownloadProgress downloadProgressStruct,
+            CancellationToken cancelToken)
+        {
+            await using (FileStream stream = new FileStream(chunk.CurrentMetadata?.OutputFilePath!, fileStreamOptions))
+            {
+                if (chunk.CurrentMetadata == null)
+                {
+                    throw new NullReferenceException("chunk.CurrentMetadata reference is null");
+                }
+
+                await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
+                await IO.WriteStreamToFileChunkSessionAsync(
+                    chunk,
+                    downloadSpeedLimiter,
+                    maxConnectionSessions,
+                    null,
+                    false,
+                    stream,
+                    downloadProgressStruct,
+                    progressDelegateAsync,
+                    cancelToken);
+
+                if (chunk.CurrentPositions.End - 1 > chunk.CurrentPositions.Start)
+                    throw new Exception();
+
+                chunk.CurrentMetadata.PopRange(chunk.CurrentPositions);
+                await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
+            }
         }
 
         /// <summary>

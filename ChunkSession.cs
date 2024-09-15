@@ -33,6 +33,9 @@ namespace Hi3Helper.Http
             TimeSpan timeoutInterval,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            // Throw if cancellation is triggered
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Get the file size from the URL
             long contentLength = await url.GetUrlContentLengthAsync(client, retryMaxAttempt, retryAttemptInterval,
                 timeoutInterval, cancellationToken);
@@ -130,6 +133,9 @@ namespace Hi3Helper.Http
                 List<ChunkRange?> copyOfExistingRanges = new List<ChunkRange?>(currentSessionMetadata.Ranges);
                 foreach (ChunkRange? range in copyOfExistingRanges)
                 {
+                    // Throw if cancellation is triggered
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     // If range somehow return a null or the outputFileInfo.Length is less than range.Start and range.End,
                     // or if the file does not exist, then skip
                     if (range == null)
@@ -164,6 +170,9 @@ namespace Hi3Helper.Http
             long lastStartOffset = lastEndOffset;
             while (remainedSize > 0)
             {
+                // Throw if cancellation is triggered
+                cancellationToken.ThrowIfCancellationRequested();
+
                 long startOffset = lastStartOffset;
                 long toAdvanceSize = Math.Min(remainedSize, chunkSize);
                 long toAdvanceOffset = toAdvanceSize - 1;
@@ -238,7 +247,13 @@ namespace Hi3Helper.Http
                 if (range.Start > nearbyEnd)
                 {
                     // Get the da stream
-                    using (FileStream fileStream = existingFileInfo.Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
+                    using (FileStream fileStream = existingFileInfo.Open(new FileStreamOptions
+                    {
+                        Mode = FileMode.OpenOrCreate,
+                        Access = FileAccess.ReadWrite,
+                        Share = FileShare.ReadWrite,
+                        Options = FileOptions.WriteThrough
+                    }))
                     {
                     StartReadData:
                         // If the current start range is less than nearby end, then increment and return.
