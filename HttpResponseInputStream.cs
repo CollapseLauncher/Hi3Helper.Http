@@ -24,7 +24,6 @@ namespace Hi3Helper.Http
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
         private long _networkLength;
-        private long _currentPosition;
         private HttpStatusCode _statusCode;
         private bool _isSuccessStatusCode;
 
@@ -147,20 +146,12 @@ namespace Hi3Helper.Http
 
 
 #if NET6_0_OR_GREATER
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer,
             CancellationToken cancellationToken = default)
-        {
-            int read = await _networkStream.ReadAsync(buffer, cancellationToken);
-            _currentPosition += read;
-            return read;
-        }
+            => _networkStream.ReadAsync(buffer, cancellationToken);
 
         public override int Read(Span<byte> buffer)
-        {
-            int read = _networkStream.Read(buffer);
-            _currentPosition += read;
-            return read;
-        }
+            => _networkStream.Read(buffer);
 
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
         {
@@ -173,20 +164,12 @@ namespace Hi3Helper.Http
         }
 #endif
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count,
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count,
             CancellationToken cancellationToken)
-        {
-            int read = await _networkStream.ReadAsync(buffer, offset, count, cancellationToken);
-            _currentPosition += read;
-            return read;
-        }
+            => _networkStream.ReadAsync(buffer, offset, count, cancellationToken);
 
         public override int Read(byte[] buffer, int offset, int count)
-        {
-            int read = _networkStream.Read(buffer, offset, count);
-            _currentPosition += read;
-            return read;
-        }
+            => _networkStream.Read(buffer, offset, count);
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
@@ -213,7 +196,7 @@ namespace Hi3Helper.Http
 
         public override long Position
         {
-            get => _currentPosition;
+            get => throw new NotSupportedException();
             set => throw new NotSupportedException();
         }
 
