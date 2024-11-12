@@ -26,7 +26,9 @@ namespace Hi3Helper.Http.Legacy
             {
                 for (int t = 0; t < this.ConnectionSessions; t++)
                 {
+#pragma warning disable CS0618 // Type or member is obsolete
                     string chunkPath = this.PathOutput + string.Format(PathSessionPrefix, GetHashNumber(this.ConnectionSessions, t));
+#pragma warning restore CS0618 // Type or member is obsolete
                     string chunkPathNew = this.PathOutput + string.Format(".{0:000}", t + 1);
                     using (FileStream os = new FileStream(File.Exists(chunkPath) ? chunkPath : chunkPathNew, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                     {

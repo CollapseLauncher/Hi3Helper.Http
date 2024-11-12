@@ -89,7 +89,9 @@ namespace Hi3Helper.Http.Legacy
                 Session session = null!;
                 try
                 {
+#pragma warning disable CS0618 // Type or member is obsolete
                     long sessionId = GetHashNumber(sessionThread, currentThread);
+#pragma warning restore CS0618 // Type or member is obsolete
                     string sessionOutPathOld = outputPath + string.Format(PathSessionPrefix, sessionId);
                     string sessionOutPathNew = outputPath + string.Format(".{0:000}", currentThread + 1);
 
@@ -198,7 +200,9 @@ namespace Hi3Helper.Http.Legacy
             for (int t = 0; t < Sessions; t++)
             {
                 SessionFilePath = Path + string.Format(".{0:000}", t + 1);
+#pragma warning disable CS0618 // Type or member is obsolete
                 SessionFilePathLegacy = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
+#pragma warning restore CS0618 // Type or member is obsolete
                 try
                 {
                     FileInfo fileInfo = new FileInfo(SessionFilePath);
@@ -233,7 +237,9 @@ namespace Hi3Helper.Http.Legacy
             for (int t = 0; t < Sessions; t++)
             {
                 SessionFilePath = Path + string.Format(".{0:000}", t + 1);
+#pragma warning disable CS0618 // Type or member is obsolete
                 SessionFilePathLegacy = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
+#pragma warning restore CS0618 // Type or member is obsolete
                 try
                 {
                     FileInfo fileInfo = new FileInfo(SessionFilePath);
