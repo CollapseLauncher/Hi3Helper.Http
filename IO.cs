@@ -40,8 +40,6 @@ namespace Hi3Helper.Http
             CancellationTokenSource? timeoutToken = null;
             CancellationTokenSource? coopToken = null;
 
-            int wri = 0;
-
             try
             {
                 if (session.CurrentMetadata != null)
@@ -88,7 +86,6 @@ namespace Hi3Helper.Http
                 {
                     await fileStream.WriteAsync(buffer, 0, read, coopToken.Token);
                     written += read;
-                    wri += read;
                     session.CurrentPositions.AdvanceStartOffset(read);
                     session.CurrentMetadata?.UpdateLastEndOffset(session.CurrentPositions);
                     downloadProgress.AdvanceBytesDownloaded(read);

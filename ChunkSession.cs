@@ -247,112 +247,109 @@ namespace Hi3Helper.Http
                 if (range.Start > nearbyEnd)
                 {
                     // Get the da stream
-                    using (FileStream fileStream = existingFileInfo.Open(new FileStreamOptions
+                    using FileStream fileStream = existingFileInfo.Open(new FileStreamOptions
                     {
-                        Mode = FileMode.OpenOrCreate,
-                        Access = FileAccess.ReadWrite,
-                        Share = FileShare.ReadWrite,
+                        Mode    = FileMode.OpenOrCreate,
+                        Access  = FileAccess.ReadWrite,
+                        Share   = FileShare.ReadWrite,
                         Options = FileOptions.WriteThrough
-                    }))
-                    {
+                    });
                     StartReadData:
-                        // If the current start range is less than nearby end, then increment and return.
-                        if (range.Start < nearbyEnd)
-                        {
-                            range.Start = nearbyEnd + 1;
-                            return;
-                        }
+                    // If the current start range is less than nearby end, then increment and return.
+                    if (range.Start < nearbyEnd)
+                    {
+                        range.Start = nearbyEnd + 1;
+                        return;
+                    }
 
-                        // Clamp the value between length of buffer and fileStream length, subtract to
-                        // the current start range, and to between 0.
-                        int toReadMin = 0;
-                        if (range.Start < bufferLen)
-                        {
-                            toReadMin = (int)range.Start;
-                        }
-                        else
-                        {
-                            toReadMin = (int)Math.Min(fileStream.Length, bufferLen);
-                        }
+                    // Clamp the value between length of buffer and fileStream length, subtract to
+                    // the current start range, and to between 0.
+                    int toReadMin = 0;
+                    if (range.Start < bufferLen)
+                    {
+                        toReadMin = (int)range.Start;
+                    }
+                    else
+                    {
+                        toReadMin = (int)Math.Min(fileStream.Length, bufferLen);
+                    }
 
-                        fileStream.Position = Math.Max(range.Start - toReadMin, 0);
+                    fileStream.Position = Math.Max(range.Start - toReadMin, 0);
 
-                        // Read the stream to the given buffer length
-                        int read = fileStream.Read(buffer, 0, toReadMin);
+                    // Read the stream to the given buffer length
+                    int read = fileStream.Read(buffer, 0, toReadMin);
 
-                        // Assign the offset as the read pos and init offset back value.
-                        int offset = read;
-                        int dataOffsetToBack = 0;
+                    // Assign the offset as the read pos and init offset back value.
+                    int offset           = read;
+                    int dataOffsetToBack = 0;
 
-                        // If file is EOF, then return
-                        if (read == 0)
-                        {
-                            return;
-                        }
+                    // If file is EOF, then return
+                    if (read == 0)
+                    {
+                        return;
+                    }
 
-                        // UNSAFE: Assign buffer as pointer
-                        fixed (byte* bufferPtr = &buffer[0])
-                        {
+                    // UNSAFE: Assign buffer as pointer
+                    fixed (byte* bufferPtr = &buffer[0])
+                    {
                         // Start zero bytes check
                         StartZeroCheck:
-                            // If there is no offset left, then continue read another data
-                            if (offset == 0)
-                            {
-                                range.Start -= dataOffsetToBack;
-                                goto StartReadData;
-                            }
+                        // If there is no offset left, then continue read another data
+                        if (offset == 0)
+                        {
+                            range.Start -= dataOffsetToBack;
+                            goto StartReadData;
+                        }
 
-                            // Read 32 bytes from last, check if all the values are zero with SIMD
-                            bool isVector256Zero = IsVector256Zero(bufferPtr, offset, Vector256Zero);
-                            if (isVector256Zero)
-                            {
-                                offset -= 32;
-                                dataOffsetToBack += 32;
-                                goto StartZeroCheck;
-                            }
+                        // Read 32 bytes from last, check if all the values are zero with SIMD
+                        bool isVector256Zero = IsVector256Zero(bufferPtr, offset, Vector256Zero);
+                        if (isVector256Zero)
+                        {
+                            offset           -= 32;
+                            dataOffsetToBack += 32;
+                            goto StartZeroCheck;
+                        }
 
-                            // Read 16 bytes from last, check if all the values are zero with SIMD
-                            bool isVector128Zero = IsVector128Zero(bufferPtr, offset, Vector128Zero);
-                            if (isVector128Zero)
-                            {
-                                offset -= 16;
-                                dataOffsetToBack += 16;
-                                goto StartZeroCheck;
-                            }
+                        // Read 16 bytes from last, check if all the values are zero with SIMD
+                        bool isVector128Zero = IsVector128Zero(bufferPtr, offset, Vector128Zero);
+                        if (isVector128Zero)
+                        {
+                            offset           -= 16;
+                            dataOffsetToBack += 16;
+                            goto StartZeroCheck;
+                        }
 
-                            // Read 8 bytes from last, check if all the values are zero
-                            bool isInt64Zero = *(long*)(bufferPtr + (offset - 8)) == 0;
-                            if (isInt64Zero)
-                            {
-                                offset -= 8;
-                                dataOffsetToBack += 8;
-                                goto StartZeroCheck;
-                            }
+                        // Read 8 bytes from last, check if all the values are zero
+                        bool isInt64Zero = *(long*)(bufferPtr + (offset - 8)) == 0;
+                        if (isInt64Zero)
+                        {
+                            offset           -= 8;
+                            dataOffsetToBack += 8;
+                            goto StartZeroCheck;
+                        }
 
-                            // Read 4 bytes from last, check if all the values are zero
-                            bool isInt32Zero = *(int*)(bufferPtr + (offset - 4)) == 0;
-                            if (isInt32Zero)
-                            {
-                                offset -= 4;
-                                dataOffsetToBack += 4;
-                                goto StartZeroCheck;
-                            }
+                        // Read 4 bytes from last, check if all the values are zero
+                        bool isInt32Zero = *(int*)(bufferPtr + (offset - 4)) == 0;
+                        if (isInt32Zero)
+                        {
+                            offset           -= 4;
+                            dataOffsetToBack += 4;
+                            goto StartZeroCheck;
+                        }
 
-                            // Read one byte from last, check if all the values are zero
-                            bool isInt8Zero = *(bufferPtr + (offset - 1)) == 0;
-                            if (isInt8Zero)
-                            {
-                                --offset;
-                                ++dataOffsetToBack;
-                                goto StartZeroCheck;
-                            }
+                        // Read one byte from last, check if all the values are zero
+                        bool isInt8Zero = *(bufferPtr + (offset - 1)) == 0;
+                        if (isInt8Zero)
+                        {
+                            --offset;
+                            ++dataOffsetToBack;
+                            goto StartZeroCheck;
+                        }
 
-                            // If all the bytes are non-zero (clean), then subtract the current start range and return
-                            if (!isVector256Zero && !isVector128Zero && !isInt64Zero && !isInt32Zero && !isInt8Zero)
-                            {
-                                range.Start -= dataOffsetToBack;
-                                return;
-                            }
+                        // If all the bytes are non-zero (clean), then subtract the current start range and return
+                        if (!isVector256Zero && !isVector128Zero && !isInt64Zero && !isInt32Zero && !isInt8Zero)
+                        {
+                            range.Start -= dataOffsetToBack;
                         }
                     }
                 }
