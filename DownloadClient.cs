@@ -126,9 +126,84 @@ namespace Hi3Helper.Http
         ///     <paramref name="url" /> or <paramref name="fileOutputPath" /> is empty or only have
         ///     whitespaces.
         /// </exception>
+#pragma warning disable CA1822 // Mark members as static
+        public async Task DownloadAsync(
+#pragma warning restore CA1822 // Mark members as static
+            string                    url,
+            string                    fileOutputPath,
+            bool                      useOverwrite          = false,
+            long?                     offsetStart           = null,
+            long?                     offsetEnd             = null,
+            DownloadProgressDelegate? progressDelegateAsync = null,
+            int                       maxConnectionSessions = DefaultConnectionSessions,
+            int                       sessionChunkSize      = DefaultSessionChunkSize,
+            DownloadSpeedLimiter?     downloadSpeedLimiter  = null,
+            CancellationToken         cancelToken           = default)
+            => await DownloadAsync(
+                url,
+                new FileInfo(fileOutputPath),
+                useOverwrite,
+                offsetStart,
+                offsetEnd,
+                progressDelegateAsync,
+                maxConnectionSessions,
+                sessionChunkSize,
+                downloadSpeedLimiter,
+                cancelToken);
+
+        /// <summary>
+        ///     Start the download process of the file asynchronously. This method can be used for single-session or multi-session
+        ///     download.
+        /// </summary>
+        /// <param name="url">The URL of the file to be downloaded.</param>
+        /// <param name="fileOutputPath">
+        ///     Output path of the file to download.
+        /// </param>
+        /// <param name="useOverwrite">
+        ///     Overwrite the download even the previous session can be continued.
+        ///     If set to true, the previous download will start from beginning.
+        /// </param>
+        /// <param name="offsetStart">
+        ///     The start position of the data to be downloaded. If this argument is set with <paramref name="offsetEnd" /> to
+        ///     <c>null</c>,<br />
+        ///     the download will start from the beginning of the data. The <paramref name="offsetStart" /> argument cannot be set
+        ///     more than or equal as <paramref name="offsetEnd" />.<br /><br />
+        ///     Default: <c>null</c>
+        /// </param>
+        /// <param name="offsetEnd">
+        ///     The end position of the data to be downloaded. If this argument is set to <c>null</c>,<br />
+        ///     the download will write the data until the end of the data. The <paramref name="offsetEnd" /> argument cannot be
+        ///     set less than or equal as <paramref name="offsetStart" />.<br /><br />
+        ///     Default: <c>null</c>
+        /// </param>
+        /// <param name="progressDelegateAsync">
+        ///     The delegate callback to process the download progress information.<br /><br />
+        ///     Default: <c>null</c>
+        /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
+        /// <param name="maxConnectionSessions">
+        ///     How much connection session to be started for the download process. If it's being set to less than or equal as 0,
+        ///     then it will fall back to the default value: 4.<br /><br />
+        ///     Default: <c>4</c>
+        /// </param>
+        /// <param name="sessionChunkSize">
+        ///     How big the size of each session chunk.<br /><br />
+        ///     Default: <c>4,194,304 bytes</c> or <c>4 MiB</c>
+        /// </param>
+        /// <param name="cancelToken">
+        ///     Cancellation token. If not assigned, a cancellation token will not be assigned and the download becomes
+        ///     non-cancellable.
+        /// </param>
+        /// <exception cref="ArgumentNullException"><paramref name="url" /> or <paramref name="fileOutputPath" /> is null.</exception>
+        /// <exception cref="ArgumentException">
+        ///     <paramref name="url" /> or <paramref name="fileOutputPath" /> is empty or only have
+        ///     whitespaces.
+        /// </exception>
         public async Task DownloadAsync(
             string url,
-            string fileOutputPath,
+            FileInfo fileOutputPath,
             bool useOverwrite = false,
             long? offsetStart = null,
             long? offsetEnd = null,
@@ -140,17 +215,18 @@ namespace Hi3Helper.Http
         {
             ArgumentException.ThrowIfNullOrEmpty(url, nameof(url));
             ArgumentException.ThrowIfNullOrWhiteSpace(url, nameof(url));
-            ArgumentException.ThrowIfNullOrEmpty(fileOutputPath, nameof(fileOutputPath));
-            ArgumentException.ThrowIfNullOrWhiteSpace(fileOutputPath, nameof(fileOutputPath));
+            ArgumentNullException.ThrowIfNull(fileOutputPath, nameof(fileOutputPath));
+            ArgumentNullException.ThrowIfNull(fileOutputPath, nameof(fileOutputPath));
 
             Uri uri = url.ToUri();
 
             FileStreamOptions fileStreamOptions = new FileStreamOptions
             {
-                Mode = FileMode.OpenOrCreate,
-                Access = FileAccess.Write,
-                Share = FileShare.ReadWrite,
-                Options = FileOptions.WriteThrough
+                Mode       = FileMode.OpenOrCreate,
+                Access     = FileAccess.Write,
+                Share      = FileShare.ReadWrite,
+                Options    = FileOptions.WriteThrough | FileOptions.RandomAccess,
+                BufferSize = IO.StreamRWBufferSize
             };
 
             DownloadProgress downloadProgressStruct = new DownloadProgress();
@@ -204,7 +280,7 @@ namespace Hi3Helper.Http
                     ChunkSession.EnumerateMultipleChunks(
                                    CurrentHttpClientInstance,
                                    uri,
-                                   fileOutputPath,
+                                   fileOutputPath.FullName,
                                    useOverwrite,
                                    sessionChunkSize,
                                    downloadProgressStruct,
@@ -235,7 +311,7 @@ namespace Hi3Helper.Http
             }
 #endif
 
-            Metadata.DeleteMetadataFile(fileOutputPath);
+            Metadata.DeleteMetadataFile(fileOutputPath.FullName);
         }
 
         private static async Task PerformDownloadWriteDelegate(

@@ -12,6 +12,8 @@ namespace Hi3Helper.Http
 {
     internal static class IO
     {
+        internal const int StreamRWBufferSize = 64 << 10;
+
         internal static async Task WriteStreamToFileChunkSessionAsync(
             ChunkSession session,
             DownloadSpeedLimiter? downloadSpeedLimiter,
