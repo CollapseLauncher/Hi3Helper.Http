@@ -323,14 +323,17 @@ namespace Hi3Helper.Http
             DownloadProgress downloadProgressStruct,
             CancellationToken cancelToken)
         {
-            if (chunk.CurrentMetadata == null)
+            if (chunk.CurrentMetadata == null || chunk.CurrentMetadata.OutputFilePath == null)
             {
                 throw new NullReferenceException("chunk.CurrentMetadata reference is null");
             }
-            
-            // Ensure the directory is created
-            Directory.CreateDirectory(chunk.CurrentMetadata?.OutputFilePath!);
-            
+
+            var parentDir = Path.GetDirectoryName(chunk.CurrentMetadata.OutputFilePath);;
+            if (parentDir != null)
+            {
+                Directory.CreateDirectory(parentDir);
+            }
+
             await using (FileStream stream = new FileStream(chunk.CurrentMetadata?.OutputFilePath!, fileStreamOptions))
             {
                 // Null check is done at the beginning damnit ReSharper
