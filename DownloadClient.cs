@@ -34,7 +34,7 @@ namespace Hi3Helper.Http
         private TimeSpan TimeoutAfterInterval { get; init; }
         private HttpClient CurrentHttpClientInstance { get; init; }
 
-        private const int DefaultSessionChunkSize = 4 << 20; // 4 MiB for each chunk size
+        private const int DefaultSessionChunkSize = 32 << 20; // 32 MiB for each chunk size
 
         private DownloadClient(HttpClient httpClient, int retryCountMax = DefaultRetryCountMax,
             TimeSpan? retryAttemptInterval = null, TimeSpan? timeoutAfterInterval = null)
@@ -115,7 +115,8 @@ namespace Hi3Helper.Http
         /// </param>
         /// <param name="sessionChunkSize">
         ///     How big the size of each session chunk.<br /><br />
-        ///     Default: <c>4,194,304 bytes</c> or <c>4 MiB</c>
+        ///     Default: <c>33,554,432 bytes</c> or <c>32 MiB</c><br />
+        ///     Minimum: <c>33,554,432 bytes</c> or <c>32 MiB</c>
         /// </param>
         /// <param name="cancelToken">
         ///     Cancellation token. If not assigned, a cancellation token will not be assigned and the download becomes
@@ -190,7 +191,8 @@ namespace Hi3Helper.Http
         /// </param>
         /// <param name="sessionChunkSize">
         ///     How big the size of each session chunk.<br /><br />
-        ///     Default: <c>4,194,304 bytes</c> or <c>4 MiB</c>
+        ///     Default: <c>33,554,432 bytes</c> or <c>32 MiB</c><br />
+        ///     Minimum: <c>33,554,432 bytes</c> or <c>32 MiB</c>
         /// </param>
         /// <param name="cancelToken">
         ///     Cancellation token. If not assigned, a cancellation token will not be assigned and the download becomes
@@ -219,6 +221,8 @@ namespace Hi3Helper.Http
             ArgumentNullException.ThrowIfNull(fileOutputPath, nameof(fileOutputPath));
 
             Uri uri = url.ToUri();
+            // Always clamp the session chunk size to minimum size defined in DefaultSessionChunkSize
+            sessionChunkSize = Math.Max(DefaultSessionChunkSize, sessionChunkSize);
 
             FileStreamOptions fileStreamOptions = new FileStreamOptions
             {
