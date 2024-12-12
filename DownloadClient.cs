@@ -229,7 +229,7 @@ namespace Hi3Helper.Http
                 Mode       = FileMode.OpenOrCreate,
                 Access     = FileAccess.Write,
                 Share      = FileShare.ReadWrite,
-                Options    = FileOptions.WriteThrough | FileOptions.RandomAccess,
+                Options    = FileOptions.WriteThrough,
                 BufferSize = IO.StreamRWBufferSize
             };
 
