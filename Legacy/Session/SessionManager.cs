@@ -80,6 +80,8 @@ namespace Hi3Helper.Http.Legacy
             long sliceSize = (long)Math.Ceiling((double)remoteLength / sessionThread);
 
             for (
+                // Build error when removed
+                // ReSharper disable once RedundantAssignment
                 long startOffset = 0, endOffset = 0, currentThread = 0;
                 currentThread < sessionThread;
                 currentThread++
@@ -123,7 +125,7 @@ namespace Hi3Helper.Http.Legacy
                     }
 
                     this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
-                    bool isRequestSuccess = true;
+                    bool isRequestSuccess;
                     if ((session.StreamOutputSize == (endOffset - lastStartOffset) + 1)
                      || (!(isRequestSuccess = await session.TryGetHttpRequest(token)) && (int)session.StreamInput._statusCode == 413))
                     {
@@ -145,7 +147,7 @@ namespace Hi3Helper.Http.Legacy
                 }
                 finally
                 {
-                    if (!isInitSucceed && session != null)
+                    if (!isInitSucceed)
                     {
 #if NET6_0_OR_GREATER
                         await session.DisposeAsync();
@@ -174,7 +176,7 @@ namespace Hi3Helper.Http.Legacy
 #else
             Session
 #endif
-            ReinitializeSession(Session Input, CancellationToken Token,
+            ReinitializeSession(Session Input, CancellationToken _,
             bool ForceOverwrite = false, long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
         {
             if (Input == null) throw new NullReferenceException("Input session cannot be null while reinitialization is requested!");
@@ -205,20 +207,25 @@ namespace Hi3Helper.Http.Legacy
 #pragma warning restore CS0618 // Type or member is obsolete
                 try
                 {
-                    FileInfo fileInfo = new FileInfo(SessionFilePath);
+                    FileInfo fileInfo       = new FileInfo(SessionFilePath);
                     FileInfo fileInfoLegacy = new FileInfo(SessionFilePathLegacy);
                     if (fileInfo.Exists)
                     {
                         fileInfo.IsReadOnly = false;
                         fileInfo.Delete();
                     }
+
                     if (fileInfoLegacy.Exists)
                     {
                         fileInfoLegacy.IsReadOnly = false;
                         fileInfoLegacy.Delete();
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    LogInvoker.PushLog($"Failed to delete {SessionFilePath} or {SessionFilePathLegacy}" +
+                                       $"{ex}", DownloadLogSeverity.Error);
+                }
             }
         }
 
@@ -242,12 +249,16 @@ namespace Hi3Helper.Http.Legacy
 #pragma warning restore CS0618 // Type or member is obsolete
                 try
                 {
-                    FileInfo fileInfo = new FileInfo(SessionFilePath);
+                    FileInfo fileInfo       = new FileInfo(SessionFilePath);
                     FileInfo fileInfoLegacy = new FileInfo(SessionFilePathLegacy);
-                    if (fileInfo.Exists) Ret += fileInfo.Length;
+                    if (fileInfo.Exists) Ret            += fileInfo.Length;
                     else if (fileInfoLegacy.Exists) Ret += fileInfoLegacy.Length;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    LogInvoker.PushLog($"Failed to calculate existing multi-session file size on {SessionFilePath} or {SessionFilePathLegacy}" +
+                                       $"{ex}", DownloadLogSeverity.Error);
+                }
             }
 
             return Ret;
@@ -271,11 +282,12 @@ namespace Hi3Helper.Http.Legacy
         public async Task<long> GetContentLengthNonNull(string URL, CancellationToken Token)
 #endif
         {
-            using (HttpRequestMessage message = new HttpRequestMessage() { RequestUri = new Uri(URL) })
+            using (HttpRequestMessage message = new HttpRequestMessage())
             {
+                message.RequestUri = new Uri(URL);
                 using (HttpResponseMessage response = await _client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, Token))
                 {
-                    return response?.Content?.Headers?.ContentLength ?? 0;
+                    return response.Content.Headers.ContentLength ?? 0;
                 }
             }
         }

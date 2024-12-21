@@ -211,7 +211,7 @@ namespace Hi3Helper.Http
             byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferLen);
             try
             {
-                // Try find nearby start
+                // Try to find nearby start
                 for (int i = 0; i < listOfRanges.Count - 2; i++)
                 {
                     if (listOfRanges[i]?.Start != 0 && i == 0)
@@ -264,7 +264,7 @@ namespace Hi3Helper.Http
 
                     // Clamp the value between length of buffer and fileStream length, subtract to
                     // the current start range, and to between 0.
-                    int toReadMin = 0;
+                    int toReadMin;
                     if (range.Start < bufferLen)
                     {
                         toReadMin = (int)range.Start;
