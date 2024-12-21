@@ -26,9 +26,12 @@ namespace Hi3Helper.Http.Legacy
 #else
             Task<TResult>
 #endif
-            WaitForRetryAsync<TResult>(Func<ActionTimeoutValueTaskCallback<TResult>> funcCallback, int? timeout = null,
-                                       int? timeoutStep = null, int? retryAttempt = null,
-                                       ActionOnTimeOutRetry? actionOnRetry = null, CancellationToken fromToken = default)
+            WaitForRetryAsync<TResult>(Func<ActionTimeoutValueTaskCallback<TResult>> funcCallback,
+                                       int? timeout = null,
+                                       int? timeoutStep = null,
+                                       int? retryAttempt = null,
+                                       ActionOnTimeOutRetry? actionOnRetry = null,
+                                       CancellationToken fromToken = default)
         {
             timeout      ??= DefaultTimeoutSec;
             retryAttempt ??= DefaultRetryAttempt;
@@ -61,7 +64,7 @@ namespace Hi3Helper.Http.Legacy
                 }
                 catch (Exception ex)
                 {
-                    actionOnRetry?.Invoke(retryAttemptCurrent, retryAttempt ?? 0, timeout ?? 0, timeoutStep ?? 0);
+                    actionOnRetry?.Invoke(retryAttemptCurrent, (int)retryAttempt, timeout ?? 0, timeoutStep ?? 0);
 
                     if (ex is TimeoutException)
                     {

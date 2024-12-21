@@ -332,7 +332,7 @@ namespace Hi3Helper.Http
                 throw new NullReferenceException("chunk.CurrentMetadata reference is null");
             }
 
-            var parentDir = Path.GetDirectoryName(chunk.CurrentMetadata.OutputFilePath);;
+            var parentDir = Path.GetDirectoryName(chunk.CurrentMetadata.OutputFilePath);
             if (parentDir != null)
             {
                 Directory.CreateDirectory(parentDir);
