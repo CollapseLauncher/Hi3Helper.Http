@@ -62,10 +62,9 @@ namespace Hi3Helper.Http
                     networkStream = await CreateStreamFromSessionAsync(session, token);
                 }
 
-                if (isNetworkStreamFromExternal && networkStream == null)
+                if (networkStream == null)
                 {
-                    throw new NullReferenceException(
-                        "networkStream argument cannot be null when isNetworkStreamFromExternal is set!");
+                    throw new NullReferenceException("networkStream argument returns null!");
                 }
 
                 if (fileStream.CanSeek && session.CurrentPositions.End + 1 > fileStream.Length)
@@ -82,7 +81,7 @@ namespace Hi3Helper.Http
                 coopToken = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken.Token, token);
 
                 int read;
-                while ((read = await networkStream!.ReadAsync(buffer, coopToken.Token)) > 0)
+                while ((read = await networkStream.ReadAsync(buffer, coopToken.Token)) > 0)
                 {
                     await fileStream.WriteAsync(buffer, 0, read, coopToken.Token);
                     written += read;
