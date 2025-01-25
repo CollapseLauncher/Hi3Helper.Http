@@ -10,32 +10,32 @@ namespace Hi3Helper.Http.Legacy
 {
     public sealed partial class Http : IDisposable
     {
-        public Http(bool IgnoreCompress = true, byte RetryMax = 5, short RetryInterval = 1000, string? UserAgent = null,
+        public Http(bool ignoreCompress = true, byte retryMax = 5, short retryInterval = 1000, string? userAgent = null,
                     HttpClient? customHttpClient = null)
         {
-            this.RetryMax = RetryMax;
-            this.RetryInterval = RetryInterval;
-            this.DownloadState = DownloadState.Idle;
-            this.SessionsStopwatch = Stopwatch.StartNew();
-            this.SizeAttribute = new AttributesSize();
-            this._clientUserAgent = UserAgent!;
-            this._ignoreHttpCompression = IgnoreCompress;
+            _retryMax = retryMax;
+            _retryInterval = retryInterval;
+            DownloadState = DownloadState.Idle;
+            _sessionsStopwatch = Stopwatch.StartNew();
+            _sizeAttribute = new AttributesSize();
+            _clientUserAgent = userAgent!;
+            _ignoreHttpCompression = ignoreCompress;
 
             if (customHttpClient != null)
             {
-                this._client = customHttpClient;
+                _client = customHttpClient;
                 return;
             }
 
-            this._handler = new HttpClientHandler
+            _handler = new HttpClientHandler
             {
                 AllowAutoRedirect = true,
                 UseCookies = true,
                 MaxConnectionsPerServer = ConnectionMax,
-                AutomaticDecompression = this._ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None,
+                AutomaticDecompression = _ignoreHttpCompression ? DecompressionMethods.None : DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.None,
             };
 
-            this._client = new HttpClient(this._handler)
+            _client = new HttpClient(_handler)
             {
                 Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
 #if NET6_0_OR_GREATER
@@ -45,20 +45,20 @@ namespace Hi3Helper.Http.Legacy
 #endif
             };
 
-            if (this._clientUserAgent != null)
-                this._client.DefaultRequestHeaders.UserAgent.ParseAdd(this._clientUserAgent);
+            if (_clientUserAgent != null)
+                _client.DefaultRequestHeaders.UserAgent.ParseAdd(_clientUserAgent);
         }
 #nullable restore
 
 
         public Http()
         {
-            this.DownloadState = DownloadState.Idle;
-            this.SessionsStopwatch = Stopwatch.StartNew();
-            this.SizeAttribute = new AttributesSize();
+            DownloadState = DownloadState.Idle;
+            _sessionsStopwatch = Stopwatch.StartNew();
+            _sizeAttribute = new AttributesSize();
 
-            this._ignoreHttpCompression = true;
-            this._handler = new HttpClientHandler()
+            _ignoreHttpCompression = true;
+            _handler = new HttpClientHandler
             {
                 AllowAutoRedirect = true,
                 UseCookies = true,
@@ -66,7 +66,7 @@ namespace Hi3Helper.Http.Legacy
                 AutomaticDecompression = DecompressionMethods.None
             };
 
-            this._client = new HttpClient(this._handler)
+            _client = new HttpClient(_handler)
             {
                 Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
 #if NET6_0_OR_GREATER
@@ -80,18 +80,18 @@ namespace Hi3Helper.Http.Legacy
 #nullable enable
         public Http(HttpClient? customHttpClient = null)
         {
-            this.DownloadState = DownloadState.Idle;
-            this.SessionsStopwatch = Stopwatch.StartNew();
-            this.SizeAttribute = new AttributesSize();
+            DownloadState = DownloadState.Idle;
+            _sessionsStopwatch = Stopwatch.StartNew();
+            _sizeAttribute = new AttributesSize();
 
             if (customHttpClient != null)
             {
-                this._client = customHttpClient;
+                _client = customHttpClient;
                 return;
             }
 
-            this._ignoreHttpCompression = true;
-            this._handler = new HttpClientHandler()
+            _ignoreHttpCompression = true;
+            _handler = new HttpClientHandler
             {
                 AllowAutoRedirect = true,
                 UseCookies = true,
@@ -99,7 +99,7 @@ namespace Hi3Helper.Http.Legacy
                 AutomaticDecompression = DecompressionMethods.None
             };
 
-            this._client = new HttpClient(this._handler)
+            _client = new HttpClient(_handler)
             {
                 Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
 #if NET6_0_OR_GREATER
@@ -111,34 +111,38 @@ namespace Hi3Helper.Http.Legacy
         }
 #nullable restore
 
-        public HttpClient GetHttpClient() => this._client;
+        public HttpClient GetHttpClient() => _client;
 
-        public async Task Download(string URL, string Output,
-            bool Overwrite, long? OffsetStart = null, long? OffsetEnd = null,
-            CancellationToken ThreadToken = new CancellationToken())
+        public async Task Download(string            url,
+                                   string            output,
+                                   bool              overwrite,
+                                   long?             offsetStart = null,
+                                   long?             offsetEnd   = null,
+                                   CancellationToken threadToken = default)
         {
             ResetState();
 
-            this.PathURL = URL;
-            this.PathOutput = Output;
-            this.PathOverwrite = Overwrite;
+            _pathURL = url;
+            _pathOutput = output;
 
-            await SessionTaskRunnerContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, Output, Overwrite, null, false, ThreadToken), ThreadToken);
+            await SessionTaskRunnerContainer(await InitializeSingleSession(offsetStart, offsetEnd, output, overwrite, null, false, threadToken), threadToken);
 
-            this.DownloadState = DownloadState.Finished;
+            DownloadState = DownloadState.Finished;
         }
 
-        public async Task Download(string URL, Stream Outstream,
-            long? OffsetStart = null, long? OffsetEnd = null,
-            CancellationToken ThreadToken = new CancellationToken(),
-            bool IgnoreOutStreamLength = false)
+        public async Task Download(string            url,
+                                   Stream            outStream,
+                                   long?             offsetStart           = null,
+                                   long?             offsetEnd             = null,
+                                   bool              ignoreOutStreamLength = false,
+                                   CancellationToken threadToken           = default)
         {
             ResetState();
 
-            this.PathURL = URL;
+            _pathURL = url;
 
-            await SessionTaskRunnerContainer(await InitializeSingleSession(OffsetStart, OffsetEnd, null, false, Outstream, IgnoreOutStreamLength, ThreadToken), ThreadToken);
-            this.DownloadState = DownloadState.Finished;
+            await SessionTaskRunnerContainer(await InitializeSingleSession(offsetStart, offsetEnd, null, false, outStream, ignoreOutStreamLength, threadToken), threadToken);
+            DownloadState = DownloadState.Finished;
         }
 
         public void Dispose()
@@ -148,10 +152,9 @@ namespace Hi3Helper.Http.Legacy
 
         private void FinalizeDispose()
         {
-            this._handler = null!;
+            _handler = null!;
 
-            this._client.Dispose();
-            this.IsDisposed = true;
+            _client.Dispose();
 
             GC.SuppressFinalize(this);
         }

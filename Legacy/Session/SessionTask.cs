@@ -46,36 +46,36 @@ namespace Hi3Helper.Http.Legacy
         private async Task SessionTaskRunnerContainer(Session session, CancellationToken token)
         {
             if (session == null) return;
-            DownloadEvent Event = new DownloadEvent();
+            DownloadEvent @event = new DownloadEvent();
 
             CancellationTokenSource innerTimeoutToken, cooperatedToken;
             while (true)
             {
-                bool AllowDispose = false;
+                bool allowDispose = false;
                 try
                 {
-                    this.DownloadState = DownloadState.Downloading;
+                    DownloadState = DownloadState.Downloading;
                     session.SessionState = DownloadState.Downloading;
 
                     innerTimeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
                     cooperatedToken = CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
 
-                    int Read;
-                    byte[] Buffer = new byte[_bufferSize];
+                    int read;
+                    byte[] buffer = new byte[BufferSize];
 
                     // Read Stream into Buffer
-                    while ((Read = await session.StreamInput.ReadAsync(Buffer, 0, _bufferSize, cooperatedToken.Token)) > 0)
+                    while ((read = await session.StreamInput.ReadAsync(buffer, 0, BufferSize, cooperatedToken.Token)) > 0)
                     {
                         // Write Buffer to the output Stream
 #if NET6_0_OR_GREATER
                         cooperatedToken.Token.ThrowIfCancellationRequested();
-                        session.StreamOutput.Write(Buffer, 0, Read);
+                        session.StreamOutput.Write(buffer, 0, read);
 #else
                         await session.StreamOutput
                             .WriteAsync(Buffer, 0, Read, cooperatedToken.Token);
 #endif
                         // Increment as last OffsetStart adjusted
-                        session.OffsetStart += Read;
+                        session.OffsetStart += read;
                         // Set Inner Session Status
                         session.SessionState = DownloadState.Downloading;
                         // Reset session retry attempt
@@ -93,29 +93,29 @@ namespace Hi3Helper.Http.Legacy
 
                         // Lock SizeAttribute to avoid race condition while updating status
                         // Increment SizeDownloaded attribute
-                        Interlocked.Add(ref this.SizeAttribute.SizeDownloaded, Read);
-                        Interlocked.Add(ref this.SizeAttribute.SizeDownloadedLast, Read);
+                        Interlocked.Add(ref _sizeAttribute.SizeDownloaded, read);
+                        Interlocked.Add(ref _sizeAttribute.SizeDownloadedLast, read);
 
                         // Update download state
-                        Event.UpdateDownloadEvent(
-                                this.SizeAttribute.SizeDownloadedLast,
-                                this.SizeAttribute.SizeDownloaded,
-                                this.SizeAttribute.SizeTotalToDownload,
-                                Read,
-                                this.SessionsStopwatch.Elapsed.TotalSeconds,
-                                this.DownloadState
+                        @event.UpdateDownloadEvent(
+                                _sizeAttribute.SizeDownloadedLast,
+                                _sizeAttribute.SizeDownloaded,
+                                _sizeAttribute.SizeTotalToDownload,
+                                read,
+                                _sessionsStopwatch.Elapsed.TotalSeconds,
+                                DownloadState
                                 );
-                        this.UpdateProgress(Event);
+                        UpdateProgress(@event);
                     }
 
-                    AllowDispose = true;
+                    allowDispose = true;
                     return;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
-                    this.DownloadState = DownloadState.CancelledDownloading;
+                    DownloadState = DownloadState.CancelledDownloading;
                     session.SessionState = DownloadState.CancelledDownloading;
-                    AllowDispose = true;
+                    allowDispose = true;
                     throw;
                 }
                 catch (Exception ex)
@@ -124,8 +124,8 @@ namespace Hi3Helper.Http.Legacy
                     Tuple<bool, Exception> retryStatus = await session.TryReinitializeRequest(token);
                     if (retryStatus.Item1 && retryStatus.Item2 == null) continue;
 
-                    AllowDispose = true;
-                    this.DownloadState = DownloadState.FailedDownloading;
+                    allowDispose = true;
+                    DownloadState = DownloadState.FailedDownloading;
                     session.SessionState = DownloadState.FailedDownloading;
 
                     if (ex is TaskCanceledException && !token.IsCancellationRequested)
@@ -135,7 +135,7 @@ namespace Hi3Helper.Http.Legacy
                 }
                 finally
                 {
-                    if (AllowDispose)
+                    if (allowDispose)
                     {
 #if NET6_0_OR_GREATER
                         await session.DisposeAsync();

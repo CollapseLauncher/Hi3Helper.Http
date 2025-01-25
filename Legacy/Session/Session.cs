@@ -10,21 +10,20 @@ namespace Hi3Helper.Http.Legacy
 {
     public class HttpResponseInputStream : Stream
     {
-        private protected HttpRequestMessage  _networkRequest  = null!;
-        private protected HttpResponseMessage _networkResponse = null!;
-        private protected Stream              _networkStream   = null!;
-        private protected long                _networkLength;
-        private protected long                _currentPosition;
-        public            HttpStatusCode      _statusCode;
-        public            bool                _isSuccessStatusCode;
+        private protected HttpRequestMessage  NetworkRequest  = null!;
+        private protected HttpResponseMessage NetworkResponse = null!;
+        private protected Stream              NetworkStream   = null!;
+        private protected long                NetworkLength;
+        private protected long                CurrentPosition;
+        public            HttpStatusCode      StatusCode;
+        public            bool                IsSuccessStatusCode;
 
         public static async Task<HttpResponseInputStream> CreateStreamAsync(HttpClient client, string url, long? startOffset, long? endOffset, CancellationToken token)
         {
-            if (startOffset == null)
-                startOffset = 0;
+            startOffset ??= 0;
 
             HttpResponseInputStream httpResponseInputStream = new HttpResponseInputStream();
-            httpResponseInputStream._networkRequest = new HttpRequestMessage()
+            httpResponseInputStream.NetworkRequest = new HttpRequestMessage
             {
                 RequestUri = new Uri(url),
                 Method = HttpMethod.Get
@@ -32,16 +31,16 @@ namespace Hi3Helper.Http.Legacy
 
             token.ThrowIfCancellationRequested();
 
-            httpResponseInputStream._networkRequest.Headers.Range = new RangeHeaderValue(startOffset, endOffset);
-            httpResponseInputStream._networkResponse = await client
-                .SendAsync(httpResponseInputStream._networkRequest, HttpCompletionOption.ResponseHeadersRead, token);
+            httpResponseInputStream.NetworkRequest.Headers.Range = new RangeHeaderValue(startOffset, endOffset);
+            httpResponseInputStream.NetworkResponse = await client
+                .SendAsync(httpResponseInputStream.NetworkRequest, HttpCompletionOption.ResponseHeadersRead, token);
 
-            httpResponseInputStream._statusCode = httpResponseInputStream._networkResponse.StatusCode;
-            httpResponseInputStream._isSuccessStatusCode = httpResponseInputStream._networkResponse.IsSuccessStatusCode;
-            if (httpResponseInputStream._isSuccessStatusCode)
+            httpResponseInputStream.StatusCode = httpResponseInputStream.NetworkResponse.StatusCode;
+            httpResponseInputStream.IsSuccessStatusCode = httpResponseInputStream.NetworkResponse.IsSuccessStatusCode;
+            if (httpResponseInputStream.IsSuccessStatusCode)
             {
-                httpResponseInputStream._networkLength = httpResponseInputStream._networkResponse.Content.Headers.ContentLength ?? 0;
-                httpResponseInputStream._networkStream = await httpResponseInputStream._networkResponse.Content
+                httpResponseInputStream.NetworkLength = httpResponseInputStream.NetworkResponse.Content.Headers.ContentLength ?? 0;
+                httpResponseInputStream.NetworkStream = await httpResponseInputStream.NetworkResponse.Content
 #if NET6_0_OR_GREATER
                     .ReadAsStreamAsync(token);
 #else
@@ -50,17 +49,19 @@ namespace Hi3Helper.Http.Legacy
                 return httpResponseInputStream;
             }
 
-            if ((int)httpResponseInputStream._statusCode == 416)
+            if ((int)httpResponseInputStream.StatusCode != 416)
             {
-#if NET6_0_OR_GREATER
-                await httpResponseInputStream.DisposeAsync();
-#else
-                httpResponseInputStream.Dispose();
-#endif
-                throw new HttpRequestException("Http request returned 416!");
+                throw new
+                    HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}",
+                                                       httpResponseInputStream.NetworkResponse.StatusCode, url));
             }
 
-            throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}", httpResponseInputStream._networkResponse.StatusCode, url));
+        #if NET6_0_OR_GREATER
+            await httpResponseInputStream.DisposeAsync();
+        #else
+            httpResponseInputStream.Dispose();
+        #endif
+            throw new HttpRequestException("Http request returned 416!");
         }
 
         ~HttpResponseInputStream() => Dispose();
@@ -69,15 +70,15 @@ namespace Hi3Helper.Http.Legacy
 #if NET6_0_OR_GREATER
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            int read = await _networkStream.ReadAsync(buffer, cancellationToken);
-            _currentPosition += read;
+            int read = await NetworkStream.ReadAsync(buffer, cancellationToken);
+            CurrentPosition += read;
             return read;
         }
 
         public override int Read(Span<byte> buffer)
         {
-            int read = _networkStream.Read(buffer);
-            _currentPosition += read;
+            int read = NetworkStream.Read(buffer);
+            CurrentPosition += read;
             return read;
         }
 
@@ -85,17 +86,17 @@ namespace Hi3Helper.Http.Legacy
         public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
 #endif
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            int read = await _networkStream.ReadAsync(buffer, offset, count, cancellationToken);
-            _currentPosition += read;
+            int read = await NetworkStream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken);
+            CurrentPosition += read;
             return read;
         }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            int read = _networkStream.Read(buffer, offset, count);
-            _currentPosition += read;
+            int read = NetworkStream.Read(buffer, offset, count);
+            CurrentPosition += read;
             return read;
         }
 
@@ -119,17 +120,20 @@ namespace Hi3Helper.Http.Legacy
 
         public override void Flush()
         {
-            _networkStream.Flush();
+            if (IsSuccessStatusCode)
+            {
+                NetworkStream.Flush();
+            }
         }
 
         public override long Length
         {
-            get { return _networkLength; }
+            get { return NetworkLength; }
         }
 
         public override long Position
         {
-            get { return _currentPosition; }
+            get { return CurrentPosition; }
             set { throw new NotSupportedException(); }
         }
 
@@ -139,23 +143,27 @@ namespace Hi3Helper.Http.Legacy
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
-            if (disposing)
+            if (!disposing)
             {
-                _networkRequest?.Dispose();
-                _networkResponse?.Dispose();
-                _networkStream?.Dispose();
+                return;
             }
 
-            GC.SuppressFinalize(this);
+            NetworkRequest.Dispose();
+            NetworkResponse.Dispose();
+
+            if (IsSuccessStatusCode)
+            {
+                NetworkStream.Dispose();
+            }
         }
 
 #if NET6_0_OR_GREATER
         public override async ValueTask DisposeAsync()
         {
-            _networkRequest?.Dispose();
-            _networkResponse?.Dispose();
-            if (_networkStream != null)
-                await _networkStream.DisposeAsync();
+            NetworkRequest.Dispose();
+            NetworkResponse.Dispose();
+            if (NetworkStream != null)
+                await NetworkStream.DisposeAsync();
 
             await base.DisposeAsync();
             GC.SuppressFinalize(this);
@@ -175,19 +183,18 @@ namespace Hi3Helper.Http.Legacy
                          long? offsetEnd = null, 
                          string? userAgent = null, 
                          bool useExternalSessionClient = false,
-                         HttpClient? externalSessionClient = null, 
-                         bool ignoreOutStreamLength = false)
+                         HttpClient? externalSessionClient = null)
         {
             // Initialize Properties
-            this.PathURL = pathURL;
-            this.IsDisposed = false;
-            this.IsUseExternalSession = useExternalSessionClient;
-            this.SessionState = DownloadState.Idle;
+            PathURL = pathURL;
+            IsDisposed = false;
+            IsUseExternalSession = useExternalSessionClient;
+            SessionState = DownloadState.Idle;
             
             if (useExternalSessionClient && externalSessionClient == null)
                 throw new HttpHelperSessionNotReady("External session is null!");
             
-            this.SessionClient = useExternalSessionClient ? externalSessionClient! : 
+            SessionClient = useExternalSessionClient ? externalSessionClient! : 
                 new HttpClient(clientHandler)
                 {
                     Timeout = TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
@@ -197,50 +204,50 @@ namespace Hi3Helper.Http.Legacy
                     DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
         #endif
                 };
-            this.SessionID = 0;
+            SessionID = 0;
 
             if (!useExternalSessionClient && userAgent != null)
             {
-                this.SessionClient?.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+                SessionClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
             }
 
-            this.OffsetStart = offsetStart;
-            this.OffsetEnd = offsetEnd;
+            OffsetStart = offsetStart;
+            OffsetEnd = offsetEnd;
         }
         #nullable restore
 
         // Seek the StreamOutput to the end of file
         // ReSharper disable once MemberCanBePrivate.Global
-        internal void SeekStreamOutputToEnd() => this.StreamOutput?.Seek(0, SeekOrigin.End);
+        internal void SeekStreamOutputToEnd() => StreamOutput.Seek(0, SeekOrigin.End);
 
-        internal async Task AssignOutputStreamFromFile(bool isOverwrite, string filePath, bool IgnoreOutStreamLength)
+        internal async Task AssignOutputStreamFromFile(bool isOverwrite, string filePath, bool ignoreOutStreamLength)
         {
-            this.IsFileMode = true;
+            IsFileMode = true;
             FileInfo fileInfo = new FileInfo(filePath);
             if (isOverwrite)
-                this.StreamOutput = await Http.NaivelyOpenFileStreamAsync(fileInfo, FileMode.Create, FileAccess.Write, FileShare.Write);
+                StreamOutput = await Http.NaivelyOpenFileStreamAsync(fileInfo, FileMode.Create, FileAccess.Write, FileShare.Write);
             else
             {
-                this.StreamOutput = await Http.NaivelyOpenFileStreamAsync(fileInfo, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write);
+                StreamOutput = await Http.NaivelyOpenFileStreamAsync(fileInfo, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write);
             }
 
             SeekStreamOutputToEnd();
-            AdjustOffsets(OffsetStart, OffsetEnd, IgnoreOutStreamLength);
+            AdjustOffsets(OffsetStart, OffsetEnd, ignoreOutStreamLength);
         }
 
-        internal void AssignOutputStreamFromStream(Stream stream, bool IgnoreOutStreamLength)
+        internal void AssignOutputStreamFromStream(Stream stream, bool ignoreOutStreamLength)
         {
             ArgumentNullException.ThrowIfNull(stream);
-            this.StreamOutput = stream;
-            this.IsFileMode = false;
+            StreamOutput = stream;
+            IsFileMode = false;
 
-            AdjustOffsets(OffsetStart, OffsetEnd, IgnoreOutStreamLength);
+            AdjustOffsets(OffsetStart, OffsetEnd, ignoreOutStreamLength);
         }
 
-        private void AdjustOffsets(long? Start, long? End, bool IgnoreOutStreamLength = false)
+        private void AdjustOffsets(long? start, long? end, bool ignoreOutStreamLength = false)
         {
-            this.OffsetStart = (Start ?? 0) + (IgnoreOutStreamLength ? 0 : this.StreamOutputSize);
-            this.OffsetEnd = End;
+            OffsetStart = (start ?? 0) + (ignoreOutStreamLength ? 0 : StreamOutputSize);
+            OffsetEnd = end;
         }
 
 #if NET6_0_OR_GREATER
@@ -251,9 +258,9 @@ namespace Hi3Helper.Http.Legacy
         {
             try
             {
-                if (this.StreamInput != null)
+                if (StreamInput != null)
 #if NET6_0_OR_GREATER
-                    await this.StreamInput.DisposeAsync();
+                    await StreamInput.DisposeAsync();
 #else
                     this.StreamInput.Dispose();
 #endif
@@ -262,7 +269,7 @@ namespace Hi3Helper.Http.Legacy
             }
             catch (Exception ex)
             {
-                Http.PushLog($"Failed while reinitialize session ID: {this.SessionID}\r\n{ex}", DownloadLogSeverity.Error);
+                Http.PushLog($"Failed while reinitialize session ID: {SessionID}\r\n{ex}", DownloadLogSeverity.Error);
                 return new Tuple<bool, Exception>(false, ex);
             }
         }
@@ -279,26 +286,26 @@ namespace Hi3Helper.Http.Legacy
             {
                 ActionTimeoutValueTaskCallback<HttpResponseInputStream> createStreamCallback =
                     async (innerToken) =>
-                        await HttpResponseInputStream.CreateStreamAsync(this.SessionClient, this.PathURL,
-                                                                        this.OffsetStart, this.OffsetEnd, innerToken);
+                        await HttpResponseInputStream.CreateStreamAsync(SessionClient, PathURL,
+                                                                        OffsetStart, OffsetEnd, innerToken);
 
-                this.StreamInput = await TaskExtensions.WaitForRetryAsync(() => createStreamCallback, fromToken: token);
-                return this.StreamInput != null;
+                StreamInput = await TaskExtensions.WaitForRetryAsync(() => createStreamCallback, fromToken: token);
+                return StreamInput != null;
             }
 
             return false;
         }
 
-        internal bool IsExistingFileOversized(long offsetStart, long offsetEnd) => this.StreamOutputSize > offsetEnd + 1 - offsetStart;
+        internal bool IsExistingFileOversize(long offsetStart, long offsetEnd) => StreamOutputSize > offsetEnd + 1 - offsetStart;
 
         private bool IsExistingFileSizeValid() =>
-            !((this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart < 0
-           && (this.IsLastSession ? this.OffsetEnd - 1 : this.OffsetEnd) - this.OffsetStart == -1);
+            !((IsLastSession ? OffsetEnd - 1 : OffsetEnd) - OffsetStart < 0
+           && (IsLastSession ? OffsetEnd - 1 : OffsetEnd) - OffsetStart == -1);
 
         // Implement Disposable for IDisposable
         ~Session()
         {
-            if (this.IsDisposed) return;
+            if (IsDisposed) return;
 
             Dispose();
         }
@@ -306,41 +313,41 @@ namespace Hi3Helper.Http.Legacy
 #if NET6_0_OR_GREATER
         public async ValueTask DisposeAsync()
         {
-            if (this.IsDisposed) return;
+            if (IsDisposed) return;
 
             try
             {
-                if (this.IsFileMode && this.StreamOutput != null) await this.StreamOutput.DisposeAsync();
-                if (this.StreamInput != null) await this.StreamInput.DisposeAsync();
+                if (IsFileMode && StreamOutput != null) await StreamOutput.DisposeAsync();
+                if (StreamInput != null) await StreamInput.DisposeAsync();
             }
             catch (Exception ex)
             {
                 Http.PushLog($"Exception while disposing session: {ex}", DownloadLogSeverity.Warning);
             }
 
-            this.IsDisposed = true;
+            IsDisposed = true;
             GC.SuppressFinalize(this);
         }
 #endif
 
         public void Dispose()
         {
-            if (this.IsDisposed) return;
+            if (IsDisposed) return;
 
             try
             {
-                if (this.IsFileMode)
-                    this.StreamOutput?.Dispose();
+                if (IsFileMode)
+                    StreamOutput.Dispose();
 
-                this.StreamInput?.Dispose();
-                if (this.IsUseExternalSession) this.SessionClient?.Dispose();
+                StreamInput.Dispose();
+                if (IsUseExternalSession) SessionClient.Dispose();
             }
             catch (Exception ex)
             {
                 Http.PushLog($"Exception while disposing session: {ex}", DownloadLogSeverity.Warning);
             }
 
-            this.IsDisposed = true;
+            IsDisposed = true;
             GC.SuppressFinalize(this);
         }
 
@@ -358,7 +365,7 @@ namespace Hi3Helper.Http.Legacy
         internal bool IsDisposed;
 
         // Session Properties
-        internal HttpClient    SessionClient = null!;
+        internal HttpClient    SessionClient;
         internal DownloadState SessionState;
         internal int           SessionRetryAttempt { get; set; }
         internal long          SessionID;
@@ -366,6 +373,6 @@ namespace Hi3Helper.Http.Legacy
         // Stream Properties
         internal HttpResponseInputStream StreamInput  = null!;
         internal Stream                  StreamOutput = null!;
-        internal long                    StreamOutputSize => (this.StreamOutput?.CanWrite ?? false) || (this.StreamOutput?.CanRead ?? false) ? this.StreamOutput.Length : 0;
+        internal long                    StreamOutputSize => StreamOutput.CanWrite || StreamOutput.CanRead ? StreamOutput.Length : 0;
     }
 }

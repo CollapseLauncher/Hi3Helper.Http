@@ -9,7 +9,7 @@
         CancelledMerging, CancelledDownloading
     }
 
-    public enum DownloadLogSeverity : int
+    public enum DownloadLogSeverity
     {
         Info = 0,
         Error = 1,

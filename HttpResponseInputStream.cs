@@ -5,7 +5,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-
 // ReSharper disable InconsistentNaming
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
 // ReSharper disable UnusedMember.Global
@@ -91,22 +90,22 @@ namespace Hi3Helper.Http
 
                 if (!httpResponseInputStream._isSuccessStatusCode)
                 {
-#if NET6_0_OR_GREATER
+                #if NET6_0_OR_GREATER
                     await httpResponseInputStream.DisposeAsync();
-#else
+                #else
                     httpResponseInputStream.Dispose();
-#endif
+                #endif
                     throw new HttpRequestException($"The url {url} returns an unsuccessful status code: {httpResponseInputStream._networkResponse.StatusCode} ({(int)httpResponseInputStream._networkResponse.StatusCode})");
                 }
 
                 httpResponseInputStream._networkLength =
                     httpResponseInputStream._networkResponse.Content.Headers.ContentLength ?? 0;
                 httpResponseInputStream._networkStream = await httpResponseInputStream._networkResponse.Content
-#if NET6_0_OR_GREATER
+                #if NET6_0_OR_GREATER
                     .ReadAsStreamAsync(token);
-#else
+                #else
                     .ReadAsStreamAsync();
-#endif
+                #endif
                 return httpResponseInputStream;
             }
             catch (TaskCanceledException) when (token.IsCancellationRequested)
@@ -189,7 +188,8 @@ namespace Hi3Helper.Http
 
         public override void Flush()
         {
-            _networkStream.Flush();
+            if (_isSuccessStatusCode)
+                _networkStream.Flush();
         }
 
         public override long Length => _networkLength;
@@ -219,7 +219,8 @@ namespace Hi3Helper.Http
 
             _networkRequest.Dispose();
             _networkResponse?.Dispose();
-            _networkStream?.Dispose();
+            if (_isSuccessStatusCode)
+                _networkStream.Dispose();
         }
 
 #if NET6_0_OR_GREATER

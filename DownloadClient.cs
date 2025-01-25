@@ -516,7 +516,7 @@ namespace Hi3Helper.Http
         public static async ValueTask<(HttpStatusCode, bool)> GetURLStatus(HttpClient httpClient, Uri url, CancellationToken cancelToken)
         {
             using (HttpResponseMessage response = await httpClient.SendAsync(
-                new HttpRequestMessage()
+                new HttpRequestMessage
                 {
                     RequestUri = url
                 },

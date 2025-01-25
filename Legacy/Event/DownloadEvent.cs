@@ -4,32 +4,23 @@ namespace Hi3Helper.Http.Legacy
 {
     public sealed class DownloadEvent
     {
-        public DownloadEvent()
+        public void UpdateDownloadEvent(long sizeLastDownloaded, long sizeDownloaded, long sizeToBeDownloaded,
+                                        long read, double totalSecond, DownloadState state)
         {
-            this.Speed = 0;
-            this.SizeDownloaded = 0;
-            this.SizeToBeDownloaded = 0;
-            this.Read = 0;
-            this.State = DownloadState.Idle;
+            Speed = (long)(sizeLastDownloaded / totalSecond);
+            SizeDownloaded = sizeDownloaded;
+            SizeToBeDownloaded = sizeToBeDownloaded;
+            Read = read;
+            State = state;
         }
 
-        public void UpdateDownloadEvent(long SizeLastDownloaded, long SizeDownloaded, long SizeToBeDownloaded,
-            long Read, double TotalSecond, DownloadState state)
-        {
-            this.Speed = (long)(SizeLastDownloaded / TotalSecond);
-            this.SizeDownloaded = SizeDownloaded;
-            this.SizeToBeDownloaded = SizeToBeDownloaded;
-            this.Read = Read;
-            this.State = state;
-        }
-
-        public long SizeDownloaded { get; set; }
-        public long SizeToBeDownloaded { get; set; }
-        public double ProgressPercentage => Math.Round((SizeDownloaded / (double)SizeToBeDownloaded) * 100, 2);
-        public long Read { get; set; }
-        public long Speed { get; set; }
-        public TimeSpan TimeLeft => checked(TimeSpan.FromSeconds((SizeToBeDownloaded - SizeDownloaded) / UnZeroed(Speed)));
-        private long UnZeroed(long Input) => Math.Max(Input, 1);
-        public DownloadState State { get; set; }
+        public         long          SizeDownloaded       { get; set; }
+        public         long          SizeToBeDownloaded   { get; set; }
+        public         double        ProgressPercentage   => Math.Round(SizeDownloaded / (double)SizeToBeDownloaded * 100, 2);
+        public         long          Read                 { get; set; }
+        public         long          Speed                { get; set; }
+        public         TimeSpan      TimeLeft             => checked(TimeSpan.FromSeconds((SizeToBeDownloaded - SizeDownloaded) / UnZeroed(Speed)));
+        private static long          UnZeroed(long input) => Math.Max(input, 1);
+        public         DownloadState State                { get; set; } = DownloadState.Idle;
     }
 }

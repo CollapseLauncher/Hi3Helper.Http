@@ -22,18 +22,18 @@ namespace Hi3Helper.Http.Legacy
         private async Task<Session> InitializeSingleSession(long? offsetStart, long? offsetEnd, string pathOutput = null, bool isOverwrite = false, Stream stream = null, bool ignoreOutStreamLength = false, CancellationToken token = default)
 #endif
         {
-            this.SizeAttribute.SizeTotalToDownload = 0;
-            this.SizeAttribute.SizeDownloaded = 0;
-            this.SizeAttribute.SizeDownloadedLast = 0;
+            _sizeAttribute.SizeTotalToDownload = 0;
+            _sizeAttribute.SizeDownloaded = 0;
+            _sizeAttribute.SizeDownloadedLast = 0;
 
-            this.DownloadState = DownloadState.WaitingOnSession;
+            DownloadState = DownloadState.WaitingOnSession;
 
             token.ThrowIfCancellationRequested();
 
-            Session session = new Session(this.PathURL,
-                this._handler, offsetStart, offsetEnd,
-                this._clientUserAgent, true, this._client, ignoreOutStreamLength);
-                session.SessionClient = this._client;
+            Session session = new Session(_pathURL,
+                _handler, offsetStart, offsetEnd,
+                _clientUserAgent, true, _client);
+                session.SessionClient = _client;
 
             if (string.IsNullOrEmpty(pathOutput) && stream == null)
                 throw new ArgumentNullException(nameof(pathOutput), $"You cannot put PathOutput and _Stream argument both on null!");
@@ -53,9 +53,9 @@ namespace Hi3Helper.Http.Legacy
                 throw new HttpRequestException();
             }
 
-            if ((int)session.StreamInput._statusCode == 416) throw new HttpRequestException("Http session returned 416!");
-            this.SizeAttribute.SizeTotalToDownload = session.IsFileMode ? session.StreamInput.Length + session.StreamOutputSize : session.StreamInput.Length;
-            this.SizeAttribute.SizeDownloaded = session.StreamOutputSize;
+            if ((int)session.StreamInput.StatusCode == 416) throw new HttpRequestException("Http session returned 416!");
+            _sizeAttribute.SizeTotalToDownload = session.IsFileMode ? session.StreamInput.Length + session.StreamOutputSize : session.StreamInput.Length;
+            _sizeAttribute.SizeDownloaded = session.StreamOutputSize;
 
             return session;
         }
@@ -66,17 +66,17 @@ namespace Hi3Helper.Http.Legacy
             [EnumeratorCancellation]
             CancellationToken token)
         {
-            this.SizeAttribute.SizeTotalToDownload = 0;
-            this.SizeAttribute.SizeDownloaded = 0;
-            this.SizeAttribute.SizeDownloadedLast = 0;
+            _sizeAttribute.SizeTotalToDownload = 0;
+            _sizeAttribute.SizeDownloaded = 0;
+            _sizeAttribute.SizeDownloadedLast = 0;
 
-            this.DownloadState = DownloadState.WaitingOnSession;
+            DownloadState = DownloadState.WaitingOnSession;
 
             long minimumAllowedLength = (1 << 10) * sessionThread;
             long remoteLength = await GetContentLengthNonNull(inputUrl, token);
             if (remoteLength < minimumAllowedLength) throw new NullReferenceException($"The file size to be downloaded must be more than or equal minimum allowed size: {minimumAllowedLength}!");
 
-            this.SizeAttribute.SizeTotalToDownload = remoteLength;
+            _sizeAttribute.SizeTotalToDownload = remoteLength;
             long sliceSize = (long)Math.Ceiling((double)remoteLength / sessionThread);
 
             for (
@@ -97,12 +97,12 @@ namespace Hi3Helper.Http.Legacy
                     string sessionOutPathOld = outputPath + string.Format(PathSessionPrefix, sessionId);
                     string sessionOutPathNew = outputPath + string.Format(".{0:000}", currentThread + 1);
 
-                    endOffset = currentThread + 1 == sessionThread ? remoteLength - 1 : (startOffset + sliceSize - 1);
+                    endOffset = currentThread + 1 == sessionThread ? remoteLength - 1 : startOffset + sliceSize - 1;
                     session = new Session(
-                        inputUrl, this._handler, startOffset, endOffset,
-                        this._clientUserAgent, true, this._client)
+                        inputUrl, _handler, startOffset, endOffset,
+                        _clientUserAgent, true, _client)
                     {
-                        IsLastSession = currentThread + 1 == this.ConnectionSessions,
+                        IsLastSession = currentThread + 1 == _connectionSessions,
                         SessionID = sessionId
                     };
                     session.SessionState = DownloadState.WaitingOnSession;
@@ -112,7 +112,7 @@ namespace Hi3Helper.Http.Legacy
                     string toOutputPath = File.Exists(sessionOutPathOld) ? sessionOutPathOld : sessionOutPathNew;
                     await session.AssignOutputStreamFromFile(isOverwrite, toOutputPath, false);
 
-                    if (session.IsExistingFileOversized(lastStartOffset, endOffset))
+                    if (session.IsExistingFileOversize(lastStartOffset, endOffset))
                     {
                         session =
 #if NET6_0_OR_GREATER
@@ -124,10 +124,10 @@ namespace Hi3Helper.Http.Legacy
                         PushLog($"Session ID: {sessionId} output file has been re-created due to the size being oversized!", DownloadLogSeverity.Warning);
                     }
 
-                    this.SizeAttribute.SizeDownloaded += session.StreamOutputSize;
+                    _sizeAttribute.SizeDownloaded += session.StreamOutputSize;
                     bool isRequestSuccess;
-                    if ((session.StreamOutputSize == (endOffset - lastStartOffset) + 1)
-                     || (!(isRequestSuccess = await session.TryGetHttpRequest(token)) && (int)session.StreamInput._statusCode == 413))
+                    if (session.StreamOutputSize == endOffset - lastStartOffset + 1
+                     || (!(isRequestSuccess = await session.TryGetHttpRequest(token)) && (int)session.StreamInput.StatusCode == 413))
                     {
                         PushLog($"Session ID: {sessionId} will be skipped because the session has already been downloaded!", DownloadLogSeverity.Warning);
                         isInitSucceed = false;
@@ -135,11 +135,11 @@ namespace Hi3Helper.Http.Legacy
                     }
 
                     if (!isRequestSuccess)
-                        throw new HttpRequestException($"Error has occurred while requesting HTTP response to {inputUrl} with status code: {(int)session.StreamInput._statusCode} ({session.StreamInput._statusCode})");
+                        throw new HttpRequestException($"Error has occurred while requesting HTTP response to {inputUrl} with status code: {(int)session.StreamInput.StatusCode} ({session.StreamInput.StatusCode})");
                 }
                 catch (Exception ex)
                 {
-                    this.DownloadState = DownloadState.FailedDownloading;
+                    DownloadState = DownloadState.FailedDownloading;
                     session.SessionState = DownloadState.FailedDownloading;
                     PushLog($"Session initialization cannot be completed due to an error!\r\n{ex}", DownloadLogSeverity.Error);
                     isInitSucceed = false;
@@ -176,39 +176,39 @@ namespace Hi3Helper.Http.Legacy
 #else
             Session
 #endif
-            ReinitializeSession(Session Input, CancellationToken _,
-            bool ForceOverwrite = false, long? GivenOffsetStart = null, long? GivenOffsetEnd = null)
+            ReinitializeSession(Session input, CancellationToken _,
+            bool forceOverwrite = false, long? givenOffsetStart = null, long? givenOffsetEnd = null)
         {
-            if (Input == null) throw new NullReferenceException("Input session cannot be null while reinitialization is requested!");
+            if (input == null) throw new NullReferenceException("Input session cannot be null while reinitialization is requested!");
 #if NET6_0_OR_GREATER
-            await Input.DisposeAsync();
+            await input.DisposeAsync();
 #else
             Input.Dispose();
 #endif
             return new Session(
-                Input.PathURL, this._handler, ForceOverwrite ? GivenOffsetStart : Input.OffsetStart,
-                ForceOverwrite ? GivenOffsetEnd : Input.OffsetStart, this._clientUserAgent,
-                true, this._client
+                input.PathURL, _handler, forceOverwrite ? givenOffsetStart : input.OffsetStart,
+                forceOverwrite ? givenOffsetEnd : input.OffsetStart, _clientUserAgent,
+                true, _client
                 )
             {
-                IsLastSession = Input.IsLastSession,
+                IsLastSession = input.IsLastSession,
             };
         }
 
-        public static void DeleteMultisessionFiles(string Path, byte Sessions)
+        public static void DeleteMultisessionFiles(string path, byte sessions)
         {
-            string SessionFilePath;
-            string SessionFilePathLegacy;
-            for (int t = 0; t < Sessions; t++)
+            string sessionFilePath;
+            string sessionFilePathLegacy;
+            for (int t = 0; t < sessions; t++)
             {
-                SessionFilePath = Path + string.Format(".{0:000}", t + 1);
+                sessionFilePath = path + string.Format(".{0:000}", t + 1);
 #pragma warning disable CS0618 // Type or member is obsolete
-                SessionFilePathLegacy = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
+                sessionFilePathLegacy = path + string.Format(PathSessionPrefix, GetHashNumber(sessions, t));
 #pragma warning restore CS0618 // Type or member is obsolete
                 try
                 {
-                    FileInfo fileInfo       = new FileInfo(SessionFilePath);
-                    FileInfo fileInfoLegacy = new FileInfo(SessionFilePathLegacy);
+                    FileInfo fileInfo       = new FileInfo(sessionFilePath);
+                    FileInfo fileInfoLegacy = new FileInfo(sessionFilePathLegacy);
                     if (fileInfo.Exists)
                     {
                         fileInfo.IsReadOnly = false;
@@ -223,69 +223,69 @@ namespace Hi3Helper.Http.Legacy
                 }
                 catch (Exception ex)
                 {
-                    LogInvoker.PushLog($"Failed to delete {SessionFilePath} or {SessionFilePathLegacy}" +
+                    LogInvoker.PushLog($"Failed to delete {sessionFilePath} or {sessionFilePathLegacy}" +
                                        $"{ex}", DownloadLogSeverity.Error);
                 }
             }
         }
 
-        public static long CalculateExistingMultisessionFilesWithExpctdSize(string Path, byte Sessions, long ExpectedSize)
+        public static long CalculateExistingMultisessionFilesWithExpctdSize(string path, byte sessions, long expectedSize)
         {
-            long Ret = 0;
-            string SessionFilePath;
-            string SessionFilePathLegacy;
-            FileInfo parentFile = new FileInfo(Path);
+            long ret = 0;
+            string sessionFilePath;
+            string sessionFilePathLegacy;
+            FileInfo parentFile = new FileInfo(path);
             if (parentFile.Exists)
             {
-                if (parentFile.Length == ExpectedSize)
+                if (parentFile.Length == expectedSize)
                     return parentFile.Length;
             }
 
-            for (int t = 0; t < Sessions; t++)
+            for (int t = 0; t < sessions; t++)
             {
-                SessionFilePath = Path + string.Format(".{0:000}", t + 1);
+                sessionFilePath = path + string.Format(".{0:000}", t + 1);
 #pragma warning disable CS0618 // Type or member is obsolete
-                SessionFilePathLegacy = Path + string.Format(PathSessionPrefix, GetHashNumber(Sessions, t));
+                sessionFilePathLegacy = path + string.Format(PathSessionPrefix, GetHashNumber(sessions, t));
 #pragma warning restore CS0618 // Type or member is obsolete
                 try
                 {
-                    FileInfo fileInfo       = new FileInfo(SessionFilePath);
-                    FileInfo fileInfoLegacy = new FileInfo(SessionFilePathLegacy);
-                    if (fileInfo.Exists) Ret            += fileInfo.Length;
-                    else if (fileInfoLegacy.Exists) Ret += fileInfoLegacy.Length;
+                    FileInfo fileInfo       = new FileInfo(sessionFilePath);
+                    FileInfo fileInfoLegacy = new FileInfo(sessionFilePathLegacy);
+                    if (fileInfo.Exists) ret            += fileInfo.Length;
+                    else if (fileInfoLegacy.Exists) ret += fileInfoLegacy.Length;
                 }
                 catch (Exception ex)
                 {
-                    LogInvoker.PushLog($"Failed to calculate existing multi-session file size on {SessionFilePath} or {SessionFilePathLegacy}" +
+                    LogInvoker.PushLog($"Failed to calculate existing multi-session file size on {sessionFilePath} or {sessionFilePathLegacy}" +
                                        $"{ex}", DownloadLogSeverity.Error);
                 }
             }
 
-            return Ret;
+            return ret;
         }
 
 #if NET6_0_OR_GREATER
-        public async ValueTask<Tuple<int, bool>> GetURLStatus(string URL, CancellationToken Token)
+        public async ValueTask<Tuple<int, bool>> GetURLStatus(string url, CancellationToken token)
 #else
         public async Task<Tuple<int, bool>> GetURLStatus(string URL, CancellationToken Token)
 #endif
         {
-            using (HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage() { RequestUri = new Uri(URL) }, HttpCompletionOption.ResponseHeadersRead, Token))
+            using (HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage { RequestUri = new Uri(url) }, HttpCompletionOption.ResponseHeadersRead, token))
             {
                 return new Tuple<int, bool>((int)response.StatusCode, response.IsSuccessStatusCode);
             }
         }
 
 #if NET6_0_OR_GREATER
-        public async ValueTask<long> GetContentLengthNonNull(string URL, CancellationToken Token)
+        public async ValueTask<long> GetContentLengthNonNull(string url, CancellationToken token)
 #else
         public async Task<long> GetContentLengthNonNull(string URL, CancellationToken Token)
 #endif
         {
             using (HttpRequestMessage message = new HttpRequestMessage())
             {
-                message.RequestUri = new Uri(URL);
-                using (HttpResponseMessage response = await _client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, Token))
+                message.RequestUri = new Uri(url);
+                using (HttpResponseMessage response = await _client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, token))
                 {
                     return response.Content.Headers.ContentLength ?? 0;
                 }
@@ -293,44 +293,44 @@ namespace Hi3Helper.Http.Legacy
         }
 
 #if NET6_0_OR_GREATER
-        public async ValueTask<long?> TryGetContentLength(string URL, CancellationToken Token)
+        public async ValueTask<long?> TryGetContentLength(string url, CancellationToken token)
 #else
         public async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
 #endif
         {
-            byte CurrentRetry = 0;
+            byte currentRetry = 0;
             while (true)
             {
                 try
                 {
-                    return await GetContentLength(URL, Token);
+                    return await GetContentLength(url, token);
                 }
                 catch (HttpRequestException)
                 {
-                    CurrentRetry++;
-                    if (CurrentRetry > this.RetryMax)
+                    currentRetry++;
+                    if (currentRetry > _retryMax)
                         throw;
 
-                    PushLog($"Error while fetching File Size (Retry Attempt: {CurrentRetry})...", DownloadLogSeverity.Warning);
-                    await Task.Delay(this.RetryInterval, Token);
+                    PushLog($"Error while fetching File Size (Retry Attempt: {currentRetry})...", DownloadLogSeverity.Warning);
+                    await Task.Delay(_retryInterval, token);
                 }
             }
         }
 
 #if NET6_0_OR_GREATER
-        private async ValueTask<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
+        private async ValueTask<long?> GetContentLength(string input, CancellationToken token = new CancellationToken())
 #else
         private async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
 #endif
         {
-            HttpRequestMessage message = new HttpRequestMessage() { RequestUri = new Uri(Input) };
+            HttpRequestMessage  message  = new HttpRequestMessage { RequestUri = new Uri(input) };
             HttpResponseMessage response = await _client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, token);
-            long? Length = response.Content.Headers.ContentLength;
+            long?               length   = response.Content.Headers.ContentLength;
 
             message.Dispose();
             response.Dispose();
 
-            return Length;
+            return length;
         }
     }
 }

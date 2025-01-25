@@ -10,44 +10,44 @@ namespace Hi3Helper.Http.Legacy
     {
         public async Task Merge(CancellationToken token)
         {
-            if (this.DownloadState != DownloadState.FinishedNeedMerge)
+            if (DownloadState != DownloadState.FinishedNeedMerge)
             {
-                throw new InvalidOperationException($"The download status is unfinished and cannot be merged. Also you should only use it while using multisession download!\r\nCurrent Status: {this.DownloadState}");
+                throw new InvalidOperationException($"The download status is unfinished and cannot be merged. Also you should only use it while using multisession download!\r\nCurrent Status: {DownloadState}");
             }
 
-            this.DownloadState = DownloadState.Merging;
-            this.SessionsStopwatch = Stopwatch.StartNew();
-            this.SizeAttribute.SizeDownloaded = 0;
-            this.SizeAttribute.SizeDownloadedLast = 0;
+            DownloadState = DownloadState.Merging;
+            _sessionsStopwatch = Stopwatch.StartNew();
+            _sizeAttribute.SizeDownloaded = 0;
+            _sizeAttribute.SizeDownloadedLast = 0;
 
-            DownloadEvent Event = new DownloadEvent();
+            DownloadEvent @event = new DownloadEvent();
 
-            using (FileStream fs = new FileStream(this.PathOutput, FileMode.Create, FileAccess.Write))
+            using (FileStream fs = new FileStream(_pathOutput, FileMode.Create, FileAccess.Write))
             {
-                for (int t = 0; t < this.ConnectionSessions; t++)
+                for (int t = 0; t < _connectionSessions; t++)
                 {
 #pragma warning disable CS0618 // Type or member is obsolete
-                    string chunkPath = this.PathOutput + string.Format(PathSessionPrefix, GetHashNumber(this.ConnectionSessions, t));
+                    string chunkPath = _pathOutput + string.Format(PathSessionPrefix, GetHashNumber(_connectionSessions, t));
 #pragma warning restore CS0618 // Type or member is obsolete
-                    string chunkPathNew = this.PathOutput + string.Format(".{0:000}", t + 1);
+                    string chunkPathNew = _pathOutput + string.Format(".{0:000}", t + 1);
                     using (FileStream os = new FileStream(File.Exists(chunkPath) ? chunkPath : chunkPathNew, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                     {
-                        await IOReadWrite(os, fs, token);
+                        await IoReadWrite(os, fs, token);
                     }
                 }
             }
 
             // Update state
-            Event.UpdateDownloadEvent(
-                    this.SizeAttribute.SizeDownloadedLast,
-                    this.SizeAttribute.SizeDownloaded,
-                    this.SizeAttribute.SizeTotalToDownload,
+            @event.UpdateDownloadEvent(
+                    _sizeAttribute.SizeDownloadedLast,
+                    _sizeAttribute.SizeDownloaded,
+                    _sizeAttribute.SizeTotalToDownload,
                     0,
-                    this.SessionsStopwatch.Elapsed.Milliseconds,
-                    this.DownloadState = DownloadState.Finished
+                    _sessionsStopwatch.Elapsed.Milliseconds,
+                    DownloadState = DownloadState.Finished
                     );
 
-            this.UpdateProgress(Event);
+            UpdateProgress(@event);
         }
     }
 }

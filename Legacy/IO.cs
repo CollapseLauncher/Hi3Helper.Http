@@ -1,5 +1,5 @@
-﻿using System.IO;
-using System.Runtime.CompilerServices;
+﻿using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,16 +13,16 @@ namespace Hi3Helper.Http.Legacy
 #else
             Task
 #endif
-            IOReadWrite(Stream Input, Stream Output, CancellationToken Token)
+            IoReadWrite(Stream input, Stream output, CancellationToken token)
         {
-            DownloadEvent Event = new DownloadEvent();
-            int Read;
-            byte[] Buffer = new byte[_bufferSize];
+            DownloadEvent @event = new DownloadEvent();
+            int read;
+            byte[] buffer = new byte[BufferSize];
 
             // Read Stream into Buffer
-            while ((Read = await Input
+            while ((read = await input
 #if NET6_0_OR_GREATER
-                .ReadAsync(Buffer, Token)
+                .ReadAsync(buffer, token)
 #else
                 .ReadAsync(Buffer, 0, _bufferSize, Token)
 #endif
@@ -30,33 +30,33 @@ namespace Hi3Helper.Http.Legacy
             {
                 // Write Buffer to the output Stream
 #if NET6_0_OR_GREATER
-                Token.ThrowIfCancellationRequested();
-                Output.Write(Buffer, 0, Read);
+                token.ThrowIfCancellationRequested();
+                await output.WriteAsync(buffer.AsMemory(0, read), token);
 #else
                 await Output
                     .WriteAsync(Buffer, 0, Read, Token);
 #endif
 
                 // Increment SizeDownloaded attribute
-                Interlocked.Add(ref this.SizeAttribute.SizeDownloaded, Read);
-                Interlocked.Add(ref this.SizeAttribute.SizeDownloadedLast, Read);
+                Interlocked.Add(ref _sizeAttribute.SizeDownloaded, read);
+                Interlocked.Add(ref _sizeAttribute.SizeDownloadedLast, read);
 
                 // Update state
-                Event.UpdateDownloadEvent(
-                        this.SizeAttribute.SizeDownloadedLast,
-                        this.SizeAttribute.SizeDownloaded,
-                        this.SizeAttribute.SizeTotalToDownload,
-                        Read,
-                        this.SessionsStopwatch.Elapsed.TotalSeconds,
-                        this.DownloadState
+                @event.UpdateDownloadEvent(
+                        _sizeAttribute.SizeDownloadedLast,
+                        _sizeAttribute.SizeDownloaded,
+                        _sizeAttribute.SizeTotalToDownload,
+                        read,
+                        _sessionsStopwatch.Elapsed.TotalSeconds,
+                        DownloadState
                         );
-                this.UpdateProgress(Event);
+                UpdateProgress(@event);
             }
         }
 
         internal static async ValueTask<FileStream> NaivelyOpenFileStreamAsync(FileInfo info, FileMode fileMode, FileAccess fileAccess, FileShare fileShare)
         {
-            const int MaxTry = 10;
+            const int maxTry = 10;
             int currentTry = 1;
             while (true)
             {
@@ -66,13 +66,13 @@ namespace Hi3Helper.Http.Legacy
                 }
                 catch
                 {
-                    if (currentTry <= MaxTry)
+                    if (currentTry > maxTry)
                     {
-                        PushLog($"Failed while trying to open: {info.FullName}. Retry attempt: {++currentTry} / {MaxTry}", DownloadLogSeverity.Warning);
-                        await Task.Delay(50); // Adding 50ms delay
-                        continue;
+                        throw; // Throw this MFs
                     }
-                    throw; // Throw this MFs
+
+                    PushLog($"Failed while trying to open: {info.FullName}. Retry attempt: {++currentTry} / {maxTry}", DownloadLogSeverity.Warning);
+                    await Task.Delay(50); // Adding 50ms delay
                 }
             }
         }

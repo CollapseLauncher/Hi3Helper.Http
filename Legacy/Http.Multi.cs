@@ -5,21 +5,20 @@ namespace Hi3Helper.Http.Legacy
 {
     public sealed partial class Http
     {
-        public async Task Download(string URL, string Output, byte ConnectionSessions = 4,
-            bool Overwrite = false, CancellationToken ThreadToken = new CancellationToken())
+        public async Task Download(string url, string output, byte connectionSessions = 4,
+            bool overwrite = false, CancellationToken threadToken = default)
         {
             ResetState();
-            this.PathURL = URL;
-            this.PathOutput = Output;
-            this.PathOverwrite = Overwrite;
-            this.ConnectionSessions = ConnectionSessions;
+            _pathURL            = url;
+            _pathOutput         = output;
+            _connectionSessions = connectionSessions;
 
-            if (ConnectionSessions > ConnectionSessionsMax)
-                throw new HttpHelperAllowedSessionsMaxed($"You've maxed allowed Connection Sessions ({ConnectionSessions} sessions have been set and only <= {ConnectionSessionsMax} sessions allowed)");
+            if (connectionSessions > ConnectionSessionsMax)
+                throw new HttpHelperAllowedSessionsMaxed($"You've maxed allowed Connection Sessions ({connectionSessions} sessions have been set and only <= {ConnectionSessionsMax} sessions allowed)");
 
-            await TaskWhenAllSession(GetMultisessionTasks(URL, Output, ConnectionSessions, Overwrite, ThreadToken), ThreadToken, ConnectionSessions);
+            await TaskWhenAllSession(GetMultisessionTasks(url, output, connectionSessions, overwrite, threadToken), threadToken, connectionSessions);
 
-            this.DownloadState = DownloadState.FinishedNeedMerge;
+            DownloadState = DownloadState.FinishedNeedMerge;
         }
     }
 }
