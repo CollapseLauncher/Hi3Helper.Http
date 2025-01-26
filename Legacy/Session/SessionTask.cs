@@ -45,7 +45,7 @@ namespace Hi3Helper.Http.Legacy
 
         private async Task SessionTaskRunnerContainer(Session session, CancellationToken token)
         {
-            if (session == null) return;
+            if (session == null!) return;
             DownloadEvent @event = new DownloadEvent();
 
             CancellationTokenSource innerTimeoutToken, cooperatedToken;
@@ -122,7 +122,7 @@ namespace Hi3Helper.Http.Legacy
                 {
                     PushLog($"An error has occurred on session ID: {session.SessionID}. The session will retry to re-establish the connection...\r\nException: {ex}", DownloadLogSeverity.Warning);
                     Tuple<bool, Exception> retryStatus = await session.TryReinitializeRequest(token);
-                    if (retryStatus.Item1 && retryStatus.Item2 == null) continue;
+                    if (retryStatus.Item1 && retryStatus.Item2 == null!) continue;
 
                     allowDispose = true;
                     DownloadState = DownloadState.FailedDownloading;
@@ -131,7 +131,7 @@ namespace Hi3Helper.Http.Legacy
                     if (ex is TaskCanceledException && !token.IsCancellationRequested)
                         throw new TimeoutException($"Request for session ID: {session.SessionID} has timed out!", ex);
 
-                    throw retryStatus.Item2 != null ? retryStatus.Item2 : ex;
+                    throw retryStatus.Item2 != null! ? retryStatus.Item2 : ex;
                 }
                 finally
                 {

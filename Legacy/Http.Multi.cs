@@ -5,7 +5,7 @@ namespace Hi3Helper.Http.Legacy
 {
     public sealed partial class Http
     {
-        public async Task Download(string url, string output, byte connectionSessions = 4,
+        public async Task Download(string url, string output, int connectionSessions = 4,
             bool overwrite = false, CancellationToken threadToken = default)
         {
             ResetState();

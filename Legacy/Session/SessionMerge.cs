@@ -29,7 +29,7 @@ namespace Hi3Helper.Http.Legacy
 #pragma warning disable CS0618 // Type or member is obsolete
                     string chunkPath = _pathOutput + string.Format(PathSessionPrefix, GetHashNumber(_connectionSessions, t));
 #pragma warning restore CS0618 // Type or member is obsolete
-                    string chunkPathNew = _pathOutput + string.Format(".{0:000}", t + 1);
+                    string chunkPathNew = _pathOutput + $".{t + 1:000}";
                     using (FileStream os = new FileStream(File.Exists(chunkPath) ? chunkPath : chunkPathNew, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                     {
                         await IoReadWrite(os, fs, token);

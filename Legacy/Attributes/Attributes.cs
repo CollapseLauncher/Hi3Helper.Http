@@ -19,11 +19,11 @@ namespace Hi3Helper.Http.Legacy
         private const int BufferSize = 64 << 10;
 
         // Max allowed Connections for HttpClient instance
-        private const byte ConnectionMax = 64;
+        private const int ConnectionMax = 64;
         // Max allowed Sessions for HttpClient instance (in Multi-session mode)
-        private const byte ConnectionSessionsMax = 16;
+        private const int ConnectionSessionsMax = 16;
         // Sessions count
-        private byte _connectionSessions;
+        private int _connectionSessions;
 
         // Max Retry Count
         private readonly int _retryMax = TaskExtensions.DefaultRetryAttempt;

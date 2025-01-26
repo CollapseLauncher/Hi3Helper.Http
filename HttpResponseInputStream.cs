@@ -228,7 +228,7 @@ namespace Hi3Helper.Http
         {
             _networkRequest.Dispose();
             _networkResponse?.Dispose();
-            if (_networkStream != null)
+            if (_isSuccessStatusCode)
                 await _networkStream.DisposeAsync();
 
             GC.SuppressFinalize(this);

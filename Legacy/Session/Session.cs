@@ -162,7 +162,7 @@ namespace Hi3Helper.Http.Legacy
         {
             NetworkRequest.Dispose();
             NetworkResponse.Dispose();
-            if (NetworkStream != null)
+            if (IsSuccessStatusCode)
                 await NetworkStream.DisposeAsync();
 
             await base.DisposeAsync();
@@ -258,7 +258,7 @@ namespace Hi3Helper.Http.Legacy
         {
             try
             {
-                if (StreamInput != null)
+                if (StreamInput != null!)
 #if NET6_0_OR_GREATER
                     await StreamInput.DisposeAsync();
 #else
@@ -290,7 +290,7 @@ namespace Hi3Helper.Http.Legacy
                                                                         OffsetStart, OffsetEnd, innerToken);
 
                 StreamInput = await TaskExtensions.WaitForRetryAsync(() => createStreamCallback, fromToken: token);
-                return StreamInput != null;
+                return StreamInput != null!;
             }
 
             return false;
@@ -317,8 +317,8 @@ namespace Hi3Helper.Http.Legacy
 
             try
             {
-                if (IsFileMode && StreamOutput != null) await StreamOutput.DisposeAsync();
-                if (StreamInput != null) await StreamInput.DisposeAsync();
+                if (IsFileMode && StreamOutput != null!) await StreamOutput.DisposeAsync();
+                if (StreamInput != null!) await StreamInput.DisposeAsync();
             }
             catch (Exception ex)
             {

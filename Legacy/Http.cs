@@ -45,7 +45,7 @@ namespace Hi3Helper.Http.Legacy
 #endif
             };
 
-            if (_clientUserAgent != null)
+            if (!string.IsNullOrEmpty(_clientUserAgent))
                 _client.DefaultRequestHeaders.UserAgent.ParseAdd(_clientUserAgent);
         }
 #nullable restore

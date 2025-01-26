@@ -95,7 +95,7 @@ namespace Hi3Helper.Http.Legacy
                     long sessionId = GetHashNumber(sessionThread, currentThread);
 #pragma warning restore CS0618 // Type or member is obsolete
                     string sessionOutPathOld = outputPath + string.Format(PathSessionPrefix, sessionId);
-                    string sessionOutPathNew = outputPath + string.Format(".{0:000}", currentThread + 1);
+                    string sessionOutPathNew = outputPath + $".{currentThread + 1:000}";
 
                     endOffset = currentThread + 1 == sessionThread ? remoteLength - 1 : startOffset + sliceSize - 1;
                     session = new Session(
@@ -195,13 +195,13 @@ namespace Hi3Helper.Http.Legacy
             };
         }
 
-        public static void DeleteMultisessionFiles(string path, byte sessions)
+        public static void DeleteMultisessionFiles(string path, int sessions)
         {
             string sessionFilePath;
             string sessionFilePathLegacy;
             for (int t = 0; t < sessions; t++)
             {
-                sessionFilePath = path + string.Format(".{0:000}", t + 1);
+                sessionFilePath = path + $".{t + 1:000}";
 #pragma warning disable CS0618 // Type or member is obsolete
                 sessionFilePathLegacy = path + string.Format(PathSessionPrefix, GetHashNumber(sessions, t));
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -229,7 +229,7 @@ namespace Hi3Helper.Http.Legacy
             }
         }
 
-        public static long CalculateExistingMultisessionFilesWithExpctdSize(string path, byte sessions, long expectedSize)
+        public static long CalculateExistingMultisessionFilesWithExpctdSize(string path, int sessions, long expectedSize)
         {
             long ret = 0;
             string sessionFilePath;
@@ -243,7 +243,7 @@ namespace Hi3Helper.Http.Legacy
 
             for (int t = 0; t < sessions; t++)
             {
-                sessionFilePath = path + string.Format(".{0:000}", t + 1);
+                sessionFilePath = path + $".{t + 1:000}";
 #pragma warning disable CS0618 // Type or member is obsolete
                 sessionFilePathLegacy = path + string.Format(PathSessionPrefix, GetHashNumber(sessions, t));
 #pragma warning restore CS0618 // Type or member is obsolete
