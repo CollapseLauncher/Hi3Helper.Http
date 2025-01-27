@@ -36,7 +36,7 @@ namespace Hi3Helper.Http.Legacy
                 session.SessionClient = _client;
 
             if (string.IsNullOrEmpty(pathOutput) && stream == null)
-                throw new ArgumentNullException(nameof(pathOutput), $"You cannot put PathOutput and _Stream argument both on null!");
+                throw new ArgumentNullException(nameof(pathOutput), "You cannot put PathOutput and _Stream argument both on null!");
 
             if (stream == null)
                 await session.AssignOutputStreamFromFile(isOverwrite, pathOutput!, ignoreOutStreamLength);
@@ -154,7 +154,7 @@ namespace Hi3Helper.Http.Legacy
 #else
                         session.Dispose();
 #endif
-                        PushLog($"Session has been disposed during initialization!", DownloadLogSeverity.Error);
+                        PushLog("Session has been disposed during initialization!", DownloadLogSeverity.Error);
                     }
                 }
 

@@ -282,18 +282,19 @@ namespace Hi3Helper.Http.Legacy
 #endif
         TryGetHttpRequest(CancellationToken token)
         {
-            if (IsExistingFileSizeValid())
+            if (!IsExistingFileSizeValid())
             {
-                ActionTimeoutValueTaskCallback<HttpResponseInputStream> createStreamCallback =
-                    async (innerToken) =>
-                        await HttpResponseInputStream.CreateStreamAsync(SessionClient, PathURL,
-                                                                        OffsetStart, OffsetEnd, innerToken);
-
-                StreamInput = await TaskExtensions.WaitForRetryAsync(() => createStreamCallback, fromToken: token);
-                return StreamInput != null!;
+                return false;
             }
 
-            return false;
+            ActionTimeoutValueTaskCallback<HttpResponseInputStream> createStreamCallback =
+                async innerToken =>
+                    await HttpResponseInputStream.CreateStreamAsync(SessionClient, PathURL,
+                                                                    OffsetStart, OffsetEnd, innerToken);
+
+            StreamInput = await TaskExtensions.WaitForRetryAsync(() => createStreamCallback, fromToken: token);
+            return StreamInput != null!;
+
         }
 
         internal bool IsExistingFileOversize(long offsetStart, long offsetEnd) => StreamOutputSize > offsetEnd + 1 - offsetStart;
