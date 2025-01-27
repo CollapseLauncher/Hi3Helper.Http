@@ -30,9 +30,9 @@ namespace Hi3Helper.Http.Legacy
 
             token.ThrowIfCancellationRequested();
 
-            Session session = new Session(_pathURL,
-                _handler, offsetStart, offsetEnd,
-                _clientUserAgent, true, _client);
+            Session session = new(_pathURL,
+                                  _handler, offsetStart, offsetEnd,
+                                  _clientUserAgent, true, _client);
                 session.SessionClient = _client;
 
             if (string.IsNullOrEmpty(pathOutput) && stream == null)
@@ -207,8 +207,8 @@ namespace Hi3Helper.Http.Legacy
 #pragma warning restore CS0618 // Type or member is obsolete
                 try
                 {
-                    FileInfo fileInfo       = new FileInfo(sessionFilePath);
-                    FileInfo fileInfoLegacy = new FileInfo(sessionFilePathLegacy);
+                    FileInfo fileInfo       = new(sessionFilePath);
+                    FileInfo fileInfoLegacy = new(sessionFilePathLegacy);
                     if (fileInfo.Exists)
                     {
                         fileInfo.IsReadOnly = false;
@@ -234,7 +234,7 @@ namespace Hi3Helper.Http.Legacy
             long ret = 0;
             string sessionFilePath;
             string sessionFilePathLegacy;
-            FileInfo parentFile = new FileInfo(path);
+            FileInfo parentFile = new(path);
             if (parentFile.Exists)
             {
                 if (parentFile.Length == expectedSize)
@@ -249,8 +249,8 @@ namespace Hi3Helper.Http.Legacy
 #pragma warning restore CS0618 // Type or member is obsolete
                 try
                 {
-                    FileInfo fileInfo       = new FileInfo(sessionFilePath);
-                    FileInfo fileInfoLegacy = new FileInfo(sessionFilePathLegacy);
+                    FileInfo fileInfo       = new(sessionFilePath);
+                    FileInfo fileInfoLegacy = new(sessionFilePathLegacy);
                     if (fileInfo.Exists) ret            += fileInfo.Length;
                     else if (fileInfoLegacy.Exists) ret += fileInfoLegacy.Length;
                 }
@@ -282,7 +282,7 @@ namespace Hi3Helper.Http.Legacy
         public async Task<long> GetContentLengthNonNull(string URL, CancellationToken Token)
 #endif
         {
-            using (HttpRequestMessage message = new HttpRequestMessage())
+            using (HttpRequestMessage message = new())
             {
                 message.RequestUri = new Uri(url);
                 using (HttpResponseMessage response = await _client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, token))
@@ -318,12 +318,12 @@ namespace Hi3Helper.Http.Legacy
         }
 
 #if NET6_0_OR_GREATER
-        private async ValueTask<long?> GetContentLength(string input, CancellationToken token = new CancellationToken())
+        private async ValueTask<long?> GetContentLength(string input, CancellationToken token = new())
 #else
         private async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
 #endif
         {
-            HttpRequestMessage  message  = new HttpRequestMessage { RequestUri = new Uri(input) };
+            HttpRequestMessage  message  = new() { RequestUri = new Uri(input) };
             HttpResponseMessage response = await _client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, token);
             long?               length   = response.Content.Headers.ContentLength;
 

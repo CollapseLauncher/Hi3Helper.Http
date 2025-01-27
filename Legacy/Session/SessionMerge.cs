@@ -20,9 +20,9 @@ namespace Hi3Helper.Http.Legacy
             _sizeAttribute.SizeDownloaded = 0;
             _sizeAttribute.SizeDownloadedLast = 0;
 
-            DownloadEvent @event = new DownloadEvent();
+            DownloadEvent @event = new();
 
-            using (FileStream fs = new FileStream(_pathOutput, FileMode.Create, FileAccess.Write))
+            using (FileStream fs = new(_pathOutput, FileMode.Create, FileAccess.Write))
             {
                 for (int t = 0; t < _connectionSessions; t++)
                 {
@@ -30,7 +30,7 @@ namespace Hi3Helper.Http.Legacy
                     string chunkPath = _pathOutput + string.Format(PathSessionPrefix, GetHashNumber(_connectionSessions, t));
 #pragma warning restore CS0618 // Type or member is obsolete
                     string chunkPathNew = _pathOutput + $".{t + 1:000}";
-                    using (FileStream os = new FileStream(File.Exists(chunkPath) ? chunkPath : chunkPathNew, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
+                    using (FileStream os = new(File.Exists(chunkPath) ? chunkPath : chunkPathNew, FileMode.Open, FileAccess.Read, FileShare.None, 4 << 10, FileOptions.DeleteOnClose))
                     {
                         await IoReadWrite(os, fs, token);
                     }

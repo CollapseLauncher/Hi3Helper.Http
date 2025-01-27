@@ -44,11 +44,11 @@ namespace Hi3Helper.Http
             downloadProgress.SetBytesTotal(contentLength);
 
             // Enumerate previous chunks inside the metadata first
-            FileInfo outputFileInfo = new FileInfo(outputFilePath);
+            FileInfo outputFileInfo = new(outputFilePath);
 
             // Enumerate previous chunks inside the metadata first
             string metadataFilePath = outputFileInfo.FullName + Metadata.MetadataExtension;
-            FileInfo metadataFileInfo = new FileInfo(metadataFilePath);
+            FileInfo metadataFileInfo = new(metadataFilePath);
 
         StartEnumerate:
             // Get the last session metadata info
@@ -129,8 +129,8 @@ namespace Hi3Helper.Http
             // the position based on metadata.
             else if (outputFileInfo.Exists)
             {
-                ChunkRange lastRange = new ChunkRange();
-                List<ChunkRange?> copyOfExistingRanges = new List<ChunkRange?>(currentSessionMetadata.Ranges);
+                ChunkRange        lastRange            = new();
+                List<ChunkRange?> copyOfExistingRanges = new(currentSessionMetadata.Ranges);
                 foreach (ChunkRange? range in copyOfExistingRanges)
                 {
                     // Throw if cancellation is triggered
@@ -180,7 +180,7 @@ namespace Hi3Helper.Http
                 lastStartOffset += toAdvanceSize;
                 remainedSize -= toAdvanceSize;
 
-                ChunkSession chunkSession = new ChunkSession
+                ChunkSession chunkSession = new()
                 {
                     CurrentHttpClient = client,
                     CurrentMetadata = currentSessionMetadata,
@@ -407,7 +407,7 @@ namespace Hi3Helper.Http
             }
 
             // Create the session without metadata
-            ChunkSession session = new ChunkSession
+            ChunkSession session = new()
             {
                 CurrentPositions = new ChunkRange
                 {

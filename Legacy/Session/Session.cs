@@ -5,6 +5,8 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable CheckNamespace
 
 namespace Hi3Helper.Http.Legacy
 {
@@ -22,7 +24,7 @@ namespace Hi3Helper.Http.Legacy
         {
             startOffset ??= 0;
 
-            HttpResponseInputStream httpResponseInputStream = new HttpResponseInputStream();
+            HttpResponseInputStream httpResponseInputStream = new();
             httpResponseInputStream.NetworkRequest = new HttpRequestMessage
             {
                 RequestUri = new Uri(url),
@@ -223,7 +225,7 @@ namespace Hi3Helper.Http.Legacy
         internal async Task AssignOutputStreamFromFile(bool isOverwrite, string filePath, bool ignoreOutStreamLength)
         {
             IsFileMode = true;
-            FileInfo fileInfo = new FileInfo(filePath);
+            FileInfo fileInfo = new(filePath);
             if (isOverwrite)
                 StreamOutput = await Http.NaivelyOpenFileStreamAsync(fileInfo, FileMode.Create, FileAccess.Write, FileShare.Write);
             else

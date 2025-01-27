@@ -28,14 +28,14 @@ namespace Hi3Helper.Http
         {
             int currentRetry = 0;
         Start:
-            HttpRequestMessage request = new HttpRequestMessage
+            HttpRequestMessage request = new()
             {
                 RequestUri = uri
             };
             HttpResponseMessage? message = null;
 
-            CancellationTokenSource cancelTimeoutToken = new CancellationTokenSource(timeoutInterval);
-            CancellationTokenSource coopToken = CancellationTokenSource.CreateLinkedTokenSource(cancelTimeoutToken.Token, token);
+            CancellationTokenSource cancelTimeoutToken = new(timeoutInterval);
+            CancellationTokenSource coopToken          = CancellationTokenSource.CreateLinkedTokenSource(cancelTimeoutToken.Token, token);
 
             try
             {

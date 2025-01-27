@@ -15,9 +15,9 @@ namespace Hi3Helper.Http.Legacy
 #endif
             IoReadWrite(Stream input, Stream output, CancellationToken token)
         {
-            DownloadEvent @event = new DownloadEvent();
-            int read;
-            byte[] buffer = new byte[BufferSize];
+            DownloadEvent @event = new();
+            int           read;
+            byte[]        buffer = new byte[BufferSize];
 
             // Read Stream into Buffer
             while ((read = await input

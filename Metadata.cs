@@ -127,7 +127,7 @@ namespace Hi3Helper.Http
         internal static void DeleteMetadataFile(string outputFilePath)
         {
             string metadataFilePath = outputFilePath + MetadataExtension;
-            FileInfo fileInfo = new FileInfo(metadataFilePath);
+            FileInfo fileInfo = new(metadataFilePath);
             if (!fileInfo.Exists)
             {
                 return;

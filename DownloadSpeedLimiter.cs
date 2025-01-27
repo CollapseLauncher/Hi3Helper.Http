@@ -27,7 +27,7 @@ namespace Hi3Helper.Http
         /// <param name="initialSpeed">The initial speed to be requested</param>
         /// <returns>An instance of the speed limiter</returns>
         public static DownloadSpeedLimiter CreateInstance(long initialSpeed)
-            => new DownloadSpeedLimiter(initialSpeed);
+            => new(initialSpeed);
 
         /// <summary>
         /// Get the listener for the parent event

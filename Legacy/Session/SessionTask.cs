@@ -15,7 +15,7 @@ namespace Hi3Helper.Http.Legacy
 #endif
             TaskWhenAllSession(IAsyncEnumerable<Session> sessions, CancellationToken token, int taskCount)
         {
-            ParallelOptions parallelOptions = new ParallelOptions { CancellationToken = token, MaxDegreeOfParallelism = taskCount };
+            ParallelOptions parallelOptions = new() { CancellationToken = token, MaxDegreeOfParallelism = taskCount };
 #if NET6_0_OR_GREATER
             await Parallel.ForEachAsync(sessions, parallelOptions, async (session, innerToken) =>
             {
@@ -46,7 +46,7 @@ namespace Hi3Helper.Http.Legacy
         private async Task SessionTaskRunnerContainer(Session session, CancellationToken token)
         {
             if (session == null!) return;
-            DownloadEvent @event = new DownloadEvent();
+            DownloadEvent @event = new();
 
             CancellationTokenSource innerTimeoutToken, cooperatedToken;
             while (true)
