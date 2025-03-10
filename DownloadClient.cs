@@ -127,10 +127,8 @@ namespace Hi3Helper.Http
         ///     <paramref name="url" /> or <paramref name="fileOutputPath" /> is empty or only have
         ///     whitespaces.
         /// </exception>
-#pragma warning disable CA1822 // Mark members as static
         public async Task DownloadAsync(
-#pragma warning restore CA1822 // Mark members as static
-            string                    url,
+            string url,
             string                    fileOutputPath,
             bool                      useOverwrite          = false,
             long?                     offsetStart           = null,
