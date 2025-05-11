@@ -1,16 +1,16 @@
 ﻿using System;
 
-namespace Hi3Helper.Http
+namespace Hi3Helper.Http.Legacy
 {
     public sealed partial class Http
     {
         // Download Progress Event Handler
-        public event EventHandler<DownloadEvent> DownloadProgress;
+        public event EventHandler<DownloadEvent> DownloadProgress = null!;
         // Log for external listener
-        public static HttpLogInvoker LogInvoker = new HttpLogInvoker();
+        private static readonly HttpLogInvoker LogInvoker = new();
 
         // Update Progress of the Download
-        private void UpdateProgress(DownloadEvent Event) => DownloadProgress?.Invoke(this, Event);
+        private void UpdateProgress(DownloadEvent @event) => DownloadProgress(this, @event);
 
         // Push log to listener
         public static void PushLog(string message, DownloadLogSeverity severity) => LogInvoker.PushLog(message, severity);
@@ -19,7 +19,7 @@ namespace Hi3Helper.Http
     public class HttpLogInvoker
     {
         // Log for external listener
-        public static event EventHandler<DownloadLogEvent> DownloadLog;
+        public static event EventHandler<DownloadLogEvent>? DownloadLog;
         // Push log to listener
         public void PushLog(string message, DownloadLogSeverity severity) => DownloadLog?.Invoke(this, new DownloadLogEvent(message, severity));
     }

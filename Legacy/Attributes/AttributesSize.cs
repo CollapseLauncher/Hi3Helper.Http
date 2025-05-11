@@ -1,4 +1,4 @@
-﻿namespace Hi3Helper.Http
+﻿namespace Hi3Helper.Http.Legacy
 {
     internal struct AttributesSize
     {

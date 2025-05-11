@@ -1,11 +1,11 @@
-﻿namespace Hi3Helper.Http
+﻿namespace Hi3Helper.Http.Legacy
 {
     public sealed class DownloadLogEvent
     {
         public DownloadLogEvent(string message, DownloadLogSeverity severity)
         {
-            this.Message = message;
-            this.Severity = severity;
+            Message = message;
+            Severity = severity;
         }
 
         public string Message { get; private set; }

@@ -1,4 +1,4 @@
-﻿namespace Hi3Helper.Http
+﻿namespace Hi3Helper.Http.Legacy
 {
     public enum DownloadState
     {
@@ -9,7 +9,7 @@
         CancelledMerging, CancelledDownloading
     }
 
-    public enum DownloadLogSeverity : int
+    public enum DownloadLogSeverity
     {
         Info = 0,
         Error = 1,

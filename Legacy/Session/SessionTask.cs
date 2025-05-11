@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
-namespace Hi3Helper.Http
+namespace Hi3Helper.Http.Legacy
 {
     public sealed partial class Http
     {
@@ -16,7 +15,7 @@ namespace Hi3Helper.Http
 #endif
             TaskWhenAllSession(IAsyncEnumerable<Session> sessions, CancellationToken token, int taskCount)
         {
-            ParallelOptions parallelOptions = new ParallelOptions { CancellationToken = token, MaxDegreeOfParallelism = taskCount };
+            ParallelOptions parallelOptions = new() { CancellationToken = token, MaxDegreeOfParallelism = taskCount };
 #if NET6_0_OR_GREATER
             await Parallel.ForEachAsync(sessions, parallelOptions, async (session, innerToken) =>
             {
@@ -46,37 +45,37 @@ namespace Hi3Helper.Http
 
         private async Task SessionTaskRunnerContainer(Session session, CancellationToken token)
         {
-            if (session == null) return;
-            DownloadEvent Event = new DownloadEvent();
+            if (session == null!) return;
+            DownloadEvent @event = new();
 
-            CancellationTokenSource innerTimeoutToken = null, cooperatedToken = null;
+            CancellationTokenSource innerTimeoutToken, cooperatedToken;
             while (true)
             {
-                bool AllowDispose = false;
+                bool allowDispose = false;
                 try
                 {
-                    this.DownloadState = DownloadState.Downloading;
+                    DownloadState = DownloadState.Downloading;
                     session.SessionState = DownloadState.Downloading;
 
                     innerTimeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
                     cooperatedToken = CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
 
-                    int Read;
-                    byte[] Buffer = new byte[_bufferSize];
+                    int read;
+                    byte[] buffer = new byte[BufferSize];
 
                     // Read Stream into Buffer
-                    while ((Read = await session.StreamInput.ReadAsync(Buffer, 0, _bufferSize, cooperatedToken.Token)) > 0)
+                    while ((read = await session.StreamInput.ReadAsync(buffer, 0, BufferSize, cooperatedToken.Token)) > 0)
                     {
                         // Write Buffer to the output Stream
 #if NET6_0_OR_GREATER
                         cooperatedToken.Token.ThrowIfCancellationRequested();
-                        session.StreamOutput.Write(Buffer, 0, Read);
+                        session.StreamOutput.Write(buffer, 0, read);
 #else
                         await session.StreamOutput
                             .WriteAsync(Buffer, 0, Read, cooperatedToken.Token);
 #endif
                         // Increment as last OffsetStart adjusted
-                        session.OffsetStart += Read;
+                        session.OffsetStart += read;
                         // Set Inner Session Status
                         session.SessionState = DownloadState.Downloading;
                         // Reset session retry attempt
@@ -94,49 +93,49 @@ namespace Hi3Helper.Http
 
                         // Lock SizeAttribute to avoid race condition while updating status
                         // Increment SizeDownloaded attribute
-                        Interlocked.Add(ref this.SizeAttribute.SizeDownloaded, Read);
-                        Interlocked.Add(ref this.SizeAttribute.SizeDownloadedLast, Read);
+                        Interlocked.Add(ref _sizeAttribute.SizeDownloaded, read);
+                        Interlocked.Add(ref _sizeAttribute.SizeDownloadedLast, read);
 
                         // Update download state
-                        Event.UpdateDownloadEvent(
-                                this.SizeAttribute.SizeDownloadedLast,
-                                this.SizeAttribute.SizeDownloaded,
-                                this.SizeAttribute.SizeTotalToDownload,
-                                Read,
-                                this.SessionsStopwatch.Elapsed.TotalSeconds,
-                                this.DownloadState
+                        @event.UpdateDownloadEvent(
+                                _sizeAttribute.SizeDownloadedLast,
+                                _sizeAttribute.SizeDownloaded,
+                                _sizeAttribute.SizeTotalToDownload,
+                                read,
+                                _sessionsStopwatch.Elapsed.TotalSeconds,
+                                DownloadState
                                 );
-                        this.UpdateProgress(Event);
+                        UpdateProgress(@event);
                     }
 
-                    AllowDispose = true;
+                    allowDispose = true;
                     return;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
-                    this.DownloadState = DownloadState.CancelledDownloading;
+                    DownloadState = DownloadState.CancelledDownloading;
                     session.SessionState = DownloadState.CancelledDownloading;
-                    AllowDispose = true;
+                    allowDispose = true;
                     throw;
                 }
                 catch (Exception ex)
                 {
                     PushLog($"An error has occurred on session ID: {session.SessionID}. The session will retry to re-establish the connection...\r\nException: {ex}", DownloadLogSeverity.Warning);
                     Tuple<bool, Exception> retryStatus = await session.TryReinitializeRequest(token);
-                    if (retryStatus.Item1 && retryStatus.Item2 == null) continue;
+                    if (retryStatus.Item1 && retryStatus.Item2 == null!) continue;
 
-                    AllowDispose = true;
-                    this.DownloadState = DownloadState.FailedDownloading;
+                    allowDispose = true;
+                    DownloadState = DownloadState.FailedDownloading;
                     session.SessionState = DownloadState.FailedDownloading;
 
                     if (ex is TaskCanceledException && !token.IsCancellationRequested)
                         throw new TimeoutException($"Request for session ID: {session.SessionID} has timed out!", ex);
 
-                    throw retryStatus.Item2 != null ? retryStatus.Item2 : ex;
+                    throw retryStatus.Item2 != null! ? retryStatus.Item2 : ex;
                 }
                 finally
                 {
-                    if (AllowDispose)
+                    if (allowDispose)
                     {
 #if NET6_0_OR_GREATER
                         await session.DisposeAsync();

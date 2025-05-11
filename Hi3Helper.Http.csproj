@@ -1,16 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net9.0</TargetFramework>
 		<Platforms>x64</Platforms>
-		<LangVersion>8.0</LangVersion>
+		<LangVersion>9.0</LangVersion>
 		<Configurations>Debug;Release</Configurations>
-		<Nullable>disable</Nullable>
+		<Nullable>enable</Nullable>
 		<DebugType>portable</DebugType>
 		<IsTrimmable>True</IsTrimmable>
 		<IsAotCompatible>True</IsAotCompatible>
-		<Version>1.5.0</Version>
-		<AssemblyVersion>1.5.0</AssemblyVersion>
+		<Version>2.0.0</Version>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<AssemblyVersion>2.0.0</AssemblyVersion>
         <!-- Assembly Info Properties -->
         <AssemblyName>Hi3Helper.Http</AssemblyName>
         <ProductName>Hi3Helper.Http</ProductName>
@@ -18,7 +19,8 @@
         <Description>Http downloader with Multi-Session support</Description>
         <Company>Collapse Launcher Team</Company>
         <Authors>$(Company). neon-nyan, Cry0, bagusnl, shatyuka, gablm.</Authors>
-        <Copyright>Copyright 2022-2024 $(Company)</Copyright>
+        <Copyright>Copyright 2022-2025 $(Company)</Copyright>
+        <IsAotCompatible>true</IsAotCompatible>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

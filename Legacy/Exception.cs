@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Hi3Helper.Http
+namespace Hi3Helper.Http.Legacy
 {
     public class HttpHelperSessionNotReady : Exception
     {
