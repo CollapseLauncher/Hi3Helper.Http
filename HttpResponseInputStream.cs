@@ -95,7 +95,10 @@ namespace Hi3Helper.Http
                 #else
                     httpResponseInputStream.Dispose();
                 #endif
-                    throw new HttpRequestException($"The url {url} returns an unsuccessful status code: {httpResponseInputStream._networkResponse.StatusCode} ({(int)httpResponseInputStream._networkResponse.StatusCode})");
+                    throw new HttpRequestException(
+                        $"The url {url} returns an unsuccessful status code: {httpResponseInputStream._networkResponse.StatusCode} ({(int)httpResponseInputStream._networkResponse.StatusCode})",
+                        null,
+                        httpResponseInputStream._statusCode);
                 }
 
                 httpResponseInputStream._networkLength =
