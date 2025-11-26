@@ -1,17 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
-		<Platforms>x64</Platforms>
-		<LangVersion>9.0</LangVersion>
-		<Configurations>Debug;Release</Configurations>
-		<Nullable>enable</Nullable>
-		<DebugType>portable</DebugType>
-		<IsTrimmable>True</IsTrimmable>
-		<IsAotCompatible>True</IsAotCompatible>
-		<Version>2.0.0</Version>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<AssemblyVersion>2.0.0</AssemblyVersion>
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Platforms>x64</Platforms>
+        <LangVersion>9.0</LangVersion>
+        <Configurations>Debug;Release</Configurations>
+        <Nullable>enable</Nullable>
+        <DebugType>portable</DebugType>
+        <IsTrimmable>True</IsTrimmable>
+        <IsAotCompatible>True</IsAotCompatible>
+        <Version>2.0.0</Version>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AssemblyVersion>2.0.0</AssemblyVersion>
         <!-- Assembly Info Properties -->
         <AssemblyName>Hi3Helper.Http</AssemblyName>
         <ProductName>Hi3Helper.Http</ProductName>
@@ -21,20 +21,20 @@
         <Authors>$(Company). neon-nyan, Cry0, bagusnl, shatyuka, gablm.</Authors>
         <Copyright>Copyright 2022-2025 $(Company)</Copyright>
         <IsAotCompatible>true</IsAotCompatible>
-	</PropertyGroup>
+    </PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-		<Optimize>False</Optimize>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-		<Optimize>True</Optimize>
-		<DebugType>portable</DebugType>
-	</PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+        <Optimize>False</Optimize>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+        <Optimize>True</Optimize>
+        <DebugType>portable</DebugType>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<Compile Remove="Test\**" />
-		<EmbeddedResource Remove="Test\**" />
-		<None Remove="Test\**" />
-	</ItemGroup>
+    <ItemGroup>
+        <Compile Remove="Test\**" />
+        <EmbeddedResource Remove="Test\**" />
+        <None Remove="Test\**" />
+    </ItemGroup>
 
 </Project>
