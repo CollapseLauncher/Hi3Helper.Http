@@ -1,45 +1,30 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 // ReSharper disable UnusedType.Global
 
 namespace Hi3Helper.Http
 {
-    /// <summary>
-    /// The delegate of the speed change listener.
-    /// </summary>
-    /// <param name="sender">The object where the event is called from.</param>
-    /// <param name="newRequestedSpeed">The new requested speed.</param>
-    public delegate void DownloadSpeedLimiterChangeEventListener(object? sender, long newRequestedSpeed);
     public class DownloadSpeedLimiter
     {
-        internal event EventHandler<long>? DownloadSpeedChangedEvent;
-        // ReSharper disable once MemberCanBePrivate.Global
-        internal long? InitialRequestedSpeed { get; set; }
-        private EventHandler<long>? InnerListener { get; set; }
+        public static Func<nint, long, CancellationToken, ValueTask>? AddBytesOrWaitAsyncDelegate;
 
-        private DownloadSpeedLimiter(long initialRequestedSpeed)
+        public nint Context { get; }
+
+        private DownloadSpeedLimiter(nint serviceContext)
         {
-            InitialRequestedSpeed = initialRequestedSpeed;
+            Context = serviceContext;
         }
 
         /// <summary>
-        /// Create an instance by its initial speed to request.
+        /// Create an instance by using current service context.
         /// </summary>
-        /// <param name="initialSpeed">The initial speed to be requested</param>
+        /// <param name="serviceContext">The context to be used for the service.</param>
         /// <returns>An instance of the speed limiter</returns>
-        public static DownloadSpeedLimiter CreateInstance(long initialSpeed)
-            => new(initialSpeed);
+        public static DownloadSpeedLimiter CreateInstance(nint serviceContext)
+            => new(serviceContext);
 
-        /// <summary>
-        /// Get the listener for the parent event
-        /// </summary>
-        /// <returns>The EventHandler of the listener.</returns>
-        /// <seealso cref="EventHandler"/>
-        public EventHandler<long> GetListener() => InnerListener ??= DownloadSpeedChangeListener;
-
-        private void DownloadSpeedChangeListener(object? sender, long newRequestedSpeed)
-        {
-            DownloadSpeedChangedEvent?.Invoke(this, newRequestedSpeed);
-            InitialRequestedSpeed = newRequestedSpeed;
-        }
+        internal ValueTask AddBytesOrWaitAsync(long readBytes, CancellationToken token)
+            => AddBytesOrWaitAsyncDelegate?.Invoke(Context, readBytes, token) ?? ValueTask.CompletedTask;
     }
 }

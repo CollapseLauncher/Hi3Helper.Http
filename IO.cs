@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,25 +14,17 @@ namespace Hi3Helper.Http
         internal const int StreamRWBufferSize = 64 << 10;
 
         internal static async Task WriteStreamToFileChunkSessionAsync(
-            ChunkSession session,
-            DownloadSpeedLimiter? downloadSpeedLimiter,
-            int threadSize,
-            HttpResponseInputStream? networkStream,
-            bool isNetworkStreamFromExternal,
-            Stream fileStream,
-            DownloadProgress downloadProgress,
+            ChunkSession              session,
+            DownloadSpeedLimiter?     downloadSpeedLimiter,
+            int                       threadSize,
+            HttpResponseInputStream?  networkStream,
+            bool                      isNetworkStreamFromExternal,
+            Stream                    fileStream,
+            DownloadProgress          downloadProgress,
             DownloadProgressDelegate? progressDelegateAsync,
-            CancellationToken token)
+            CancellationToken         token)
         {
-            long written = 0;
-            long thisInstanceDownloadLimitBase = downloadSpeedLimiter?.InitialRequestedSpeed ?? -1;
             int currentRetry = 0;
-            Stopwatch currentStopwatch = Stopwatch.StartNew();
-
-            double maximumBytesPerSecond;
-            double bitPerUnit;
-
-            CalculateBps();
 
         StartWrite:
             byte[] buffer = ArrayPool<byte>.Shared.Rent(16 << 10);
@@ -42,16 +33,6 @@ namespace Hi3Helper.Http
 
             try
             {
-                if (session.CurrentMetadata != null)
-                {
-                    session.CurrentMetadata.UpdateChunkRangesCountEvent += CurrentMetadata_UpdateChunkRangesCountEvent;
-                }
-
-                if (downloadSpeedLimiter != null)
-                {
-                    downloadSpeedLimiter.DownloadSpeedChangedEvent += DownloadClient_DownloadSpeedLimitChanged;
-                }
-
                 if (session.CurrentPositions.End != 0 && session.CurrentPositions.Start >= session.CurrentPositions.End)
                 {
                     return;
@@ -83,8 +64,9 @@ namespace Hi3Helper.Http
                 int read;
                 while ((read = await networkStream.ReadAsync(buffer, coopToken.Token)) > 0)
                 {
+                    await (downloadSpeedLimiter?.AddBytesOrWaitAsync(read, token) ?? ValueTask.CompletedTask);
                     await fileStream.WriteAsync(buffer, 0, read, coopToken.Token);
-                    written += read;
+
                     session.CurrentPositions.AdvanceStartOffset(read);
                     session.CurrentMetadata?.UpdateLastEndOffset(session.CurrentPositions);
                     downloadProgress.AdvanceBytesDownloaded(read);
@@ -95,8 +77,6 @@ namespace Hi3Helper.Http
 
                     timeoutToken = new CancellationTokenSource(session.TimeoutAfterInterval);
                     coopToken = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken.Token, token);
-
-                    await ThrottleAsync();
 
                     currentRetry = 0;
                 }
@@ -133,79 +113,8 @@ namespace Hi3Helper.Http
 
                 ArrayPool<byte>.Shared.Return(buffer);
 
-                if (downloadSpeedLimiter != null)
-                {
-                    downloadSpeedLimiter.DownloadSpeedChangedEvent -= DownloadClient_DownloadSpeedLimitChanged;
-                }
-
-                if (session.CurrentMetadata != null)
-                {
-                    session.CurrentMetadata.UpdateChunkRangesCountEvent -= CurrentMetadata_UpdateChunkRangesCountEvent;
-                }
-
                 timeoutToken?.Dispose();
                 coopToken?.Dispose();
-            }
-
-            return;
-
-            void CalculateBps()
-            {
-                if (thisInstanceDownloadLimitBase <= 0)
-                    thisInstanceDownloadLimitBase = -1;
-                else
-                    thisInstanceDownloadLimitBase = Math.Max(DownloadClient.MinimumDownloadSpeedLimit, thisInstanceDownloadLimitBase);
-
-                double threadNum = Math.Min((double)threadSize, session.CurrentMetadata?.Ranges?.Count ?? 2);
-                maximumBytesPerSecond = thisInstanceDownloadLimitBase / threadNum;
-                bitPerUnit = 940 - (threadNum - 2) / (16 - 2) * 400;
-            }
-
-            void DownloadClient_DownloadSpeedLimitChanged(object? sender, long e)
-            {
-                thisInstanceDownloadLimitBase = e == 0 ? -1 : e;
-                CalculateBps();
-            }
-
-            void CurrentMetadata_UpdateChunkRangesCountEvent(object? sender, bool e)
-            {
-                CalculateBps();
-            }
-
-            async Task ThrottleAsync()
-            {
-                // Make sure the buffer isn't empty.
-                if (maximumBytesPerSecond <= 0 || written <= 0)
-                {
-                    return;
-                }
-
-                long elapsedMilliseconds = currentStopwatch.ElapsedMilliseconds;
-
-                if (elapsedMilliseconds > 0)
-                {
-                    // Calculate the current bps.
-                    double bps = written * bitPerUnit / elapsedMilliseconds;
-
-                    // If the bps are more then the maximum bps, try to throttle.
-                    if (bps > maximumBytesPerSecond)
-                    {
-                        // Calculate the time to sleep.
-                        double wakeElapsed = written * bitPerUnit / maximumBytesPerSecond;
-                        double toSleep = wakeElapsed - elapsedMilliseconds;
-
-                        if (toSleep > 1)
-                        {
-                            // The time to sleep is more than a millisecond, so sleep.
-                            await Task.Delay(TimeSpan.FromMilliseconds(toSleep), token);
-
-                            // A sleep has been done, reset.
-                            currentStopwatch.Restart();
-
-                            written = 0;
-                        }
-                    }
-                }
             }
         }
 

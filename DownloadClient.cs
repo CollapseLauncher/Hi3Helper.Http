@@ -202,16 +202,16 @@ namespace Hi3Helper.Http
         ///     whitespaces.
         /// </exception>
         public async Task DownloadAsync(
-            string url,
-            FileInfo fileOutputPath,
-            bool useOverwrite = false,
-            long? offsetStart = null,
-            long? offsetEnd = null,
+            string                    url,
+            FileInfo                  fileOutputPath,
+            bool                      useOverwrite          = false,
+            long?                     offsetStart           = null,
+            long?                     offsetEnd             = null,
             DownloadProgressDelegate? progressDelegateAsync = null,
-            int maxConnectionSessions = DefaultConnectionSessions,
-            int sessionChunkSize = DefaultSessionChunkSize,
-            DownloadSpeedLimiter? downloadSpeedLimiter = null,
-            CancellationToken cancelToken = default)
+            int                       maxConnectionSessions = DefaultConnectionSessions,
+            int                       sessionChunkSize      = DefaultSessionChunkSize,
+            DownloadSpeedLimiter?     downloadSpeedLimiter  = null,
+            CancellationToken         cancelToken           = default)
         {
             ArgumentException.ThrowIfNullOrEmpty(url, nameof(url));
             ArgumentException.ThrowIfNullOrWhiteSpace(url, nameof(url));
@@ -318,19 +318,19 @@ namespace Hi3Helper.Http
 
         private static async Task PerformDownloadWriteDelegate(
             DownloadProgressDelegate? progressDelegateAsync,
-            int maxConnectionSessions,
-            DownloadSpeedLimiter? downloadSpeedLimiter,
-            ChunkSession chunk,
-            FileStreamOptions fileStreamOptions,
-            DownloadProgress downloadProgressStruct,
-            CancellationToken cancelToken)
+            int                       maxConnectionSessions,
+            DownloadSpeedLimiter?     downloadSpeedLimiter,
+            ChunkSession              chunk,
+            FileStreamOptions         fileStreamOptions,
+            DownloadProgress          downloadProgressStruct,
+            CancellationToken         cancelToken)
         {
-            if (chunk.CurrentMetadata == null || chunk.CurrentMetadata.OutputFilePath == null)
+            if (chunk.CurrentMetadata?.OutputFilePath == null)
             {
                 throw new NullReferenceException("chunk.CurrentMetadata reference is null");
             }
 
-            var parentDir = Path.GetDirectoryName(chunk.CurrentMetadata.OutputFilePath);
+            string? parentDir = Path.GetDirectoryName(chunk.CurrentMetadata.OutputFilePath);
             if (parentDir != null)
             {
                 Directory.CreateDirectory(parentDir);
