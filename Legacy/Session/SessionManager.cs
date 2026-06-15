@@ -19,7 +19,14 @@ namespace Hi3Helper.Http.Legacy
                                                                  bool ignoreOutStreamLength = false,
                                                                  CancellationToken token = default)
 #else
-        private async Task<Session> InitializeSingleSession(long? offsetStart, long? offsetEnd, string pathOutput = null, bool isOverwrite = false, Stream stream = null, bool ignoreOutStreamLength = false, CancellationToken token = default)
+        private async Task<Session> InitializeSingleSession(
+            long?             offsetStart,
+            long?             offsetEnd,
+            string?           pathOutput            = null,
+            bool              isOverwrite           = false,
+            Stream?           stream                = null,
+            bool              ignoreOutStreamLength = false,
+            CancellationToken token                 = default)
 #endif
         {
             _sizeAttribute.SizeTotalToDownload = 0;
@@ -30,7 +37,7 @@ namespace Hi3Helper.Http.Legacy
 
             token.ThrowIfCancellationRequested();
 
-            Session session = new(_pathURL,
+            Session session = new(_pathUrl,
                                   _handler, offsetStart, offsetEnd,
                                   _clientUserAgent, true, _client);
                 session.SessionClient = _client;
@@ -38,7 +45,7 @@ namespace Hi3Helper.Http.Legacy
             if (string.IsNullOrEmpty(pathOutput) && stream == null)
                 throw new ArgumentNullException(nameof(pathOutput), "You cannot put PathOutput and _Stream argument both on null!");
 
-            if (stream == null)
+            if (stream == null!)
                 await session.AssignOutputStreamFromFile(isOverwrite, pathOutput!, ignoreOutStreamLength);
             else
                 session.AssignOutputStreamFromStream(stream, ignoreOutStreamLength);
@@ -103,7 +110,7 @@ namespace Hi3Helper.Http.Legacy
                         _clientUserAgent, true, _client)
                     {
                         IsLastSession = currentThread + 1 == _connectionSessions,
-                        SessionID = sessionId
+                        SessionId = sessionId
                     };
                     session.SessionState = DownloadState.WaitingOnSession;
 
@@ -167,7 +174,7 @@ namespace Hi3Helper.Http.Legacy
 
         [Obsolete("This method has no use anymore. Please consider to not calling this method as this will be removed in the next changes.")]
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        public async Task WaitUntilInstanceDisposed() { }
+        public Task WaitUntilInstanceDisposed() => Task.CompletedTask;
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
         private
@@ -183,10 +190,10 @@ namespace Hi3Helper.Http.Legacy
 #if NET6_0_OR_GREATER
             await input.DisposeAsync();
 #else
-            Input.Dispose();
+            input.Dispose();
 #endif
             return new Session(
-                input.PathURL, _handler, forceOverwrite ? givenOffsetStart : input.OffsetStart,
+                input.PathUrl, _handler, forceOverwrite ? givenOffsetStart : input.OffsetStart,
                 forceOverwrite ? givenOffsetEnd : input.OffsetStart, _clientUserAgent,
                 true, _client
                 )
@@ -197,13 +204,11 @@ namespace Hi3Helper.Http.Legacy
 
         public static void DeleteMultisessionFiles(string path, int sessions)
         {
-            string sessionFilePath;
-            string sessionFilePathLegacy;
             for (int t = 0; t < sessions; t++)
             {
-                sessionFilePath = path + $".{t + 1:000}";
+                string sessionFilePath = path + $".{t + 1:000}";
 #pragma warning disable CS0618 // Type or member is obsolete
-                sessionFilePathLegacy = path + string.Format(PathSessionPrefix, GetHashNumber(sessions, t));
+                string sessionFilePathLegacy = path + string.Format(PathSessionPrefix, GetHashNumber(sessions, t));
 #pragma warning restore CS0618 // Type or member is obsolete
                 try
                 {
@@ -232,8 +237,6 @@ namespace Hi3Helper.Http.Legacy
         public static long CalculateExistingMultisessionFilesWithExpctdSize(string path, int sessions, long expectedSize)
         {
             long ret = 0;
-            string sessionFilePath;
-            string sessionFilePathLegacy;
             FileInfo parentFile = new(path);
             if (parentFile.Exists)
             {
@@ -243,9 +246,9 @@ namespace Hi3Helper.Http.Legacy
 
             for (int t = 0; t < sessions; t++)
             {
-                sessionFilePath = path + $".{t + 1:000}";
+                string sessionFilePath = path + $".{t + 1:000}";
 #pragma warning disable CS0618 // Type or member is obsolete
-                sessionFilePathLegacy = path + string.Format(PathSessionPrefix, GetHashNumber(sessions, t));
+                string sessionFilePathLegacy = path + string.Format(PathSessionPrefix, GetHashNumber(sessions, t));
 #pragma warning restore CS0618 // Type or member is obsolete
                 try
                 {
@@ -265,37 +268,31 @@ namespace Hi3Helper.Http.Legacy
         }
 
 #if NET6_0_OR_GREATER
-        public async ValueTask<Tuple<int, bool>> GetURLStatus(string url, CancellationToken token)
+        public async ValueTask<Tuple<int, bool>> GetUrlStatus(string url, CancellationToken token)
 #else
-        public async Task<Tuple<int, bool>> GetURLStatus(string URL, CancellationToken Token)
+        public async Task<Tuple<int, bool>> GetUrlStatus(string url, CancellationToken token)
 #endif
         {
-            using (HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage { RequestUri = new Uri(url) }, HttpCompletionOption.ResponseHeadersRead, token))
-            {
-                return new Tuple<int, bool>((int)response.StatusCode, response.IsSuccessStatusCode);
-            }
+            using HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage { RequestUri = new Uri(url) }, HttpCompletionOption.ResponseHeadersRead, token);
+            return new Tuple<int, bool>((int)response.StatusCode, response.IsSuccessStatusCode);
         }
 
 #if NET6_0_OR_GREATER
         public async ValueTask<long> GetContentLengthNonNull(string url, CancellationToken token)
 #else
-        public async Task<long> GetContentLengthNonNull(string URL, CancellationToken Token)
+        public async Task<long> GetContentLengthNonNull(string url, CancellationToken token)
 #endif
         {
-            using (HttpRequestMessage message = new())
-            {
-                message.RequestUri = new Uri(url);
-                using (HttpResponseMessage response = await _client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, token))
-                {
-                    return response.Content.Headers.ContentLength ?? 0;
-                }
-            }
+            using HttpRequestMessage message = new();
+            message.RequestUri = new Uri(url);
+            using HttpResponseMessage response = await _client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, token);
+            return response.Content.Headers.ContentLength ?? 0;
         }
 
 #if NET6_0_OR_GREATER
         public async ValueTask<long?> TryGetContentLength(string url, CancellationToken token)
 #else
-        public async Task<long?> TryGetContentLength(string URL, CancellationToken Token)
+        public async Task<long?> TryGetContentLength(string url, CancellationToken token)
 #endif
         {
             byte currentRetry = 0;
@@ -318,9 +315,9 @@ namespace Hi3Helper.Http.Legacy
         }
 
 #if NET6_0_OR_GREATER
-        private async ValueTask<long?> GetContentLength(string input, CancellationToken token = new())
+        private async ValueTask<long?> GetContentLength(string input, CancellationToken token = default)
 #else
-        private async Task<long?> GetContentLength(string Input, CancellationToken token = new CancellationToken())
+        private async Task<long?> GetContentLength(string input, CancellationToken token = default)
 #endif
         {
             HttpRequestMessage  message  = new() { RequestUri = new Uri(input) };

@@ -6,12 +6,11 @@
         <LangVersion>9.0</LangVersion>
         <Configurations>Debug;Release</Configurations>
         <Nullable>enable</Nullable>
-        <DebugType>portable</DebugType>
         <IsTrimmable>True</IsTrimmable>
         <IsAotCompatible>True</IsAotCompatible>
-        <Version>2.0.0</Version>
+        <Version>2.0.1</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <AssemblyVersion>2.0.0</AssemblyVersion>
+        <AssemblyVersion>2.0.1</AssemblyVersion>
         <!-- Assembly Info Properties -->
         <AssemblyName>Hi3Helper.Http</AssemblyName>
         <ProductName>Hi3Helper.Http</ProductName>
@@ -25,6 +24,7 @@
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
         <Optimize>False</Optimize>
+        <DebugType>none</DebugType>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
         <Optimize>True</Optimize>

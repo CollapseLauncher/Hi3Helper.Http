@@ -9,7 +9,7 @@ namespace Hi3Helper.Http.Legacy
             bool overwrite = false, CancellationToken threadToken = default)
         {
             ResetState();
-            _pathURL            = url;
+            _pathUrl            = url;
             _pathOutput         = output;
             _connectionSessions = connectionSessions;
 

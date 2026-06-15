@@ -32,7 +32,7 @@ namespace Hi3Helper.Http.Legacy
         private          Stopwatch _sessionsStopwatch;
 
         // Path of the Download
-        private       string _pathURL           = null!;
+        private       string _pathUrl           = null!;
         private       string _pathOutput        = null!;
         private const string PathSessionPrefix = ".{0}";
 

@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+#if !NET6_0_OR_GREATER
+using System.Threading.Tasks.Dataflow;
+#endif
+
 namespace Hi3Helper.Http.Legacy
 {
     public sealed partial class Http
@@ -22,18 +26,17 @@ namespace Hi3Helper.Http.Legacy
                 await SessionTaskRunnerContainer(session, innerToken);
             });
 #else
-            ActionBlock<Session> actionBlock = new ActionBlock<Session>(
-             async session =>
-             {
-                 await SessionTaskRunnerContainer(session, parallelOptions.CancellationToken);
-             },
-             new ExecutionDataflowBlockOptions
-             {
-                 MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
-                 CancellationToken = parallelOptions.CancellationToken
-             });
+            var actionBlock = new ActionBlock<Session>(async session =>
+                                                       {
+                                                           await SessionTaskRunnerContainer(session, parallelOptions.CancellationToken);
+                                                       },
+                                                       new ExecutionDataflowBlockOptions
+                                                       {
+                                                           MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
+                                                           CancellationToken = parallelOptions.CancellationToken
+                                                       });
 
-            await foreach (Session session in sessions)
+            await foreach (Session session in sessions.WithCancellation(token))
             {
                 await actionBlock.SendAsync(session, parallelOptions.CancellationToken);
             }
@@ -48,7 +51,6 @@ namespace Hi3Helper.Http.Legacy
             if (session == null!) return;
             DownloadEvent @event = new();
 
-            CancellationTokenSource innerTimeoutToken, cooperatedToken;
             while (true)
             {
                 bool allowDispose = false;
@@ -57,8 +59,8 @@ namespace Hi3Helper.Http.Legacy
                     DownloadState = DownloadState.Downloading;
                     session.SessionState = DownloadState.Downloading;
 
-                    innerTimeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
-                    cooperatedToken = CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
+                    CancellationTokenSource innerTimeoutToken = new(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
+                    CancellationTokenSource cooperatedToken = CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
 
                     int read;
                     byte[] buffer = new byte[BufferSize];
@@ -67,13 +69,8 @@ namespace Hi3Helper.Http.Legacy
                     while ((read = await session.StreamInput.ReadAsync(buffer, 0, BufferSize, cooperatedToken.Token)) > 0)
                     {
                         // Write Buffer to the output Stream
-#if NET6_0_OR_GREATER
                         cooperatedToken.Token.ThrowIfCancellationRequested();
-                        session.StreamOutput.Write(buffer, 0, read);
-#else
-                        await session.StreamOutput
-                            .WriteAsync(Buffer, 0, Read, cooperatedToken.Token);
-#endif
+                        await session.StreamOutput.WriteAsync(buffer, 0, read, cooperatedToken.Token);
                         // Increment as last OffsetStart adjusted
                         session.OffsetStart += read;
                         // Set Inner Session Status
@@ -120,16 +117,16 @@ namespace Hi3Helper.Http.Legacy
                 }
                 catch (Exception ex)
                 {
-                    PushLog($"An error has occurred on session ID: {session.SessionID}. The session will retry to re-establish the connection...\r\nException: {ex}", DownloadLogSeverity.Warning);
+                    PushLog($"An error has occurred on session ID: {session.SessionId}. The session will retry to re-establish the connection...\r\nException: {ex}", DownloadLogSeverity.Warning);
                     Tuple<bool, Exception> retryStatus = await session.TryReinitializeRequest(token);
-                    if (retryStatus.Item1 && retryStatus.Item2 == null!) continue;
+                    if (retryStatus is { Item1: true, Item2: null }) continue;
 
                     allowDispose = true;
                     DownloadState = DownloadState.FailedDownloading;
                     session.SessionState = DownloadState.FailedDownloading;
 
                     if (ex is TaskCanceledException && !token.IsCancellationRequested)
-                        throw new TimeoutException($"Request for session ID: {session.SessionID} has timed out!", ex);
+                        throw new TimeoutException($"Request for session ID: {session.SessionId} has timed out!", ex);
 
                     throw retryStatus.Item2 != null! ? retryStatus.Item2 : ex;
                 }
@@ -142,7 +139,7 @@ namespace Hi3Helper.Http.Legacy
 #else
                         session.Dispose();
 #endif
-                        PushLog($"Disposed session ID {session.SessionID}!", DownloadLogSeverity.Info);
+                        PushLog($"Disposed session ID {session.SessionId}!", DownloadLogSeverity.Info);
                     }
                 }
             }

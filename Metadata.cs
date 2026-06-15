@@ -14,13 +14,13 @@ namespace Hi3Helper.Http
     {
         internal const string MetadataExtension = ".collapseMeta";
 
-        public Uri? Url { get; set; }
-        public string? MetadataFilePath { get; set; }
-        public string? OutputFilePath { get; set; }
-        public List<ChunkRange?>? Ranges { get; set; }
-        public long TargetToCompleteSize { get; set; }
-        public bool IsCompleted { get; set; }
-        public long LastEndOffset { get; set; }
+        public Uri?               Url                  { get; set; }
+        public string?            MetadataFilePath     { get; set; }
+        public string?            OutputFilePath       { get; set; }
+        public List<ChunkRange?>? Ranges               { get; set; }
+        public long               TargetToCompleteSize { get; set; }
+        public bool               IsCompleted          { get; set; }
+        public long               LastEndOffset        { get; set; }
 
         [JsonIgnore] private bool IsOnWrite { get; set; }
 
@@ -41,44 +41,46 @@ namespace Hi3Helper.Http
                     throw new InvalidDataException();
                 }
 
-                await using (FileStream metadataStream = metadataFilePath.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+#if NET6_0_OR_GREATER
+                await using FileStream metadataStream = metadataFilePath.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+#else
+                using FileStream metadataStream = metadataFilePath.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+#endif
+                if (metadataStream.Length < 64)
                 {
-                    if (metadataStream.Length < 64)
-                    {
-                        throw new InvalidDataException();
-                    }
-
-                    Metadata? lastMetadata =
-                        await JsonSerializer.DeserializeAsync(metadataStream, MetadataJsonContext.Default.Metadata, token);
-
-                    if (lastMetadata == null
-                        || lastMetadata.Url == null
-                        || lastMetadata.Ranges?.Count == 0
-                        || string.IsNullOrEmpty(lastMetadata.OutputFilePath))
-                    {
-                        throw new InvalidDataException();
-                    }
-
-                    lastMetadata.MetadataFilePath = metadataFilePath.FullName;
-                    lastMetadata.Ranges?.Sort((x, y) =>
-                    {
-                        // If the source is null, then return -1 (less than)
-                        if (x == null || y == null)
-                        {
-                            return -1;
-                        }
-
-                        // Compare based on Start
-                        int startComparison = x.Start.CompareTo(y.Start);
-                        return startComparison != 0
-                            ? startComparison
-                            :
-                            // If Start is equal, compare based on End
-                            x.End.CompareTo(y.End);
-                    });
-                    lastMetadata.Ranges?.RemoveAll(x => x == null);
-                    return lastMetadata;
+                    throw new InvalidDataException();
                 }
+
+                Metadata? lastMetadata =
+                    await JsonSerializer.DeserializeAsync(metadataStream, MetadataJsonContext.Default.Metadata, token);
+
+                if (lastMetadata == null
+                    || lastMetadata.Url == null
+                    || lastMetadata.Ranges?.Count == 0
+                    || string.IsNullOrEmpty(lastMetadata.OutputFilePath))
+                {
+                    throw new InvalidDataException();
+                }
+
+                lastMetadata.MetadataFilePath = metadataFilePath.FullName;
+                lastMetadata.Ranges?.Sort((x, y) =>
+                {
+                    // If the source is null, then return -1 (less than)
+                    if (x == null || y == null)
+                    {
+                        return -1;
+                    }
+
+                    // Compare based on Start
+                    int startComparison = x.Start.CompareTo(y.Start);
+                    return startComparison != 0
+                        ? startComparison
+                        :
+                        // If Start is equal, compare based on End
+                        x.End.CompareTo(y.End);
+                });
+                lastMetadata.Ranges?.RemoveAll(x => x == null);
+                return lastMetadata;
             }
             catch (Exception)
             {
@@ -111,16 +113,20 @@ namespace Hi3Helper.Http
             FileStream? fileStream = null;
             try
             {
-                fileStream = new FileStream(MetadataFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
+                fileStream = new FileStream(MetadataFilePath!, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
                 await JsonSerializer.SerializeAsync(fileStream, this, MetadataJsonContext.Default.Metadata, token);
             }
             finally
             {
                 IsOnWrite = false;
+#if NET6_0_OR_GREATER
                 if (fileStream != null)
                 {
                     await fileStream.DisposeAsync();
                 }
+#else
+                fileStream?.Dispose();
+#endif
             }
         }
 

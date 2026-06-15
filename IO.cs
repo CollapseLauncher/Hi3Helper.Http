@@ -62,9 +62,16 @@ namespace Hi3Helper.Http
                 coopToken = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken.Token, token);
 
                 int read;
-                while ((read = await networkStream.ReadAsync(buffer, coopToken.Token)) > 0)
+                while ((read = await networkStream.ReadAsync(buffer, 0, buffer.Length, coopToken.Token)) > 0)
                 {
+#if NET6_0_OR_GREATER
                     await (downloadSpeedLimiter?.AddBytesOrWaitAsync(read, token) ?? ValueTask.CompletedTask);
+#else
+                    if (downloadSpeedLimiter != null)
+                    {
+                        await downloadSpeedLimiter.AddBytesOrWaitAsync(read, token);
+                    }
+#endif
                     await fileStream.WriteAsync(buffer, 0, read, coopToken.Token);
 
                     session.CurrentPositions.AdvanceStartOffset(read);
@@ -106,11 +113,14 @@ namespace Hi3Helper.Http
             }
             finally
             {
+#if NET6_0_OR_GREATER
                 if (networkStream != null)
                 {
                     await networkStream.DisposeAsync();
                 }
-
+#else
+                networkStream?.Dispose();
+#endif
                 ArrayPool<byte>.Shared.Return(buffer);
 
                 timeoutToken?.Dispose();

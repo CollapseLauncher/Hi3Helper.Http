@@ -24,7 +24,17 @@ namespace Hi3Helper.Http
         public static DownloadSpeedLimiter CreateInstance(nint serviceContext)
             => new(serviceContext);
 
+#if NET6_0_OR_GREATER
         internal ValueTask AddBytesOrWaitAsync(long readBytes, CancellationToken token)
             => AddBytesOrWaitAsyncDelegate?.Invoke(Context, readBytes, token) ?? ValueTask.CompletedTask;
+#else
+        internal async ValueTask AddBytesOrWaitAsync(long readBytes, CancellationToken token)
+        {
+            if (AddBytesOrWaitAsyncDelegate == null)
+                return;
+
+            await AddBytesOrWaitAsyncDelegate.Invoke(Context, readBytes, token);
+        }
+#endif
     }
 }

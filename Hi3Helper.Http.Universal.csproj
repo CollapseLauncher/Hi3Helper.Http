@@ -1,37 +1,49 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>netstandard2.0</TargetFramework>
-		<Platforms>x64;x86;AnyCPU</Platforms>
-		<LangVersion>8.0</LangVersion>
-		<Configurations>Debug;Release</Configurations>
-		<Nullable>disable</Nullable>
-		<DebugType>portable</DebugType>
-		<IsTrimmable>True</IsTrimmable>
-		<IsAotCompatible>True</IsAotCompatible>
-		<Version>1.5.0</Version>
-		<AssemblyVersion>1.5.0</AssemblyVersion>
-		<AssemblyName>Hi3Helper.Http</AssemblyName>
-	</PropertyGroup>
+    <PropertyGroup>
+        <TargetFrameworks>netstandard2.0;net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+        <Platforms>x64</Platforms>
+        <LangVersion>9.0</LangVersion>
+        <Configurations>Debug;Release</Configurations>
+        <Nullable>enable</Nullable>
+        <Version>2.0.1</Version>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AssemblyVersion>2.0.1</AssemblyVersion>
+        <!-- Assembly Info Properties -->
+        <AssemblyName>Hi3Helper.Http</AssemblyName>
+        <ProductName>Hi3Helper.Http</ProductName>
+        <Product>Hi3Helper.Http</Product>
+        <Description>Http downloader with Multi-Session support</Description>
+        <Company>Collapse Launcher Team</Company>
+        <Authors>$(Company). neon-nyan, Cry0, bagusnl, shatyuka, gablm.</Authors>
+        <Copyright>Copyright 2022-2026 $(Company)</Copyright>
+        <IsAotCompatible>true</IsAotCompatible>
+    </PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-		<Optimize>False</Optimize>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-		<Optimize>True</Optimize>
-		<DebugType>portable</DebugType>
-	</PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+        <Optimize>False</Optimize>
+        <DebugType>none</DebugType>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+        <Optimize>True</Optimize>
+        <DebugType>portable</DebugType>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<Compile Remove="Test\**" />
-		<EmbeddedResource Remove="Test\**" />
-		<None Remove="Test\**" />
-	</ItemGroup>
+    <ItemGroup>
+        <Compile Remove="Test\**" />
+        <EmbeddedResource Remove="Test\**" />
+        <None Remove="Test\**" />
+    </ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="System.Net.Http" Version="*" />
-		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="*" />
-		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="*" />
-	</ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="System.Text.Json" Version="10.0.9" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+        <PackageReference Include="System.Net.Http" Version="*" />
+        <PackageReference Include="System.Threading.Tasks.Dataflow" Version="*" />
+        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="*" />
+    </ItemGroup>
 
 </Project>

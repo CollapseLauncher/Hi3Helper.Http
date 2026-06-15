@@ -8,6 +8,17 @@ using System.Threading.Tasks;
 
 namespace Hi3Helper.Http
 {
+#if !NETCOREAPP
+    internal class FileStreamOptions
+    {
+        public FileMode    Mode       { get; set; }
+        public FileAccess  Access     { get; set; }
+        public FileShare   Share      { get; set; }
+        public int         BufferSize { get; set; }
+        public FileOptions Options    { get; set; }
+    }
+#endif
+
     internal static class Utility
     {
         internal static Uri ToUri(this string? urlString)

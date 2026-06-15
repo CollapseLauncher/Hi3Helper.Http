@@ -5,10 +5,16 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
 using System.Threading;
 using System.Threading.Tasks;
+
+#if NETCOREAPP
+using System.Runtime.Intrinsics;
+#endif
+
+#if NETCOREAPP && !NET7_0_OR_GREATER
+using System.Runtime.Intrinsics.X86;
+#endif
 
 // ReSharper disable ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
 
@@ -16,10 +22,6 @@ namespace Hi3Helper.Http
 {
     internal class ChunkSession
     {
-        // Initialize zero vectors as static
-        private static readonly Vector128<byte> Vector128Zero = Vector128<byte>.Zero;
-        private static readonly Vector256<byte> Vector256Zero = Vector256<byte>.Zero;
-
         internal static async IAsyncEnumerable<ChunkSession> EnumerateMultipleChunks(
             HttpClient client,
             Uri url,
@@ -70,7 +72,7 @@ namespace Hi3Helper.Http
             // Or if the file overflow, then delete the file and start from scratch
             if ((outputFileInfo.Exists && overwrite)
              || (outputFileInfo.Exists && outputFileInfo.Length > contentLength)
-             || (metadataFileInfo.Exists && metadataFileInfo.Length < 64 && outputFileInfo.Exists)
+             || (metadataFileInfo is { Exists: true, Length: < 64 } && outputFileInfo.Exists)
              || (metadataFileInfo.Exists && !outputFileInfo.Exists)
              || ((currentSessionMetadata?.Ranges?.Count ?? 0) == 0 && (currentSessionMetadata?.IsCompleted ?? false)))
             {
@@ -246,7 +248,8 @@ namespace Hi3Helper.Http
                 // then start checking for the zero data
                 if (range.Start > nearbyEnd)
                 {
-                    // Get the da stream
+                    // Get the data stream
+#if NETCOREAPP
                     using FileStream fileStream = existingFileInfo.Open(new FileStreamOptions
                     {
                         Mode    = FileMode.OpenOrCreate,
@@ -254,7 +257,15 @@ namespace Hi3Helper.Http
                         Share   = FileShare.ReadWrite,
                         Options = FileOptions.WriteThrough
                     });
-                    StartReadData:
+#else
+                    using FileStream fileStream = new(existingFileInfo.FullName,
+                                                      FileMode.OpenOrCreate,
+                                                      FileAccess.ReadWrite,
+                                                      FileShare.ReadWrite,
+                                                      0,
+                                                      FileOptions.WriteThrough);
+#endif
+                StartReadData:
                     // If the current start range is less than nearby end, then increment and return.
                     if (range.Start < nearbyEnd)
                     {
@@ -302,7 +313,7 @@ namespace Hi3Helper.Http
                         }
 
                         // Read 32 bytes from last, check if all the values are zero with SIMD
-                        bool isVector256Zero = IsVector256Zero(bufferPtr, offset, Vector256Zero);
+                        bool isVector256Zero = IsVector256Zero(bufferPtr, offset);
                         if (isVector256Zero)
                         {
                             offset           -= 32;
@@ -311,7 +322,7 @@ namespace Hi3Helper.Http
                         }
 
                         // Read 16 bytes from last, check if all the values are zero with SIMD
-                        bool isVector128Zero = IsVector128Zero(bufferPtr, offset, Vector128Zero);
+                        bool isVector128Zero = IsVector128Zero(bufferPtr, offset);
                         if (isVector128Zero)
                         {
                             offset           -= 16;
@@ -360,28 +371,94 @@ namespace Hi3Helper.Http
             }
         }
 
-        private static unsafe bool IsVector128Zero(byte* bufferPtr, int offset, Vector128<byte> zero)
+        private static unsafe bool IsVector128Zero(byte* bufferPtr, int offset)
         {
-            // If Sse2 is not supported (really?) or offset < 16 bytes, then return false
-            if (!Sse2.IsSupported || offset < 16)
+            if (offset < 16)
                 return false;
 
-            Vector128<byte> dataAsVector128 = *(Vector128<byte>*)(bufferPtr + (offset - 16));
-            Vector128<byte> result = Sse2.CompareEqual(dataAsVector128, zero);
+            byte* ptr = bufferPtr + offset - 16;
+#if NET7_0_OR_GREATER
+            // If 128-bit Hardware-Accelerated vectorization is not supported, use scalar.
+            if (!Vector128.IsHardwareAccelerated) return IsScalar128Zero(ptr);
+
+            var data = Unsafe.ReadUnaligned<Vector128<byte>>(ptr);
+            return Vector128.EqualsAll(data, Vector128<byte>.Zero);
+#elif NET6_0_OR_GREATER
+            // If SSE2 is not supported, use scalar.
+            if (!Sse2.IsSupported) return IsScalar128Zero(ptr);
+
+            var data = Unsafe.ReadUnaligned<Vector128<byte>>(ptr);
+            Vector128<byte> result = Sse2.CompareEqual(data, Vector128<byte>.Zero);
             int mask = Sse2.MoveMask(result);
+
             return mask == 0xFFFF; // In SSE2, 0xFFFF == all zero
+#else
+            return IsScalar128Zero(ptr);
+#endif
         }
 
-        private static unsafe bool IsVector256Zero(byte* bufferPtr, int offset, Vector256<byte> zero)
+        private static unsafe bool IsVector256Zero(byte* bufferPtr, int offset)
         {
-            // If Avx2 is not supported or offset < 32 bytes, then return false
-            if (!Avx2.IsSupported || offset < 32)
+            if (offset < 32)
                 return false;
 
-            Vector256<byte> dataAsVector256 = *(Vector256<byte>*)(bufferPtr + (offset - 32));
-            Vector256<byte> result = Avx2.CompareEqual(dataAsVector256, zero);
+            byte* ptr = bufferPtr + offset - 32;
+#if NET7_0_OR_GREATER
+            // If 256-bit Hardware-Accelerated vectorization is not supported, use scalar.
+            if (!Vector256.IsHardwareAccelerated) return IsScalar256Zero(ptr);
+
+            var data = Unsafe.ReadUnaligned<Vector256<byte>>(ptr);
+            return Vector256.EqualsAll(data, Vector256<byte>.Zero);
+#elif NET6_0_OR_GREATER
+            // If AVX2 is not supported, use scalar.
+            if (!Avx2.IsSupported) return IsScalar256Zero(ptr);
+
+            var data = Unsafe.ReadUnaligned<Vector256<byte>>(ptr);
+            Vector256<byte> result = Avx2.CompareEqual(data, Vector256<byte>.Zero);
             int mask = Avx2.MoveMask(result);
+
             return mask == unchecked((int)0xFFFFFFFF); // In AVX, 0xFFFFFFFF == all zero
+#else
+            return IsScalar256Zero(ptr);
+#endif
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe bool IsScalar128Zero(byte* ptr)
+        {
+            nuint a = Unsafe.ReadUnaligned<nuint>(ptr);
+            nuint b = Unsafe.ReadUnaligned<nuint>(ptr + sizeof(nuint));
+
+            if (sizeof(nuint) == 8)
+            {
+                return (a | b) == 0;
+            }
+
+            nuint c = Unsafe.ReadUnaligned<nuint>(ptr + 8);
+            nuint d = Unsafe.ReadUnaligned<nuint>(ptr + 12);
+
+            return (a | b | c | d) == 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe bool IsScalar256Zero(byte* ptr)
+        {
+            nuint a = Unsafe.ReadUnaligned<nuint>(ptr);
+            nuint b = Unsafe.ReadUnaligned<nuint>(ptr + sizeof(nuint));
+            nuint c = Unsafe.ReadUnaligned<nuint>(ptr + sizeof(nuint) * 2);
+            nuint d = Unsafe.ReadUnaligned<nuint>(ptr + sizeof(nuint) * 3);
+
+            if (sizeof(nuint) == 8)
+            {
+                return (a | b | c | d) == 0;
+            }
+
+            nuint e = Unsafe.ReadUnaligned<nuint>(ptr + 16);
+            nuint f = Unsafe.ReadUnaligned<nuint>(ptr + 20);
+            nuint g = Unsafe.ReadUnaligned<nuint>(ptr + 24);
+            nuint h = Unsafe.ReadUnaligned<nuint>(ptr + 28);
+
+            return (a | b | c | d | e | f | g | h) == 0;
         }
 
         internal static async ValueTask<(ChunkSession, HttpResponseInputStream)?> CreateSingleSessionAsync(
@@ -430,7 +507,7 @@ namespace Hi3Helper.Http
         }
 
 #nullable disable
-        internal ChunkRange CurrentPositions { get; private init; }
+        internal ChunkRange CurrentPositions { get; private set; }
         internal Metadata CurrentMetadata { get; private set; }
         internal HttpClient CurrentHttpClient { get; private set; }
         internal int RetryMaxAttempt { get; private set; }

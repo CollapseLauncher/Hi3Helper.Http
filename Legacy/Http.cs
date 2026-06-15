@@ -122,7 +122,7 @@ namespace Hi3Helper.Http.Legacy
         {
             ResetState();
 
-            _pathURL = url;
+            _pathUrl = url;
             _pathOutput = output;
 
             await SessionTaskRunnerContainer(await InitializeSingleSession(offsetStart, offsetEnd, output, overwrite, null, false, threadToken), threadToken);
@@ -139,7 +139,7 @@ namespace Hi3Helper.Http.Legacy
         {
             ResetState();
 
-            _pathURL = url;
+            _pathUrl = url;
 
             await SessionTaskRunnerContainer(await InitializeSingleSession(offsetStart, offsetEnd, null, false, outStream, ignoreOutStreamLength, threadToken), threadToken);
             DownloadState = DownloadState.Finished;

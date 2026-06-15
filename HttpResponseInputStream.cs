@@ -90,15 +90,17 @@ namespace Hi3Helper.Http
 
                 if (!httpResponseInputStream._isSuccessStatusCode)
                 {
-                #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
                     await httpResponseInputStream.DisposeAsync();
-                #else
-                    httpResponseInputStream.Dispose();
-                #endif
                     throw new HttpRequestException(
                         $"The url {url} returns an unsuccessful status code: {httpResponseInputStream._networkResponse.StatusCode} ({(int)httpResponseInputStream._networkResponse.StatusCode})",
                         null,
                         httpResponseInputStream._statusCode);
+#else
+                    httpResponseInputStream.Dispose();
+                    throw new HttpRequestException(
+                        $"The url {url} returns an unsuccessful status code: {httpResponseInputStream._networkResponse.StatusCode} ({(int)httpResponseInputStream._networkResponse.StatusCode})");
+#endif
                 }
 
                 httpResponseInputStream._networkLength =

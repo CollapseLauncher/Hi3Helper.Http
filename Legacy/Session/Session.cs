@@ -90,7 +90,7 @@ namespace Hi3Helper.Http.Legacy
 
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            int read = await NetworkStream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken);
+            int read = await NetworkStream.ReadAsync(buffer, offset, count, cancellationToken);
             CurrentPosition += read;
             return read;
         }
@@ -105,20 +105,11 @@ namespace Hi3Helper.Http.Legacy
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException();
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
-        public override bool CanRead
-        {
-            get { return true; }
-        }
+        public override bool CanRead => true;
 
-        public override bool CanSeek
-        {
-            get { return false; }
-        }
+        public override bool CanSeek => false;
 
-        public override bool CanWrite
-        {
-            get { return false; }
-        }
+        public override bool CanWrite => false;
 
         public override void Flush()
         {
@@ -128,15 +119,12 @@ namespace Hi3Helper.Http.Legacy
             }
         }
 
-        public override long Length
-        {
-            get { return NetworkLength; }
-        }
+        public override long Length => NetworkLength;
 
         public override long Position
         {
-            get { return CurrentPosition; }
-            set { throw new NotSupportedException(); }
+            get => CurrentPosition;
+            set => throw new NotSupportedException();
         }
 
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
@@ -179,7 +167,7 @@ namespace Hi3Helper.Http.Legacy
 #endif
     {
         #nullable enable
-        internal Session(string pathURL,
+        internal Session(string pathUrl,
                          HttpClientHandler clientHandler,
                          long? offsetStart = null,
                          long? offsetEnd = null, 
@@ -188,7 +176,7 @@ namespace Hi3Helper.Http.Legacy
                          HttpClient? externalSessionClient = null)
         {
             // Initialize Properties
-            PathURL = pathURL;
+            PathUrl = pathUrl;
             IsDisposed = false;
             IsUseExternalSession = useExternalSessionClient;
             SessionState = DownloadState.Idle;
@@ -206,7 +194,7 @@ namespace Hi3Helper.Http.Legacy
                     DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
         #endif
                 };
-            SessionID = 0;
+            SessionId = 0;
 
             if (!useExternalSessionClient && userAgent != null)
             {
@@ -239,7 +227,14 @@ namespace Hi3Helper.Http.Legacy
 
         internal void AssignOutputStreamFromStream(Stream stream, bool ignoreOutStreamLength)
         {
+#if NET8_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(stream);
+#else
+            if (stream == null!)
+            {
+                throw new ArgumentNullException(nameof(stream));
+            }
+#endif
             StreamOutput = stream;
             IsFileMode = false;
 
@@ -264,14 +259,14 @@ namespace Hi3Helper.Http.Legacy
 #if NET6_0_OR_GREATER
                     await StreamInput.DisposeAsync();
 #else
-                    this.StreamInput.Dispose();
+                    StreamInput.Dispose();
 #endif
 
                 return new Tuple<bool, Exception>(await TryGetHttpRequest(token), null!);
             }
             catch (Exception ex)
             {
-                Http.PushLog($"Failed while reinitialize session ID: {SessionID}\r\n{ex}", DownloadLogSeverity.Error);
+                Http.PushLog($"Failed while reinitialize session ID: {SessionId}\r\n{ex}", DownloadLogSeverity.Error);
                 return new Tuple<bool, Exception>(false, ex);
             }
         }
@@ -291,7 +286,7 @@ namespace Hi3Helper.Http.Legacy
 
             ActionTimeoutValueTaskCallback<HttpResponseInputStream> createStreamCallback =
                 async innerToken =>
-                    await HttpResponseInputStream.CreateStreamAsync(SessionClient, PathURL,
+                    await HttpResponseInputStream.CreateStreamAsync(SessionClient, PathUrl,
                                                                     OffsetStart, OffsetEnd, innerToken);
 
             StreamInput = await TaskExtensions.WaitForRetryAsync(() => createStreamCallback, fromToken: token);
@@ -359,7 +354,7 @@ namespace Hi3Helper.Http.Legacy
         internal long? OffsetEnd;
 
         // Path Properties
-        internal string PathURL;
+        internal string PathUrl;
 
         // Boolean Properties
         internal bool IsUseExternalSession;
@@ -371,7 +366,7 @@ namespace Hi3Helper.Http.Legacy
         internal HttpClient    SessionClient;
         internal DownloadState SessionState;
         internal int           SessionRetryAttempt { get; set; }
-        internal long          SessionID;
+        internal long          SessionId;
 
         // Stream Properties
         internal HttpResponseInputStream StreamInput  = null!;

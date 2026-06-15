@@ -29,10 +29,10 @@ namespace Hi3Helper.Http
         private const int DefaultRetryCountMax = 5;
         internal const int MinimumDownloadSpeedLimit = 256 << 10; // 262144 bytes/s (256 KiB/s)
 
-        private TimeSpan RetryAttemptInterval { get; init; }
-        private int RetryCountMax { get; init; }
-        private TimeSpan TimeoutAfterInterval { get; init; }
-        private HttpClient CurrentHttpClientInstance { get; init; }
+        private TimeSpan   RetryAttemptInterval      { get; set; }
+        private int        RetryCountMax             { get; set; }
+        private TimeSpan   TimeoutAfterInterval      { get; set; }
+        private HttpClient CurrentHttpClientInstance { get; set; }
 
         private const int DefaultSessionChunkSize = 32 << 20; // 32 MiB for each chunk size
 
@@ -50,7 +50,7 @@ namespace Hi3Helper.Http
         }
 
         /// <summary>
-        ///     Create an instance of a Http Download Client instance from the given <seealso cref="HttpClient" /> instance.
+        ///     Create an instance of an Http Download Client instance from the given <seealso cref="HttpClient" /> instance.
         /// </summary>
         /// <param name="httpClient">
         ///     Use the HttpClient from the parent caller from the given <seealso cref="HttpClient" /> instance.
@@ -64,13 +64,18 @@ namespace Hi3Helper.Http
         /// <param name="timeoutAfterInterval">
         ///     Determine how long the method will time out while it's getting called.
         /// </param>
-        /// <returns>An instance of a Http Download Client</returns>
+        /// <returns>An instance of an Http Download Client</returns>
         /// <exception cref="NullReferenceException">Throw if the <paramref name="httpClient" /> argument is <c>null</c>.</exception>
         public static DownloadClient CreateInstance(HttpClient httpClient, int retryCountMax = DefaultRetryCountMax,
             TimeSpan? retryAttemptInterval = null, TimeSpan? timeoutAfterInterval = null)
         {
+#if NET8_0_OR_GREATER
             // Throw if HttpClient argument is null
-            ArgumentNullException.ThrowIfNull(httpClient, nameof(httpClient));
+            ArgumentNullException.ThrowIfNull(httpClient);
+#else
+            // Throw if HttpClient argument is null
+            if (httpClient == null!) throw new ArgumentNullException(nameof(httpClient));
+#endif
 
             // Return the instance
             return new DownloadClient(httpClient, retryCountMax, retryAttemptInterval, timeoutAfterInterval);
@@ -213,16 +218,20 @@ namespace Hi3Helper.Http
             DownloadSpeedLimiter?     downloadSpeedLimiter  = null,
             CancellationToken         cancelToken           = default)
         {
-            ArgumentException.ThrowIfNullOrEmpty(url, nameof(url));
-            ArgumentException.ThrowIfNullOrWhiteSpace(url, nameof(url));
-            ArgumentNullException.ThrowIfNull(fileOutputPath, nameof(fileOutputPath));
-            ArgumentNullException.ThrowIfNull(fileOutputPath, nameof(fileOutputPath));
+#if NET8_0_OR_GREATER
+            ArgumentException.ThrowIfNullOrEmpty(url);
+            ArgumentException.ThrowIfNullOrWhiteSpace(url);
+            ArgumentNullException.ThrowIfNull(fileOutputPath);
+#else
+            if (string.IsNullOrEmpty(url) || string.IsNullOrWhiteSpace(url)) throw new ArgumentNullException(nameof(url));
+            if (fileOutputPath == null!) throw new ArgumentNullException(nameof(fileOutputPath));
+#endif
 
             Uri uri = url.ToUri();
             // Always clamp the session chunk size to minimum size defined in DefaultSessionChunkSize
             sessionChunkSize = Math.Max(DefaultSessionChunkSize, sessionChunkSize);
 
-            FileStreamOptions fileStreamOptions = new FileStreamOptions
+            FileStreamOptions fileStreamOptions = new()
             {
                 Mode       = FileMode.OpenOrCreate,
                 Access     = FileAccess.Write,
@@ -256,7 +265,7 @@ namespace Hi3Helper.Http
             await foreach (ChunkSession session in ChunkSession.EnumerateMultipleChunks(
                                CurrentHttpClientInstance,
                                uri,
-                               fileOutputPath,
+                               fileOutputPath.FullName,
                                useOverwrite,
                                sessionChunkSize,
                                downloadProgressStruct,
@@ -273,7 +282,7 @@ namespace Hi3Helper.Http
             await actionBlock.Completion;
             if (actionBlock.Completion.Exception != null)
             {
-                throw actionBlock.Completion.Exception;
+                throw actionBlock.Completion.Exception.Flatten().InnerExceptions.First();
             }
 #else
             try
@@ -336,27 +345,35 @@ namespace Hi3Helper.Http
                 Directory.CreateDirectory(parentDir);
             }
 
-            await using (FileStream stream = new FileStream(chunk.CurrentMetadata?.OutputFilePath!, fileStreamOptions))
-            {
-                // Null check is done at the beginning damnit ReSharper
-                await chunk.CurrentMetadata!.SaveLastMetadataStateAsync(cancelToken);
-                await IO.WriteStreamToFileChunkSessionAsync(
-                    chunk,
-                    downloadSpeedLimiter,
-                    maxConnectionSessions,
-                    null,
-                    false,
-                    stream,
-                    downloadProgressStruct,
-                    progressDelegateAsync,
-                    cancelToken);
+#if NETCOREAPP
+            await using FileStream stream = new(chunk.CurrentMetadata?.OutputFilePath!, fileStreamOptions);
+#else
+            using FileStream stream = new(chunk.CurrentMetadata?.OutputFilePath!,
+                                          fileStreamOptions.Mode,
+                                          fileStreamOptions.Access,
+                                          fileStreamOptions.Share,
+                                          fileStreamOptions.BufferSize,
+                                          fileStreamOptions.Options);
+#endif
 
-                if (chunk.CurrentPositions.End - 1 > chunk.CurrentPositions.Start)
-                    throw new Exception();
+            // Null check is done at the beginning damnit ReSharper
+            await chunk.CurrentMetadata!.SaveLastMetadataStateAsync(cancelToken);
+            await IO.WriteStreamToFileChunkSessionAsync(
+                                                        chunk,
+                                                        downloadSpeedLimiter,
+                                                        maxConnectionSessions,
+                                                        null,
+                                                        false,
+                                                        stream,
+                                                        downloadProgressStruct,
+                                                        progressDelegateAsync,
+                                                        cancelToken);
 
-                chunk.CurrentMetadata.PopRange(chunk.CurrentPositions);
-                await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
-            }
+            if (chunk.CurrentPositions.End - 1 > chunk.CurrentPositions.Start)
+                throw new Exception();
+
+            chunk.CurrentMetadata.PopRange(chunk.CurrentPositions);
+            await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
         }
 
         /// <summary>
@@ -407,10 +424,14 @@ namespace Hi3Helper.Http
             DownloadSpeedLimiter? downloadSpeedLimiter = null,
             CancellationToken cancelToken = default)
         {
-            ArgumentException.ThrowIfNullOrEmpty(url, nameof(url));
-            ArgumentException.ThrowIfNullOrWhiteSpace(url, nameof(url));
-            ArgumentNullException.ThrowIfNull(outputStream, nameof(outputStream));
-
+#if NET8_0_OR_GREATER
+            ArgumentException.ThrowIfNullOrEmpty(url);
+            ArgumentException.ThrowIfNullOrWhiteSpace(url);
+            ArgumentNullException.ThrowIfNull(outputStream);
+#else
+            if (string.IsNullOrEmpty(url) || string.IsNullOrWhiteSpace(url)) throw new ArgumentNullException(nameof(url));
+            if (outputStream == null) throw new ArgumentNullException(nameof(outputStream));
+#endif
             Uri uri = url.ToUri();
 
             offsetStart ??= 0;
@@ -482,8 +503,8 @@ namespace Hi3Helper.Http
         /// <param name="url">The URL to check</param>
         /// <param name="cancelToken">The cancellation token</param>
         /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and an <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
-        public async ValueTask<(HttpStatusCode, bool)> GetURLStatus(string url, CancellationToken cancelToken)
-            => await GetURLStatus(CurrentHttpClientInstance, url, cancelToken);
+        public async ValueTask<(HttpStatusCode, bool)> GetUrlStatus(string url, CancellationToken cancelToken)
+            => await GetUrlStatus(CurrentHttpClientInstance, url, cancelToken);
 
         /// <summary>
         /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL.
@@ -491,8 +512,8 @@ namespace Hi3Helper.Http
         /// <param name="url">The URL to check</param>
         /// <param name="cancelToken">The cancellation token</param>
         /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and an <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
-        public async ValueTask<(HttpStatusCode, bool)> GetURLStatus(Uri url, CancellationToken cancelToken)
-            => await GetURLStatus(CurrentHttpClientInstance, url, cancelToken);
+        public async ValueTask<(HttpStatusCode, bool)> GetUrlStatus(Uri url, CancellationToken cancelToken)
+            => await GetUrlStatus(CurrentHttpClientInstance, url, cancelToken);
 
         /// <summary>
         /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL from an <seealso cref="HttpClient"/> instance.
@@ -501,8 +522,8 @@ namespace Hi3Helper.Http
         /// <param name="url">The URL to check</param>
         /// <param name="cancelToken">The cancellation token</param>
         /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and an <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
-        public static async ValueTask<(HttpStatusCode, bool)> GetURLStatus(HttpClient httpClient, string url, CancellationToken cancelToken)
-            => await GetURLStatus(httpClient, url.ToUri(), cancelToken);
+        public static async ValueTask<(HttpStatusCode, bool)> GetUrlStatus(HttpClient httpClient, string url, CancellationToken cancelToken)
+            => await GetUrlStatus(httpClient, url.ToUri(), cancelToken);
 
         /// <summary>
         /// Get the Http's <seealso cref="HttpResponseMessage.StatusCode"/> of the URL from an <seealso cref="HttpClient"/> instance.
@@ -511,7 +532,7 @@ namespace Hi3Helper.Http
         /// <param name="url">The URL to check</param>
         /// <param name="cancelToken">The cancellation token</param>
         /// <returns>A tuple contains a <seealso cref="HttpResponseMessage.StatusCode"/> and an <seealso cref="bool"/> of the status code (true = success, false = failed)</returns>
-        public static async ValueTask<(HttpStatusCode, bool)> GetURLStatus(HttpClient httpClient, Uri url, CancellationToken cancelToken)
+        public static async ValueTask<(HttpStatusCode, bool)> GetUrlStatus(HttpClient httpClient, Uri url, CancellationToken cancelToken)
         {
             using (HttpResponseMessage response = await httpClient.SendAsync(
                 new HttpRequestMessage

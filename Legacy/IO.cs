@@ -24,7 +24,7 @@ namespace Hi3Helper.Http.Legacy
 #if NET6_0_OR_GREATER
                 .ReadAsync(buffer, token)
 #else
-                .ReadAsync(Buffer, 0, _bufferSize, Token)
+                .ReadAsync(buffer, 0, buffer.Length, token)
 #endif
                 ) > 0)
             {
@@ -33,8 +33,8 @@ namespace Hi3Helper.Http.Legacy
                 token.ThrowIfCancellationRequested();
                 await output.WriteAsync(buffer.AsMemory(0, read), token);
 #else
-                await Output
-                    .WriteAsync(Buffer, 0, Read, Token);
+                await output
+                    .WriteAsync(buffer, 0, read, token);
 #endif
 
                 // Increment SizeDownloaded attribute
