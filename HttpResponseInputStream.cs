@@ -23,10 +23,12 @@ namespace Hi3Helper.Http
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
         private long _networkLength;
-        private HttpStatusCode _statusCode;
-        private bool _isSuccessStatusCode;
 
-        public static async Task<HttpResponseInputStream?> CreateStreamAsync(
+        public bool IsSuccessStatusCode => _networkResponse?.IsSuccessStatusCode ?? false;
+
+        public HttpStatusCode StatusCode => _networkResponse?.StatusCode ?? default;
+
+        public static async Task<HttpResponseInputStream> CreateStreamAsync(
             HttpClient client,
             string url,
             long? startOffset,
@@ -40,7 +42,7 @@ namespace Hi3Helper.Http
                 retryCount, token);
         }
 
-        public static async Task<HttpResponseInputStream?> CreateStreamAsync(
+        public static async Task<HttpResponseInputStream> CreateStreamAsync(
             HttpClient client,
             Uri url,
             long? startOffset,
@@ -65,7 +67,7 @@ namespace Hi3Helper.Http
                 timeoutToken = new CancellationTokenSource(timeoutInterval.Value);
                 coopToken = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken.Token, token);
 
-                HttpResponseInputStream httpResponseInputStream = new HttpResponseInputStream();
+                HttpResponseInputStream httpResponseInputStream = new();
                 httpResponseInputStream._networkRequest = new HttpRequestMessage
                 {
                     RequestUri = url,
@@ -79,27 +81,23 @@ namespace Hi3Helper.Http
                     .SendAsync(httpResponseInputStream._networkRequest, HttpCompletionOption.ResponseHeadersRead,
                         coopToken.Token);
 
-                httpResponseInputStream._statusCode = httpResponseInputStream._networkResponse.StatusCode;
-                httpResponseInputStream._isSuccessStatusCode =
-                    httpResponseInputStream._networkResponse.IsSuccessStatusCode;
-
-                if ((int)httpResponseInputStream._statusCode == 416)
+                if ((int)httpResponseInputStream.StatusCode == 416)
                 {
-                    return null;
+                    return httpResponseInputStream;
                 }
 
-                if (!httpResponseInputStream._isSuccessStatusCode)
+                if (!httpResponseInputStream.IsSuccessStatusCode)
                 {
 #if NET6_0_OR_GREATER
                     await httpResponseInputStream.DisposeAsync();
                     throw new HttpRequestException(
-                        $"The url {url} returns an unsuccessful status code: {httpResponseInputStream._networkResponse.StatusCode} ({(int)httpResponseInputStream._networkResponse.StatusCode})",
+                        $"The url {url} returns an unsuccessful status code: {httpResponseInputStream.StatusCode} ({(int)httpResponseInputStream.StatusCode})",
                         null,
-                        httpResponseInputStream._statusCode);
+                        httpResponseInputStream.StatusCode);
 #else
                     httpResponseInputStream.Dispose();
                     throw new HttpRequestException(
-                        $"The url {url} returns an unsuccessful status code: {httpResponseInputStream._networkResponse.StatusCode} ({(int)httpResponseInputStream._networkResponse.StatusCode})");
+                        $"The url {url} returns an unsuccessful status code: {httpResponseInputStream.StatusCode} ({(int)httpResponseInputStream.StatusCode})");
 #endif
                 }
 
@@ -193,7 +191,7 @@ namespace Hi3Helper.Http
 
         public override void Flush()
         {
-            if (_isSuccessStatusCode)
+            if (IsSuccessStatusCode)
                 _networkStream.Flush();
         }
 
@@ -224,7 +222,7 @@ namespace Hi3Helper.Http
 
             _networkRequest.Dispose();
             _networkResponse?.Dispose();
-            if (_isSuccessStatusCode)
+            if (IsSuccessStatusCode)
                 _networkStream.Dispose();
         }
 
@@ -233,7 +231,7 @@ namespace Hi3Helper.Http
         {
             _networkRequest.Dispose();
             _networkResponse?.Dispose();
-            if (_isSuccessStatusCode)
+            if (IsSuccessStatusCode)
                 await _networkStream.DisposeAsync();
 
             GC.SuppressFinalize(this);
