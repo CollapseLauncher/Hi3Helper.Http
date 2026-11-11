@@ -1,16 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFramework>net11.0</TargetFramework>
         <Platforms>x64</Platforms>
         <LangVersion>9.0</LangVersion>
         <Configurations>Debug;Release</Configurations>
         <Nullable>enable</Nullable>
         <IsTrimmable>True</IsTrimmable>
         <IsAotCompatible>True</IsAotCompatible>
-        <Version>2.0.1</Version>
+        <Version>2.0.2</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <AssemblyVersion>2.0.1</AssemblyVersion>
+        <AssemblyVersion>2.0.2</AssemblyVersion>
         <!-- Assembly Info Properties -->
         <AssemblyName>Hi3Helper.Http</AssemblyName>
         <ProductName>Hi3Helper.Http</ProductName>
@@ -29,6 +29,11 @@
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
         <Optimize>True</Optimize>
         <DebugType>portable</DebugType>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))">
+        <!-- .NET 11 feature - Runtime Async -->
+        <Features>runtime-async=on</Features>
     </PropertyGroup>
 
     <ItemGroup>
