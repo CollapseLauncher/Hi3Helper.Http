@@ -29,7 +29,7 @@ namespace Hi3Helper.Http
             return url;
         }
 
-        internal static async ValueTask<long> GetUrlContentLengthAsync(
+        internal static async Task<long> GetUrlContentLengthAsync(
             this Uri uri,
             HttpClient client,
             int retryCount,
@@ -41,7 +41,8 @@ namespace Hi3Helper.Http
         Start:
             HttpRequestMessage request = new()
             {
-                RequestUri = uri
+                RequestUri = uri,
+                Method = HttpMethod.Head
             };
             HttpResponseMessage? message = null;
 
@@ -50,7 +51,6 @@ namespace Hi3Helper.Http
 
             try
             {
-                request.Headers.Range = new RangeHeaderValue(0, null);
                 message = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, coopToken.Token);
                 return message.Content.Headers.ContentLength ?? 0;
             }
