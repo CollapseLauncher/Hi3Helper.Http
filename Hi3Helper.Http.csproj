@@ -7,7 +7,7 @@
         <Configurations>Debug;Release</Configurations>
         <Nullable>enable</Nullable>
         <IsTrimmable>True</IsTrimmable>
-        <IsAotCompatible>True</IsAotCompatible>
+        <IsAotCompatible>true</IsAotCompatible>
         <Version>2.0.2</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <AssemblyVersion>2.0.2</AssemblyVersion>
@@ -19,16 +19,11 @@
         <Company>Collapse Launcher Team</Company>
         <Authors>$(Company). neon-nyan, Cry0, bagusnl, shatyuka, gablm.</Authors>
         <Copyright>Copyright 2022-2026 $(Company)</Copyright>
-        <IsAotCompatible>true</IsAotCompatible>
+        <DebugType>portable</DebugType>
     </PropertyGroup>
 
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-        <Optimize>False</Optimize>
-        <DebugType>none</DebugType>
-    </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
         <Optimize>True</Optimize>
-        <DebugType>portable</DebugType>
     </PropertyGroup>
 
     <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))">

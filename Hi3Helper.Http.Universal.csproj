@@ -1,14 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
-        <Platforms>x64</Platforms>
+        <TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0;net11.0</TargetFrameworks>
+        <Platforms>AnyCPU</Platforms>
         <LangVersion>9.0</LangVersion>
         <Configurations>Debug;Release</Configurations>
         <Nullable>enable</Nullable>
-        <Version>2.0.1</Version>
+        <IsTrimmable>True</IsTrimmable>
+        <IsAotCompatible>true</IsAotCompatible>
+        <Version>2.0.2</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <AssemblyVersion>2.0.1</AssemblyVersion>
+        <AssemblyVersion>2.0.2</AssemblyVersion>
         <!-- Assembly Info Properties -->
         <AssemblyName>Hi3Helper.Http</AssemblyName>
         <ProductName>Hi3Helper.Http</ProductName>
@@ -17,21 +19,17 @@
         <Company>Collapse Launcher Team</Company>
         <Authors>$(Company). neon-nyan, Cry0, bagusnl, shatyuka, gablm.</Authors>
         <Copyright>Copyright 2022-2026 $(Company)</Copyright>
+        <DebugType>portable</DebugType>
         <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
     </PropertyGroup>
-
-    <PropertyGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
-        <IsTrimmable>True</IsTrimmable>
-        <IsAotCompatible>True</IsAotCompatible>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-        <Optimize>False</Optimize>
-        <DebugType>none</DebugType>
-    </PropertyGroup>
+    
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
         <Optimize>True</Optimize>
-        <DebugType>portable</DebugType>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))">
+        <!-- .NET 11 feature - Runtime Async -->
+        <Features>runtime-async=on</Features>
     </PropertyGroup>
 
     <ItemGroup>
@@ -41,13 +39,12 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="System.Text.Json" Version="10.0.9" />
+        <PackageReference Include="System.Text.Json" Version="11.0.0" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-        <PackageReference Include="System.Net.Http" Version="*" />
-        <PackageReference Include="System.Threading.Tasks.Dataflow" Version="*" />
-        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="*" />
+        <PackageReference Include="System.Threading.Tasks.Dataflow" Version="11.0.0" />
+        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="11.0.0" />
     </ItemGroup>
 
 </Project>
