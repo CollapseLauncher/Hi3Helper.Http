@@ -357,7 +357,7 @@ namespace Hi3Helper.Http
 #endif
 
             // Null check is done at the beginning damnit ReSharper
-            await chunk.CurrentMetadata!.SaveLastMetadataStateAsync(cancelToken);
+            chunk.CurrentMetadata!.SaveLastMetadataState();
             await IO.WriteStreamToFileChunkSessionAsync(
                                                         chunk,
                                                         downloadSpeedLimiter,
@@ -373,7 +373,7 @@ namespace Hi3Helper.Http
                 throw new Exception();
 
             chunk.CurrentMetadata.PopRange(chunk.CurrentPositions);
-            await chunk.CurrentMetadata.SaveLastMetadataStateAsync(cancelToken);
+            chunk.CurrentMetadata.SaveLastMetadataState();
         }
 
         /// <summary>
@@ -670,8 +670,7 @@ namespace Hi3Helper.Http
             FileInfo metadataFileInfo = new FileInfo(metadataFilePath);
 
             // Get the last session metadata info
-            Metadata? currentSessionMetadata =
-                await Metadata.ReadLastMetadataAsync(null, currentFileInfo, metadataFileInfo, 0, cancelToken);
+            Metadata? currentSessionMetadata = Metadata.OpenLastMetadata(null, currentFileInfo, metadataFileInfo, 0);
 
             // Set the current length to 0;
             long currentLength = 0;

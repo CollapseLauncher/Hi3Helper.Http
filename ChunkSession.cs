@@ -54,9 +54,7 @@ namespace Hi3Helper.Http
 
         StartEnumerate:
             // Get the last session metadata info
-            Metadata? currentSessionMetadata =
-                await Metadata.ReadLastMetadataAsync(url, outputFileInfo, metadataFileInfo,
-                contentLength, cancellationToken);
+            Metadata? currentSessionMetadata = Metadata.OpenLastMetadata(url, outputFileInfo, metadataFileInfo, contentLength);
 
             // null as per completed status and if it's not in overwrite
             if (currentSessionMetadata == null && !overwrite)
